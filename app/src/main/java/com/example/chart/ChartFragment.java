@@ -4,6 +4,7 @@ import android.animation.ValueAnimator;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.os.Bundle;
 import android.os.Handler;
@@ -12,6 +13,7 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
@@ -41,6 +43,8 @@ import com.github.mikephil.charting.data.CandleEntry;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
+import com.github.mikephil.charting.listener.ChartTouchListener;
+import com.github.mikephil.charting.listener.OnChartGestureListener;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
@@ -82,14 +86,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private boolean isDarkTheme   = true;
     private boolean isFullscreen  = false;
 
-    /**
-     * מצב הציר הפעיל לפעולות Zoom & Pan:
-     *  0 = שניהם (ברירת מחדל — pinch רגיל)
-     *  1 = ציר X בלבד
-     *  2 = ציר Y בלבד
-     */
-    private int axisMode = 0;
-
     // UI Views
     private CandleStickChart candleStickChart;
     private LineChart        lineChart;
@@ -101,9 +97,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private View chartRootLayout;
     private TextView timeFrameText, tickerText, priceText, changeText, currentPriceDisplay;
     private ProgressBar progressAI;
-
-    // כפתורי שליטת ציר (X / Y / Both)
-    private Button btnAxisBoth, btnAxisX, btnAxisY;
 
     private final OkHttpClient client  = new OkHttpClient();
     private final String API_KEY       = "0518811f0d394fa39842a8024a25c049";
@@ -169,11 +162,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         bottomBar          = v.findViewById(R.id.bottomBar);
         chartContainer     = v.findViewById(R.id.chartContainer);
 
-        // כפתורי ציר
-        btnAxisBoth = v.findViewById(R.id.btnAxisBoth);
-        btnAxisX    = v.findViewById(R.id.btnAxisX);
-        btnAxisY    = v.findViewById(R.id.btnAxisY);
-
         llmService = new LLMService();
         if (progressAI      != null) progressAI.setVisibility(View.GONE);
         if (currentPriceDisplay != null) currentPriceDisplay.setVisibility(View.GONE);
@@ -190,79 +178,97 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         setupLineChartStyle();
         setupAutoComplete();
         setupClickListeners();
-        setupAxisControls();
         fetchStockData(symbol, interval);
         return v;
     }
 
-    // ========================= AXIS CONTROLS =========================
+    // ========================= SMART AXIS GESTURE LISTENER =========================
 
     /**
-     * מגדיר את 3 הכפתורים לשליטת ציר:
-     *  Both — גרירה / זום חופשי בשני הצירים
-     *  X    — זום ופאן בציר הזמן בלבד
-     *  Y    — זום ופאן בציר המחיר בלבד
+     * מאזין חכם שמזהה אוטומטית את כיוון ה-Pinch:
+     *  - אם הזום יותר אופקי  → X בלבד
+     *  - אם הזום יותר אנכי   → Y בלבד
+     *  - אם הצבטה אלכסונית   → שניהם
      */
-    private void setupAxisControls() {
-        if (btnAxisBoth == null && btnAxisX == null && btnAxisY == null) return;
+    private class SmartAxisGestureListener implements OnChartGestureListener {
 
-        updateAxisButtons(0); // ברירת מחדל: Both
+        private final com.github.mikephil.charting.charts.BarLineChartBase<?> chart;
 
-        if (btnAxisBoth != null) btnAxisBoth.setOnClickListener(v -> setAxisMode(0));
-        if (btnAxisX    != null) btnAxisX.setOnClickListener(v    -> setAxisMode(1));
-        if (btnAxisY    != null) btnAxisY.setOnClickListener(v    -> setAxisMode(2));
-    }
+        // נקודות מגע ראשונות של הפינץ'
+        private float startDx = 0f;
+        private float startDy = 0f;
+        private boolean axisDetermined = false;
+        // true = X בלבד, false = Y בלבד, null = שניהם
+        private Boolean lockedAxisX = null;
 
-    private void setAxisMode(int mode) {
-        axisMode = mode;
-        applyAxisModeToCharts();
-        updateAxisButtons(mode);
-    }
-
-    /** מחיל את מצב הציר על שני הגרפים */
-    private void applyAxisModeToCharts() {
-        boolean scaleX = (axisMode == 0 || axisMode == 1);
-        boolean scaleY = (axisMode == 0 || axisMode == 2);
-
-        if (candleStickChart != null) {
-            candleStickChart.setScaleXEnabled(scaleX);
-            candleStickChart.setScaleYEnabled(scaleY);
-            // PinchZoom = true רק כשהשניים פעילים; אחרת נשתמש בזום חד-צירי
-            candleStickChart.setPinchZoom(axisMode == 0);
-            candleStickChart.setDragXEnabled(true);
-            candleStickChart.setDragYEnabled(axisMode != 1); // כשX בלבד — חסום גרירת Y
+        SmartAxisGestureListener(com.github.mikephil.charting.charts.BarLineChartBase<?> chart) {
+            this.chart = chart;
         }
-        if (lineChart != null) {
-            lineChart.setScaleXEnabled(scaleX);
-            lineChart.setScaleYEnabled(scaleY);
-            lineChart.setPinchZoom(axisMode == 0);
-            lineChart.setDragXEnabled(true);
-            lineChart.setDragYEnabled(axisMode != 1);
-        }
-    }
 
-    /** מעדכן צבע/סגנון הכפתורים לפי הבחירה הפעילה */
-    private void updateAxisButtons(int mode) {
-        int activeBg  = requireContext().getColor(R.color.primary);
-        int inactiveBg= requireContext().getColor(R.color.bg_secondary);
-        int activeTxt = requireContext().getColor(R.color.white);
-        int inactiveTxt=requireContext().getColor(R.color.text_secondary);
+        @Override
+        public void onChartGestureStart(MotionEvent me, ChartTouchListener.ChartGesture lastPerformedGesture) {
+            // איפוס בתחילת כל מחווה
+            axisDetermined = false;
+            lockedAxisX    = null;
+            startDx = 0f;
+            startDy = 0f;
+            // אפשר הכל
+            chart.setScaleXEnabled(true);
+            chart.setScaleYEnabled(true);
+            chart.setPinchZoom(true);
+        }
 
-        if (btnAxisBoth != null) {
-            btnAxisBoth.setBackgroundTintList(
-                android.content.res.ColorStateList.valueOf(mode == 0 ? activeBg : inactiveBg));
-            btnAxisBoth.setTextColor(mode == 0 ? activeTxt : inactiveTxt);
+        @Override
+        public void onChartScale(MotionEvent me, float scaleX, float scaleY) {
+            if (!axisDetermined) {
+                // חשב את ההפרש היחסי בין הצירים
+                float dx = Math.abs(scaleX - 1f);
+                float dy = Math.abs(scaleY - 1f);
+
+                // רק אם יש מספיק מידע להחלטה (סף 0.01)
+                if (dx + dy < 0.01f) return;
+
+                axisDetermined = true;
+                float ratio = (dy > 0) ? dx / dy : 999f;
+
+                if (ratio > 2.5f) {
+                    // אופקי מובהק — X בלבד
+                    lockedAxisX = true;
+                    chart.setPinchZoom(false);
+                    chart.setScaleXEnabled(true);
+                    chart.setScaleYEnabled(false);
+                } else if (ratio < 0.4f) {
+                    // אנכי מובהק — Y בלבד
+                    lockedAxisX = false;
+                    chart.setPinchZoom(false);
+                    chart.setScaleXEnabled(false);
+                    chart.setScaleYEnabled(true);
+                } else {
+                    // אלכסוני — שניהם
+                    lockedAxisX = null;
+                    chart.setPinchZoom(true);
+                    chart.setScaleXEnabled(true);
+                    chart.setScaleYEnabled(true);
+                }
+            }
         }
-        if (btnAxisX != null) {
-            btnAxisX.setBackgroundTintList(
-                android.content.res.ColorStateList.valueOf(mode == 1 ? activeBg : inactiveBg));
-            btnAxisX.setTextColor(mode == 1 ? activeTxt : inactiveTxt);
+
+        @Override
+        public void onChartGestureEnd(MotionEvent me, ChartTouchListener.ChartGesture lastPerformedGesture) {
+            // החזר לברירת מחדל אחרי שחרור האצבעות
+            chart.setScaleXEnabled(true);
+            chart.setScaleYEnabled(true);
+            chart.setPinchZoom(true);
+            axisDetermined = false;
+            lockedAxisX    = null;
         }
-        if (btnAxisY != null) {
-            btnAxisY.setBackgroundTintList(
-                android.content.res.ColorStateList.valueOf(mode == 2 ? activeBg : inactiveBg));
-            btnAxisY.setTextColor(mode == 2 ? activeTxt : inactiveTxt);
-        }
+
+        // שאר ה-callbacks חובה לממש
+        @Override public void onChartLongPressed(MotionEvent me) {}
+        @Override public void onChartDoubleTapped(MotionEvent me) {}
+        @Override public void onChartSingleTapped(MotionEvent me) {}
+        @Override public void onChartFling(MotionEvent me1, MotionEvent me2, float vx, float vy) {}
+        @Override public void onChartTranslate(MotionEvent me, float dX, float dY) {}
     }
 
     // ========================= THEME =========================
@@ -302,8 +308,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 isDarkTheme ? android.R.drawable.ic_menu_day : android.R.drawable.ic_menu_month);
             btnThemeToggle.setColorFilter(textSec);
         }
-        // רענן צבעי כפתורי ציר לפי Theme
-        if (btnAxisBoth != null) updateAxisButtons(axisMode);
     }
 
     // ========================= FULLSCREEN =========================
@@ -372,12 +376,14 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         candleStickChart.getLegend().setEnabled(false);
         candleStickChart.setTouchEnabled(true);
         candleStickChart.setDoubleTapToZoomEnabled(true);
-        // scaleX/Y נשלטים על ידי setupAxisControls
         candleStickChart.setScaleXEnabled(true);
         candleStickChart.setScaleYEnabled(true);
         candleStickChart.setPinchZoom(true);
         candleStickChart.setDragXEnabled(true);
         candleStickChart.setDragYEnabled(true);
+
+        // מאזין חכם לזיהוי כיוון Pinch
+        candleStickChart.setOnChartGestureListener(new SmartAxisGestureListener(candleStickChart));
 
         XAxis xAxis = candleStickChart.getXAxis();
         xAxis.setDrawGridLines(false);
@@ -413,6 +419,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.setPinchZoom(true);
         lineChart.setDragXEnabled(true);
         lineChart.setDragYEnabled(true);
+
+        // מאזין חכם לזיהוי כיוון Pinch
+        lineChart.setOnChartGestureListener(new SmartAxisGestureListener(lineChart));
 
         XAxis xAxis = lineChart.getXAxis();
         xAxis.setDrawGridLines(false);
@@ -468,8 +477,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     lineChart.setVisibility(View.VISIBLE);
                 }
                 fetchStockData(symbol, interval);
-                // החל מחדש מצב ציר על הגרף החדש
-                applyAxisModeToCharts();
             });
         }
         if (btnAIAnalysis != null) {
@@ -481,7 +488,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 applyTheme();
                 setupCandleChartStyle();
                 setupLineChartStyle();
-                applyAxisModeToCharts();
                 if (!currentEntries.isEmpty()) {
                     if (isCandleStick) updateCandleChart(new ArrayList<>(currentEntries));
                     else               updateLineChart(new ArrayList<>(currentEntries));

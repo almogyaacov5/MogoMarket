@@ -10,7 +10,7 @@
     android:background="@color/bg_primary"
     tools:context=".MainActivity">
 
-    <!-- ===== HEADER: Financial Terminal Top Bar ===== -->
+    <!-- ===== HEADER ===== -->
     <LinearLayout
         android:id="@+id/headerSection"
         android:layout_width="match_parent"
@@ -22,7 +22,6 @@
         android:layout_marginEnd="12dp"
         android:layout_marginTop="12dp">
 
-        <!-- Row 1: Ticker + Price -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -40,7 +39,6 @@
                 android:textColor="@color/text_primary"
                 android:letterSpacing="0.02"/>
 
-            <!-- 🌙☀️ כפתור מצב כהה/בהיר -->
             <ImageButton
                 android:id="@+id/btnThemeToggle"
                 android:layout_width="36dp"
@@ -62,7 +60,6 @@
                 android:letterSpacing="0.02"/>
         </LinearLayout>
 
-        <!-- Row 2: Daily Change -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -189,7 +186,6 @@
             android:layout_marginStart="10dp"
             android:stateListAnimator="@null"/>
 
-        <!-- 🔲 כפתור הגדלת גרף -->
         <ImageButton
             android:id="@+id/btnExpandChart"
             android:layout_width="44dp"
@@ -206,63 +202,6 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="10dp"
             android:visibility="gone"/>
-    </LinearLayout>
-
-    <!-- ===== AXIS ZOOM CONTROLS ===== -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:layout_marginStart="12dp"
-        android:layout_marginEnd="12dp"
-        android:layout_marginTop="6dp"
-        android:background="@color/bg_card"
-        android:padding="8dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Zoom:"
-            android:textSize="12sp"
-            android:textColor="@color/text_secondary"
-            android:layout_marginEnd="8dp"/>
-
-        <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/btnAxisBoth"
-            android:layout_width="wrap_content"
-            android:layout_height="36dp"
-            android:text="⊞ Both"
-            android:textSize="12sp"
-            android:textColor="@color/white"
-            android:backgroundTint="@color/primary"
-            android:paddingHorizontal="12dp"
-            android:layout_marginEnd="6dp"
-            android:stateListAnimator="@null"/>
-
-        <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/btnAxisX"
-            android:layout_width="wrap_content"
-            android:layout_height="36dp"
-            android:text="↔ X"
-            android:textSize="12sp"
-            android:textColor="@color/text_secondary"
-            android:backgroundTint="@color/bg_secondary"
-            android:paddingHorizontal="12dp"
-            android:layout_marginEnd="6dp"
-            android:stateListAnimator="@null"/>
-
-        <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/btnAxisY"
-            android:layout_width="wrap_content"
-            android:layout_height="36dp"
-            android:text="↕ Y"
-            android:textSize="12sp"
-            android:textColor="@color/text_secondary"
-            android:backgroundTint="@color/bg_secondary"
-            android:paddingHorizontal="12dp"
-            android:stateListAnimator="@null"/>
-
     </LinearLayout>
 
     <!-- ===== CHART AREA ===== -->
@@ -290,7 +229,6 @@
             android:background="@color/bg_card"
             android:visibility="gone"/>
 
-        <!-- כפתור יציאה ממסך מלא -->
         <ImageButton
             android:id="@+id/btnExitFullscreen"
             android:layout_width="44dp"
