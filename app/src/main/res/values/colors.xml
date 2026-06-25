@@ -1,71 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- בסיס -->
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
 
-    <!-- ☀️ Light Mode (ברירת מחדל) -->
+    <!-- ============================
+         ☀️ LIGHT MODE (default)
+         ============================ -->
+
+    <!-- רקעות -->
     <color name="bg_primary">#F0F4F8</color>
     <color name="bg_secondary">#FFFFFF</color>
     <color name="bg_card">#FFFFFF</color>
-    <color name="text_primary">#1A1D23</color>
-    <color name="text_secondary">#6B7280</color>
 
-    <!-- תאימות לשמות ישנים -->
-    <color name="bg_primary_light">#F0F4F8</color>
-    <color name="bg_secondary_light">#FFFFFF</color>
-    <color name="bg_card_light">#FFFFFF</color>
-    <color name="text_primary_light">#1A1D23</color>
-    <color name="text_secondary_light">#6B7280</color>
-    <color name="bg_primary_dark">#0B0F14</color>
-    <color name="bg_secondary_dark">#111826</color>
-    <color name="bg_card_dark">#151C2E</color>
-    <color name="text_primary_dark">#E6EDF3</color>
-    <color name="text_secondary_dark">#8B98A5</color>
+    <!-- צבעים ראשיים -->
+    <color name="primary">#1A6DD0</color>
+    <color name="primary_dark">#0F4FA8</color>
 
-    <!-- תאימות לשמות ישנים -->
-    <color name="colorBackground">#F0F4F8</color>
-    <color name="colorSurface">#FFFFFF</color>
-    <color name="colorSurface2">#F8FAFC</color>
-    <color name="colorNavBar">#FFFFFF</color>
+    <!-- טקסטים -->
+    <color name="text_primary">#0D1117</color>
+    <color name="text_secondary">#4A5568</color>
 
-    <!-- 🔵 ראשי - Neon Blue -->
-    <color name="primary">#4DA3FF</color>
-    <color name="primary_dark">#1C6DD0</color>
-    <color name="colorPrimary">#4DA3FF</color>
-    <color name="colorPrimaryDark">#1C6DD0</color>
-    <color name="colorAccent">#4DA3FF</color>
+    <!-- רווח / הפסד -->
+    <color name="gain">#00A878</color>
+    <color name="loss">#D93025</color>
 
-    <!-- 📝 טקסט -->
-    <color name="colorTextPrimary">#1A1D23</color>
-    <color name="colorTextSecondary">#6B7280</color>
-    <color name="colorTextHint">#9CA3AF</color>
-    <color name="colorTextOnPrimary">#FFFFFF</color>
+    <!-- ספריים כלליים -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="colorDivider">#E2E8F0</color>
+    <color name="colorLoss">#D93025</color>
 
-    <!-- גבולות וחלוקות -->
-    <color name="colorDivider">#E5E7EB</color>
-    <color name="colorBorder">#D1D5DB</color>
+    <!-- Theme toggle כפתור -->
+    <color name="theme_toggle_bg">#E2E8F0</color>
+    <color name="theme_toggle_icon">#0D1117</color>
 
-    <!-- 📈 מצבים - Gain/Loss -->
-    <color name="gain">#00C896</color>
-    <color name="loss">#FF4D4D</color>
-    <color name="colorProfit">#00C896</color>
-    <color name="colorLoss">#FF4D4D</color>
-    <color name="colorNeutral">#6B7280</color>
-    <color name="colorWarning">#F0A500</color>
+    <!-- Nav bar -->
+    <color name="nav_bar_bg">#F0F4F8</color>
+    <color name="nav_active">#1A6DD0</color>
+    <color name="nav_inactive">#718096</color>
 
-    <!-- כרטיס -->
-    <color name="colorCard">#FFFFFF</color>
-    <color name="colorCardStroke">#E5E7EB</color>
-
-    <!-- Chart -->
-    <color name="chartBg">#F0F4F8</color>
-
-    <!-- Bottom Nav -->
-    <color name="navActive">#4DA3FF</color>
-    <color name="navInactive">#9CA3AF</color>
-
-    <!-- Theme toggle button -->
-    <color name="theme_toggle_bg">#E5E7EB</color>
-    <color name="theme_toggle_icon">#4DA3FF</color>
 </resources>

@@ -25,15 +25,6 @@ import okhttp3.Response;
 
 public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.WatchViewHolder> {
 
-    // ── Trading Dark Theme colors ──────────────────────────
-    private static final int BG_CARD       = 0xFF151C2E;
-    private static final int TEXT_PRIMARY  = 0xFFE6EDF3;
-    private static final int TEXT_SECONDARY= 0xFF8B98A5;
-    private static final int COLOR_GAIN    = 0xFF00C896;
-    private static final int COLOR_LOSS    = 0xFFFF4D4D;
-    private static final int COLOR_PRIMARY = 0xFF4DA3FF;
-    // ──────────────────────────────────────────────────────
-
     public interface OnWatchStockClickListener {
         void onStockClick(String symbol);
         void onStockDelete(String symbol);
@@ -64,40 +55,46 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
     @Override
     public void onBindViewHolder(@NonNull WatchViewHolder holder, int position) {
         StockWatchData stock = stocks.get(position);
+        Context ctx = holder.itemView.getContext();
 
-        // ── עיצוב כרטיס ───────────────────────────────────
-        holder.itemView.setBackgroundColor(BG_CARD);
+        // צבעים דינמיים מה-Theme
+        int bgCard        = ctx.getColor(R.color.bg_card);
+        int textPrimary   = ctx.getColor(R.color.text_primary);
+        int textSecondary = ctx.getColor(R.color.text_secondary);
+        int colorGain     = ctx.getColor(R.color.gain);
+        int colorLoss     = ctx.getColor(R.color.loss);
+        int colorPrimary  = ctx.getColor(R.color.primary);
 
+        holder.itemView.setBackgroundColor(bgCard);
         holder.symbolText.setText(stock.symbol);
-        holder.symbolText.setTextColor(TEXT_PRIMARY);
-        updateAlertText(holder, stock);
+        holder.symbolText.setTextColor(textPrimary);
+        updateAlertText(holder, stock, colorPrimary, textSecondary);
 
-        // ── שליפת מחיר ───────────────────────────────────
         fetchStockData(stock.symbol, "1day", new StockDataCallback() {
             @Override
             public void onDataReceived(float price, float dayChange) {
                 holder.priceText.post(() -> {
                     holder.priceText.setText(String.format(Locale.US, "$%.2f", price));
-                    holder.priceText.setTextColor(COLOR_PRIMARY);
+                    holder.priceText.setTextColor(colorPrimary);
                 });
                 holder.dayChangeText.post(() -> {
                     String arrow = dayChange >= 0 ? "▲" : "▼";
                     holder.dayChangeText.setText(
                             String.format(Locale.US, "%s %.2f%%", arrow, Math.abs(dayChange)));
-                    holder.dayChangeText.setTextColor(dayChange >= 0 ? COLOR_GAIN : COLOR_LOSS);
+                    holder.dayChangeText.setTextColor(dayChange >= 0 ? colorGain : colorLoss);
                 });
-                processAlert(stock, price, holder.itemView.getContext());
+                processAlert(stock, price, ctx);
             }
 
             @Override
             public void onError(Exception e) {
                 holder.priceText.post(() -> {
                     holder.priceText.setText("$—");
-                    holder.priceText.setTextColor(TEXT_SECONDARY);
+                    holder.priceText.setTextColor(textSecondary);
                 });
                 holder.dayChangeText.post(() -> {
                     holder.dayChangeText.setText("—");
-                    holder.dayChangeText.setTextColor(TEXT_SECONDARY);
+                    holder.dayChangeText.setTextColor(textSecondary);
                 });
             }
         });
@@ -110,13 +107,14 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
     @Override
     public int getItemCount() { return stocks != null ? stocks.size() : 0; }
 
-    private void updateAlertText(WatchViewHolder holder, StockWatchData stock) {
+    private void updateAlertText(WatchViewHolder holder, StockWatchData stock,
+                                  int colorPrimary, int textSecondary) {
         if (stock.alertEnabled && stock.alertTargetPrice > 0f) {
             holder.alertText.setText(String.format(Locale.US, "🔔 $%.2f", stock.alertTargetPrice));
-            holder.alertText.setTextColor(COLOR_PRIMARY);
+            holder.alertText.setTextColor(colorPrimary);
         } else {
             holder.alertText.setText("🔕 Off");
-            holder.alertText.setTextColor(TEXT_SECONDARY);
+            holder.alertText.setTextColor(textSecondary);
         }
     }
 
@@ -141,7 +139,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
                         "Price crossed $%.2f (now $%.2f)", targetPrice, currentPrice))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true);
-
         NotificationManagerCompat manager = NotificationManagerCompat.from(context);
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
                 context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)

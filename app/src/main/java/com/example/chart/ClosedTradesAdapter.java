@@ -1,5 +1,6 @@
 package com.example.chart;
 
+import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,15 +14,6 @@ import java.util.List;
 import java.util.Locale;
 
 public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapter.ViewHolder> {
-
-    // ── Trading Dark Theme colors ──────────────────────────
-    private static final int BG_CARD       = 0xFF151C2E;
-    private static final int TEXT_PRIMARY  = 0xFFE6EDF3;
-    private static final int TEXT_SECONDARY= 0xFF8B98A5;
-    private static final int COLOR_GAIN    = 0xFF00C896;
-    private static final int COLOR_LOSS    = 0xFFFF4D4D;
-    private static final int COLOR_NEUTRAL = 0xFF8B98A5;
-    // ──────────────────────────────────────────────────────
 
     private static final int[] CIRCLE_COLORS = {
         0xFF1565C0, 0xFF6A1B9A, 0xFF00695C,
@@ -69,15 +61,22 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         StockData trade = closedTrades.get(position);
+        Context ctx = holder.itemView.getContext();
 
-        // ── עיצוב כרטיס ───────────────────────────────────
-        holder.itemView.setBackgroundColor(BG_CARD);
+        // צבעים דינמיים מה-Theme
+        int bgCard        = ctx.getColor(R.color.bg_card);
+        int textPrimary   = ctx.getColor(R.color.text_primary);
+        int textSecondary = ctx.getColor(R.color.text_secondary);
+        int colorGain     = ctx.getColor(R.color.gain);
+        int colorLoss     = ctx.getColor(R.color.loss);
+        int colorNeutral  = textSecondary;
+
+        holder.itemView.setBackgroundColor(bgCard);
 
         String symbol = trade.symbol != null ? trade.symbol.toUpperCase(Locale.US) : "?";
         holder.symbolText.setText(symbol);
-        holder.symbolText.setTextColor(TEXT_PRIMARY);
+        holder.symbolText.setTextColor(textPrimary);
 
-        // עיגול ראשית מניה
         if (holder.symbolInitial != null) {
             String initial = symbol.length() > 0 ? String.valueOf(symbol.charAt(0)) : "?";
             holder.symbolInitial.setText(initial);
@@ -90,20 +89,20 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
         double currPrice = (trade.currentPrice > 0) ? trade.currentPrice : sellPrice;
 
         holder.buyPriceView.setText(String.format(Locale.US, "$%.2f", buyPrice));
-        holder.buyPriceView.setTextColor(TEXT_SECONDARY);
+        holder.buyPriceView.setTextColor(textSecondary);
         holder.sellPriceView.setText(String.format(Locale.US, "$%.2f", sellPrice));
-        holder.sellPriceView.setTextColor(TEXT_SECONDARY);
+        holder.sellPriceView.setTextColor(textSecondary);
         holder.currPriceView.setText(String.format(Locale.US, "$%.2f", currPrice));
-        holder.currPriceView.setTextColor(TEXT_PRIMARY);
+        holder.currPriceView.setTextColor(textPrimary);
 
         double pnlAbs     = sellPrice - buyPrice;
         double pnlPercent = (buyPrice != 0) ? ((sellPrice - buyPrice) / buyPrice) * 100 : 0;
 
         int    pnlColor;
         String pnlSign;
-        if (pnlAbs > 0)      { pnlColor = COLOR_GAIN;    pnlSign = "+"; }
-        else if (pnlAbs < 0) { pnlColor = COLOR_LOSS;    pnlSign = "";  }
-        else                 { pnlColor = COLOR_NEUTRAL;  pnlSign = "";  }
+        if (pnlAbs > 0)      { pnlColor = colorGain;    pnlSign = "+"; }
+        else if (pnlAbs < 0) { pnlColor = colorLoss;    pnlSign = "";  }
+        else                 { pnlColor = colorNeutral;  pnlSign = "";  }
 
         holder.pnlView.setText(String.format(Locale.US, "%s$%.2f", pnlSign, pnlAbs));
         holder.pnlView.setTextColor(pnlColor);

@@ -27,15 +27,6 @@ import okhttp3.Response;
 
 public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewHolder> {
 
-    // ── Trading Dark Theme colors ──────────────────────────
-    private static final int BG_CARD      = 0xFF151C2E;
-    private static final int TEXT_PRIMARY = 0xFFE6EDF3;
-    private static final int TEXT_SECONDARY= 0xFF8B98A5;
-    private static final int COLOR_GAIN   = 0xFF00C896;
-    private static final int COLOR_LOSS   = 0xFFFF4D4D;
-    private static final int COLOR_NEUTRAL= 0xFF8B98A5;
-    // ──────────────────────────────────────────────────────
-
     public interface OnStockClickListener {
         void onStockClick(String symbol);
         void onStockDelete(String symbol, double sellPrice);
@@ -61,30 +52,38 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
     @Override
     public void onBindViewHolder(@NonNull StockViewHolder holder, int position) {
         StockData stock = stocks.get(position);
+        Context ctx = holder.itemView.getContext();
 
-        // ── עיצוב כרטיס ───────────────────────────────────
-        holder.itemView.setBackgroundColor(BG_CARD);
+        // צבעים דינמיים מה-Theme (עובד light + dark)
+        int colorGain    = ctx.getColor(R.color.gain);
+        int colorLoss    = ctx.getColor(R.color.loss);
+        int colorPrimary = ctx.getColor(R.color.primary);
+        int textPrimary  = ctx.getColor(R.color.text_primary);
+        int textSecondary= ctx.getColor(R.color.text_secondary);
+        int bgCard       = ctx.getColor(R.color.bg_card);
+        int colorNeutral = textSecondary;
+
+        holder.itemView.setBackgroundColor(bgCard);
 
         String sym = (stock.symbol != null) ? stock.symbol.trim() : "?";
         holder.symbolText.setText(sym);
-        holder.symbolText.setTextColor(TEXT_PRIMARY);
+        holder.symbolText.setTextColor(textPrimary);
         holder.buyPriceText.setText(String.format(Locale.US, "$%.2f", stock.buyPrice));
-        holder.buyPriceText.setTextColor(TEXT_SECONDARY);
+        holder.buyPriceText.setTextColor(textSecondary);
 
         if (stock.targetPrice > 0) {
             holder.targetPriceText.setText(String.format(Locale.US, "$%.2f", stock.targetPrice));
         } else {
             holder.targetPriceText.setText("-");
         }
-        holder.targetPriceText.setTextColor(TEXT_SECONDARY);
+        holder.targetPriceText.setTextColor(textSecondary);
 
-        // ── מחיר נוכחי + P&L ─────────────────────────────
         fetchCurrentPrice(stock.symbol, new PriceCallback() {
             @Override
             public void onPriceReceived(float price) {
                 holder.currentPriceText.post(() -> {
                     holder.currentPriceText.setText(String.format(Locale.US, "$%.2f", price));
-                    holder.currentPriceText.setTextColor(TEXT_PRIMARY);
+                    holder.currentPriceText.setTextColor(textPrimary);
                 });
 
                 float percentChange = (stock.buyPrice != 0f)
@@ -92,7 +91,7 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
                 double pnlDollar = (stock.tradeAmount > 0)
                         ? stock.tradeAmount * (percentChange / 100.0) : 0;
 
-                int gainLossColor = percentChange >= 0 ? COLOR_GAIN : COLOR_LOSS;
+                int gainLossColor = percentChange >= 0 ? colorGain : colorLoss;
                 String arrow      = percentChange >= 0 ? "▲" : "▼";
 
                 holder.changePercentText.post(() -> {
@@ -112,12 +111,12 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
                         String sign = pnlDollar >= 0 ? "+" : "";
                         holder.pnlDollarText.setText(
                                 String.format(Locale.US, "%s$%.2f", sign, pnlDollar));
-                        holder.pnlDollarText.setTextColor(pnlDollar >= 0 ? COLOR_GAIN : COLOR_LOSS);
+                        holder.pnlDollarText.setTextColor(pnlDollar >= 0 ? colorGain : colorLoss);
                     });
                 } else {
                     holder.pnlDollarText.post(() -> {
                         holder.pnlDollarText.setText("-");
-                        holder.pnlDollarText.setTextColor(COLOR_NEUTRAL);
+                        holder.pnlDollarText.setTextColor(colorNeutral);
                     });
                 }
             }
@@ -126,14 +125,14 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
             public void onError(Exception e) {
                 holder.currentPriceText.post(() -> {
                     holder.currentPriceText.setText("?");
-                    holder.currentPriceText.setTextColor(COLOR_NEUTRAL);
+                    holder.currentPriceText.setTextColor(colorNeutral);
                 });
                 holder.changePercentText.post(() -> holder.changePercentText.setText("?"));
             }
         });
 
         holder.btnEdit.setOnClickListener(view -> listener.onStockClick(stock.symbol));
-        holder.btnDelete.setOnClickListener(view -> showSellPriceDialog(view.getContext(), stock.symbol));
+        holder.btnDelete.setOnClickListener(view -> showSellPriceDialog(ctx, stock.symbol));
         holder.itemView.setOnClickListener(view -> listener.onStockClick(stock.symbol));
     }
 
@@ -188,7 +187,6 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         builder.setTitle("הזן מחיר סגירה ל-" + symbol);
         final EditText input = new EditText(context);
         input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        input.setTextColor(TEXT_PRIMARY);
         builder.setView(input);
         builder.setPositiveButton("סגור טרייד", (dialog, which) -> {
             String priceStr = input.getText().toString();

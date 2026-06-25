@@ -21,12 +21,6 @@ public class MainActivity extends AppCompatActivity {
     private static final String PREFS_NAME = "app_prefs";
     private static final String KEY_THEME  = "dark_mode";
 
-    // ── צבעי ניווט תחתון ──────────────────────────────────
-    private static final int COLOR_NAV_ACTIVE   = 0xFF4DA3FF;  // כחול ניאון
-    private static final int COLOR_NAV_INACTIVE = 0xFF8B98A5;  // אפור משני
-    private static final int COLOR_NAV_BG       = 0xFF111826;  // bg_secondary
-    // ──────────────────────────────────────────────────────
-
     private boolean isDarkMode = true;
     private int currentNavId = -1;
 
@@ -46,12 +40,13 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_main);
 
-        // הסתר ActionBar — אנחנו משתמשים ב-Custom TopBar
         if (getSupportActionBar() != null) getSupportActionBar().hide();
 
-        // צבע רקע לניווט תחתון
+        // צבע ניווט תחתון דינמי מה-Theme
         LinearLayout bottomNav = findViewById(R.id.bottom_nav_bar);
-        if (bottomNav != null) bottomNav.setBackgroundColor(COLOR_NAV_BG);
+        if (bottomNav != null) {
+            bottomNav.setBackgroundColor(getColor(R.color.nav_bar_bg));
+        }
 
         requestNotificationPermissionIfNeeded();
         PriceAlertScheduler.schedule(this);
@@ -62,7 +57,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // ─── Bottom Nav ───────────────────────────────────────
     private void setupBottomNav() {
         findViewById(R.id.nav_btn_chart).setOnClickListener(v     -> navigateTo(R.id.nav_chart));
         findViewById(R.id.nav_btn_stocks).setOnClickListener(v    -> navigateTo(R.id.nav_stocks));
@@ -106,9 +100,13 @@ public class MainActivity extends AppCompatActivity {
             {R.id.nav_settings,      R.id.nav_icon_settings,  R.id.nav_label_settings},
         };
 
+        // צבעים דינמיים מה-Theme
+        int activeColor   = getColor(R.color.nav_active);
+        int inactiveColor = getColor(R.color.nav_inactive);
+
         for (int[] entry : navMap) {
             boolean   active = (entry[0] == selectedId);
-            int       color  = active ? COLOR_NAV_ACTIVE : COLOR_NAV_INACTIVE;
+            int       color  = active ? activeColor : inactiveColor;
             ImageView icon   = findViewById(entry[1]);
             TextView  label  = findViewById(entry[2]);
             if (icon  != null) icon.setColorFilter(color);

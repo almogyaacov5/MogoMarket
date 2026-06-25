@@ -23,13 +23,6 @@ public class SettingsFragment extends Fragment {
     private static final String PREFS_NAME = "app_prefs";
     private static final String KEY_THEME  = "dark_mode";
 
-    private static final int BG_PRIMARY    = 0xFF0B0F14;
-    private static final int TEXT_PRIMARY  = 0xFFE6EDF3;
-    private static final int TEXT_SECONDARY= 0xFF8B98A5;
-    private static final int COLOR_PRIMARY = 0xFF4DA3FF;
-    private static final int COLOR_LOSS    = 0xFFFF4D4D;
-    private static final int BG_SECONDARY  = 0xFF111826;
-
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -38,8 +31,8 @@ public class SettingsFragment extends Fragment {
 
         View v = inflater.inflate(R.layout.fragment_settings, container, false);
 
-        // רקע ראשי
-        v.setBackgroundColor(BG_PRIMARY);
+        // רקע דינמי מה-Theme
+        v.setBackgroundColor(requireContext().getColor(R.color.bg_primary));
 
         // Dark Mode Switch
         SwitchMaterial switchDarkMode = v.findViewById(R.id.switchDarkMode);
@@ -47,9 +40,11 @@ public class SettingsFragment extends Fragment {
         boolean isDark = prefs.getBoolean(KEY_THEME, true);
         switchDarkMode.setChecked(isDark);
         switchDarkMode.setThumbTintList(
-                android.content.res.ColorStateList.valueOf(COLOR_PRIMARY));
+                android.content.res.ColorStateList.valueOf(
+                        requireContext().getColor(R.color.primary)));
         switchDarkMode.setTrackTintList(
-                android.content.res.ColorStateList.valueOf(BG_SECONDARY));
+                android.content.res.ColorStateList.valueOf(
+                        requireContext().getColor(R.color.bg_secondary)));
 
         switchDarkMode.setOnCheckedChangeListener((btn, isChecked) -> {
             prefs.edit().putBoolean(KEY_THEME, isChecked).apply();
@@ -61,7 +56,7 @@ public class SettingsFragment extends Fragment {
         // אימייל משתמש
         TextView tvEmail = v.findViewById(R.id.tvUserEmail);
         if (tvEmail != null) {
-            tvEmail.setTextColor(COLOR_PRIMARY);
+            tvEmail.setTextColor(requireContext().getColor(R.color.primary));
             FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
             tvEmail.setText(user != null && user.getEmail() != null
                     ? user.getEmail() : "Guest");
@@ -70,7 +65,7 @@ public class SettingsFragment extends Fragment {
         // גרסת אפליקציה
         TextView tvVersion = v.findViewById(R.id.tvAppVersion);
         if (tvVersion != null) {
-            tvVersion.setTextColor(TEXT_SECONDARY);
+            tvVersion.setTextColor(requireContext().getColor(R.color.text_secondary));
             try {
                 String ver = requireContext().getPackageManager()
                         .getPackageInfo(requireContext().getPackageName(), 0).versionName;
@@ -84,8 +79,9 @@ public class SettingsFragment extends Fragment {
         MaterialButton btnLogout = v.findViewById(R.id.btnSettingsLogout);
         if (btnLogout != null) {
             btnLogout.setBackgroundTintList(
-                    android.content.res.ColorStateList.valueOf(COLOR_LOSS));
-            btnLogout.setTextColor(TEXT_PRIMARY);
+                    android.content.res.ColorStateList.valueOf(
+                            requireContext().getColor(R.color.loss)));
+            btnLogout.setTextColor(requireContext().getColor(R.color.white));
             btnLogout.setOnClickListener(view -> {
                 FirebaseAuth.getInstance().signOut();
                 Intent intent = new Intent(requireActivity(), AuthLogin.class);
