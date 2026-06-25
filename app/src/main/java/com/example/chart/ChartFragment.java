@@ -60,16 +60,16 @@ import okhttp3.Response;
 public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFrameListener {
 
     // =========================== צבעי Trading Terminal ===========================
-    private static final int COLOR_BG         = 0xFF0B0F14;
-    private static final int COLOR_CARD       = 0xFF151C2E;
-    private static final int COLOR_PRIMARY    = 0xFF4DA3FF;
-    private static final int COLOR_GAIN       = 0xFF00C896;
-    private static final int COLOR_LOSS       = 0xFFFF4D4D;
-    private static final int COLOR_FILL       = 0xFF1C6DD0;
-    private static final int COLOR_TEXT_PRI   = 0xFFE6EDF3;
-    private static final int COLOR_TEXT_SEC   = 0xFF8B98A5;
-    private static final int COLOR_CANDLE_UP  = 0xFF00C896;
-    private static final int COLOR_CANDLE_DN  = 0xFFFF4D4D;
+    private static final int COLOR_BG        = 0xFF0B0F14;
+    private static final int COLOR_CARD      = 0xFF151C2E;
+    private static final int COLOR_PRIMARY   = 0xFF4DA3FF;
+    private static final int COLOR_GAIN      = 0xFF00C896;
+    private static final int COLOR_LOSS      = 0xFFFF4D4D;
+    private static final int COLOR_FILL      = 0xFF1C6DD0;
+    private static final int COLOR_TEXT_PRI  = 0xFFE6EDF3;
+    private static final int COLOR_TEXT_SEC  = 0xFF8B98A5;
+    private static final int COLOR_CANDLE_UP = 0xFF00C896;
+    private static final int COLOR_CANDLE_DN = 0xFFFF4D4D;
     // =============================================================================
 
     private CandleStickChart candleStickChart;
@@ -154,10 +154,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
         if (getActivity() != null) getActivity().setTitle("Chart: " + symbol);
 
-        // 🌑 הגדרת סטייל הכה לשני הגרפים
         setupCandleChartStyle();
         setupLineChartStyle();
-
         setupAutoComplete();
         setupClickListeners();
         fetchStockData(symbol, interval);
@@ -172,13 +170,14 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
         candleStickChart.setBackgroundColor(COLOR_BG);
         candleStickChart.setDrawGridBackground(false);
-        candleStickChart.description.setEnabled(false);
-        candleStickChart.legend.setEnabled(false);
+        // ✅ תיקון: שימוש ב-getDescription() במקום .description
+        candleStickChart.getDescription().setEnabled(false);
+        // ✅ תיקון: שימוש ב-getLegend() במקום .legend
+        candleStickChart.getLegend().setEnabled(false);
         candleStickChart.setTouchEnabled(true);
         candleStickChart.setPinchZoom(true);
         candleStickChart.setDoubleTapToZoomEnabled(true);
 
-        // ציר X
         XAxis xAxis = candleStickChart.getXAxis();
         xAxis.setDrawGridLines(false);
         xAxis.setDrawAxisLine(false);
@@ -187,7 +186,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
         xAxis.setLabelCount(5, true);
 
-        // ציר Y שמאל
         YAxis leftAxis = candleStickChart.getAxisLeft();
         leftAxis.setDrawGridLines(false);
         leftAxis.setDrawAxisLine(false);
@@ -195,7 +193,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         leftAxis.setTextSize(10f);
         leftAxis.setLabelCount(5, false);
 
-        // ביטול ציר ימין
         candleStickChart.getAxisRight().setEnabled(false);
     }
 
@@ -205,13 +202,14 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
         lineChart.setBackgroundColor(COLOR_BG);
         lineChart.setDrawGridBackground(false);
-        lineChart.description.setEnabled(false);
-        lineChart.legend.setEnabled(false);
+        // ✅ תיקון: שימוש ב-getDescription() במקום .description
+        lineChart.getDescription().setEnabled(false);
+        // ✅ תיקון: שימוש ב-getLegend() במקום .legend
+        lineChart.getLegend().setEnabled(false);
         lineChart.setTouchEnabled(true);
         lineChart.setPinchZoom(true);
         lineChart.setDoubleTapToZoomEnabled(true);
 
-        // ציר X
         XAxis xAxis = lineChart.getXAxis();
         xAxis.setDrawGridLines(false);
         xAxis.setDrawAxisLine(false);
@@ -220,7 +218,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
         xAxis.setLabelCount(5, true);
 
-        // ציר Y שמאל
         YAxis leftAxis = lineChart.getAxisLeft();
         leftAxis.setDrawGridLines(false);
         leftAxis.setDrawAxisLine(false);
@@ -228,7 +225,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         leftAxis.setTextSize(10f);
         leftAxis.setLabelCount(5, false);
 
-        // ביטול ציר ימין
         lineChart.getAxisRight().setEnabled(false);
     }
 
@@ -327,7 +323,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private void updateCandleChart(List<CandleEntry> entries) {
         CandleDataSet dataSet = new CandleDataSet(entries, "");
 
-        // צבעי נרות - ירוק עולה / אדום יורד
         dataSet.setIncreasingColor(COLOR_CANDLE_UP);
         dataSet.setDecreasingColor(COLOR_CANDLE_DN);
         dataSet.setIncreasingPaintStyle(Paint.Style.FILL);
@@ -340,7 +335,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
         CandleData data = new CandleData(dataSet);
         candleStickChart.setData(data);
-        candleStickChart.animateX(400); // אנימציה קצרה
+        candleStickChart.animateX(400);
         candleStickChart.invalidate();
     }
 
@@ -353,7 +348,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
         LineDataSet lineDataSet = new LineDataSet(lineEntries, "");
 
-        // סטייל כחול ניאון TradingView
         lineDataSet.setColor(COLOR_PRIMARY);
         lineDataSet.setLineWidth(2.5f);
         lineDataSet.setDrawCircles(false);
@@ -362,7 +356,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineDataSet.setHighLightColor(COLOR_PRIMARY);
         lineDataSet.setHighlightEnabled(true);
 
-        // Fill תחת הקו - אפקט TradingView
         lineDataSet.setDrawFilled(true);
         lineDataSet.setFillColor(COLOR_FILL);
         lineDataSet.setFillAlpha(90);
@@ -389,8 +382,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 if (!response.isSuccessful() || response.body() == null) return;
 
                 try {
-                    JSONObject json    = new JSONObject(response.body().string());
-                    JSONArray  series  = json.getJSONArray("values");
+                    JSONObject json   = new JSONObject(response.body().string());
+                    JSONArray  series = json.getJSONArray("values");
 
                     fullCloses.clear();
                     List<CandleEntry> candleEntries = new ArrayList<>();
@@ -425,10 +418,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     float change        = lastClose - prevClose;
                     float changePercent = (prevClose != 0) ? (change / prevClose) * 100 : 0;
 
-                    final float dispClose         = lastClose;
-                    final float dispChange        = change;
-                    final float dispChangePct     = changePercent;
-                    final String currentSymbol    = symbol;
+                    final float dispClose      = lastClose;
+                    final float dispChange     = change;
+                    final float dispChangePct  = changePercent;
+                    final String currentSymbol = symbol;
                     final List<CandleEntry> final_ = new ArrayList<>(candleEntries);
 
                     if (getActivity() != null) {
@@ -436,7 +429,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                             if (isCandleStick) updateCandleChart(final_);
                             else               updateLineChart(final_);
 
-                            // עדכון Header פיננסי עם צבעים
                             if (priceText != null) {
                                 priceText.setText("$" + df.format(dispClose));
                                 priceText.setTextColor(COLOR_PRIMARY);
@@ -449,7 +441,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                                         " (" + changeSign +
                                         String.format(Locale.US, "%.2f", dispChangePct) + "%)";
                                 changeText.setText(changeStr);
-                                // ירוק אם עלייה, אדום אם ירידה
                                 changeText.setTextColor(dispChange >= 0 ? COLOR_GAIN : COLOR_LOSS);
                             }
 
@@ -482,10 +473,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         View dialogView = LayoutInflater.from(requireContext())
                 .inflate(R.layout.dialog_ai_chat, null);
 
-        TextView  tvHint    = dialogView.findViewById(R.id.tv_hint);
-        ProgressBar progress = dialogView.findViewById(R.id.progress_ai);
-        TextView  tvResponse = dialogView.findViewById(R.id.tv_response);
-        Button    btnSend    = dialogView.findViewById(R.id.btn_send);
+        TextView    tvHint    = dialogView.findViewById(R.id.tv_hint);
+        ProgressBar progress  = dialogView.findViewById(R.id.progress_ai);
+        TextView    tvResponse = dialogView.findViewById(R.id.tv_response);
+        Button      btnSend   = dialogView.findViewById(R.id.btn_send);
         android.widget.EditText etQuestion = dialogView.findViewById(R.id.et_question);
 
         tvHint.setText("דוגמאות: 'מה דעתך על השקעה קצרת טווח?' או 'האם לקנות עכשיו?'");
