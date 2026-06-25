@@ -288,7 +288,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 chart.zoom(scaleX, 1f, (curX0 + curX1) / 2f, (curY0 + curY1) / 2f);
             } else {
                 if (initDistY < 1f) return;
-                float scaleY = initDistY / curDistY;
+                float scaleY = curDistY / initDistY;
                 chart.zoom(1f, scaleY, (curX0 + curX1) / 2f, (curY0 + curY1) / 2f);
             }
 
