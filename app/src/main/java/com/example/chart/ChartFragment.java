@@ -130,8 +130,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             String n = name   == null ? "" : name;
             String ex= exchange==null ? "" : exchange;
             if (n.isEmpty() && ex.isEmpty()) return s;
-            if (ex.isEmpty()) return s + " — " + n;
-            return s + " — " + n + " (" + ex + ")";
+            if (ex.isEmpty()) return s + " \u2014 " + n;
+            return s + " \u2014 " + n + " (" + ex + ")";
         }
     }
 
@@ -183,40 +183,29 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         return v;
     }
 
-    // ========================= SMART PINCH ZOOM (ציר בודד לפי כיוון האצבעות) =========================
+    // ========================= SMART PINCH ZOOM =========================
 
-    /**
-     * מחשב את הזווית בין שתי אצבעות ומחליט:
-     *  - זווית קרובה ל-0°/180° (אופקי)  → Zoom X בלבד + Drag X
-     *  - זווית קרובה ל-90°/270° (אנכי)  → Zoom Y בלבד + Drag Y
-     * אין כפתורים — הכל אוטומטי לפי כיוון המגע.
-     */
     private static class SmartPinchTouchListener implements View.OnTouchListener {
 
         private final BarLineChartBase<?> chart;
 
-        // מצב נוכחי
         private static final int STATE_IDLE  = 0;
         private static final int STATE_PINCH = 1;
         private static final int STATE_DRAG  = 2;
         private int state = STATE_IDLE;
 
-        // נקודות התחלה של ה-pinch
         private float pinchStartX0, pinchStartY0;
         private float pinchStartX1, pinchStartY1;
         private boolean axisDetermined = false;
-        private boolean isAxisX = true; // true=X, false=Y
+        private boolean isAxisX = true;
 
-        // נקודת התחלה של ה-drag
         private float dragStartX, dragStartY;
 
-        // סף מינימלי לקביעת ציר (בפיקסלים)
         private static final float AXIS_THRESHOLD = 10f;
 
         SmartPinchTouchListener(BarLineChartBase<?> chart) {
             this.chart = chart;
-            // נאפשר הכל — נשלוט בעצמנו
-            chart.setTouchEnabled(false); // נכבה את המגע הפנימי של MPAndroidChart
+            chart.setTouchEnabled(false);
         }
 
         @Override
@@ -280,46 +269,51 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             float curX0 = event.getX(0), curY0 = event.getY(0);
             float curX1 = event.getX(1), curY1 = event.getY(1);
 
-            // מרחקים נוכחיים ומרחקי התחלה
             float curDistX  = Math.abs(curX1 - curX0);
             float curDistY  = Math.abs(curY1 - curY0);
             float initDistX = Math.abs(pinchStartX1 - pinchStartX0);
             float initDistY = Math.abs(pinchStartY1 - pinchStartY0);
 
-            // קבע ציר לפי כיוון ה-pinch הראשוני (רק פעם אחת)
             if (!axisDetermined) {
-                float dxTotal = Math.abs((curX0 + curX1) / 2f - (pinchStartX0 + pinchStartX1) / 2f);
-                float dyTotal = Math.abs((curY0 + curY1) / 2f - (pinchStartY0 + pinchStartY1) / 2f);
                 float spreadDX = Math.abs(curDistX - initDistX);
                 float spreadDY = Math.abs(curDistY - initDistY);
-
-                if (spreadDX + spreadDY < AXIS_THRESHOLD) return; // עוד לא מספיק תנועה
-
-                // קביעה לפי הפרש מרחק בין האצבעות
+                if (spreadDX + spreadDY < AXIS_THRESHOLD) return;
                 isAxisX = spreadDX >= spreadDY;
                 axisDetermined = true;
             }
 
-            // חישוב scale factor
             if (isAxisX) {
                 if (initDistX < 1f) return;
                 float scaleX = curDistX / initDistX;
                 chart.zoom(scaleX, 1f, (curX0 + curX1) / 2f, (curY0 + curY1) / 2f);
             } else {
                 if (initDistY < 1f) return;
-                float scaleY = initDistY / curDistY; // הפוך כי Y הפוך במסך
+                float scaleY = initDistY / curDistY;
                 chart.zoom(1f, scaleY, (curX0 + curX1) / 2f, (curY0 + curY1) / 2f);
             }
 
-            // עדכן נקודות ייחוס
             pinchStartX0 = curX0; pinchStartY0 = curY0;
             pinchStartX1 = curX1; pinchStartY1 = curY1;
         }
 
         private void handleDragMove(MotionEvent event) {
             float dx = event.getX() - dragStartX;
-            float dy = event.getY() - dragStartY;
-            chart.moveViewByX(-dx / chart.getViewPortHandler().getScaleX());
+
+            // moveViewByX() אינו זמין ב-BarLineChartBase<?> — משתמשים ב-Matrix ישירות
+            Matrix matrix = chart.getViewPortHandler().getMatrixTouch();
+            float[] vals = new float[9];
+            matrix.getValues(vals);
+
+            float offsetLeft   = chart.getViewPortHandler().offsetLeft();
+            float contentWidth = chart.getViewPortHandler().getContentRect().width();
+            float scaleX       = vals[Matrix.MSCALE_X];
+            float minTransX    = -(contentWidth * scaleX - contentWidth) + offsetLeft;
+
+            vals[Matrix.MTRANS_X] = Math.min(offsetLeft,
+                    Math.max(minTransX, vals[Matrix.MTRANS_X] + dx));
+
+            matrix.setValues(vals);
+            chart.getViewPortHandler().refresh(matrix, chart, true);
         }
     }
 
@@ -426,8 +420,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         candleStickChart.setDrawGridBackground(false);
         candleStickChart.getDescription().setEnabled(false);
         candleStickChart.getLegend().setEnabled(false);
-
-        // כיבוי מגע פנימי של MPAndroidChart — נשלוט בעצמנו
         candleStickChart.setTouchEnabled(false);
         candleStickChart.setOnTouchListener(new SmartPinchTouchListener(candleStickChart));
 
@@ -458,8 +450,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.setDrawGridBackground(false);
         lineChart.getDescription().setEnabled(false);
         lineChart.getLegend().setEnabled(false);
-
-        // כיבוי מגע פנימי של MPAndroidChart — נשלוט בעצמנו
         lineChart.setTouchEnabled(false);
         lineChart.setOnTouchListener(new SmartPinchTouchListener(lineChart));
 
@@ -533,7 +523,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     else               updateLineChart(new ArrayList<>(currentEntries));
                 }
                 Toast.makeText(requireContext(),
-                    isDarkTheme ? "🌑 מצב כהה" : "☀️ מצב בהיר",
+                    isDarkTheme ? "\uD83C\uDF11 \u05de\u05e6\u05d1 \u05db\u05d4\u05d4" : "\u2600\uFE0F \u05de\u05e6\u05d1 \u05d1\u05d4\u05d9\u05e8",
                     Toast.LENGTH_SHORT).show();
             });
         }
@@ -678,7 +668,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     private void analyzeWithAI() {
         if (fullCloses.isEmpty() || fullCloses.size() < 2) {
-            Toast.makeText(requireContext(), "טען נתוני גרף קודם", Toast.LENGTH_SHORT).show(); return;
+            Toast.makeText(requireContext(), "\u05d8\u05e2\u05df \u05e0\u05ea\u05d5\u05e0\u05d9 \u05d2\u05e8\u05e3 \u05e7\u05d5\u05d3\u05dd", Toast.LENGTH_SHORT).show(); return;
         }
         showCustomAIDialog();
     }
@@ -691,11 +681,11 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         TextView    tvResponse = dialogView.findViewById(R.id.tv_response);
         Button      btnSend    = dialogView.findViewById(R.id.btn_send);
         android.widget.EditText etQuestion = dialogView.findViewById(R.id.et_question);
-        tvHint.setText("דוגמאות: 'מה דעתך על השקעה קצרת טווח?' או 'האם לקנות עכשיו?'");
-        AlertDialog dialog = builder.setView(dialogView).setNegativeButton("ביטול", null).create();
+        tvHint.setText("\u05d3\u05d5\u05d2\u05de\u05d0\u05d5\u05ea: '\u05de\u05d4 \u05d3\u05e2\u05ea\u05da \u05e2\u05dc \u05d4\u05e9\u05e7\u05e2\u05d4 \u05e7\u05e6\u05e8\u05ea \u05d8\u05d5\u05d5\u05d7?' \u05d0\u05d5 '\u05d4\u05d0\u05dd \u05dc\u05e7\u05e0\u05d5\u05ea \u05e2\u05db\u05e9\u05d9\u05d5?'");
+        AlertDialog dialog = builder.setView(dialogView).setNegativeButton("\u05d1\u05d9\u05d8\u05d5\u05dc", null).create();
         btnSend.setOnClickListener(vv -> {
             String question = etQuestion.getText().toString().trim();
-            if (question.isEmpty()) { Toast.makeText(requireContext(), "הקלד שאלה", Toast.LENGTH_SHORT).show(); return; }
+            if (question.isEmpty()) { Toast.makeText(requireContext(), "\u05d4\u05e7\u05dc\u05d3 \u05e9\u05d0\u05dc\u05d4", Toast.LENGTH_SHORT).show(); return; }
             sendQuestionToAI(question, tvResponse, progress, etQuestion, dialog);
         });
         dialog.show();
@@ -708,7 +698,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                                    android.widget.EditText etQuestion, AlertDialog dialog) {
         progressBar.setVisibility(View.VISIBLE);
         etQuestion.setEnabled(false);
-        String context = String.format(Locale.US, "מניה: %s | מחיר: $%.2f | טווח: %s | %d נקודות",
+        String context = String.format(Locale.US, "\u05de\u05e0\u05d9\u05d4: %s | \u05de\u05d7\u05d9\u05e8: $%.2f | \u05d8\u05d5\u05d5\u05d7: %s | %d \u05e0\u05e7\u05d5\u05d3\u05d5\u05ea",
                 symbol, lastPrice, interval, fullCloses.size());
         llmService.askQuestion(symbol, question, context, fullCloses, new LLMService.AnalysisCallback() {
             @Override public void onAnalysisReceived(String analysis) {
@@ -724,7 +714,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 getActivity().runOnUiThread(() -> {
                     progressBar.setVisibility(View.GONE);
                     etQuestion.setEnabled(true);
-                    tvResponse.setText("❌ שגיאה: " + error);
+                    tvResponse.setText("\u274c \u05e9\u05d2\u05d9\u05d0\u05d4: " + error);
                     tvResponse.setVisibility(View.VISIBLE);
                 });
             }
