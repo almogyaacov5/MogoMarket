@@ -11,20 +11,20 @@
     <color name="bg_card">#FFFFFF</color>
 
     <!-- צבעים ראשיים -->
-    <color name="primary">#1A6DD0</color>
-    <color name="primary_dark">#0F4FA8</color>
+    <color name="primary">#4DA3FF</color>
+    <color name="primary_dark">#1C6DD0</color>
 
     <!-- טקסטים -->
     <color name="text_primary">#0D1117</color>
     <color name="text_secondary">#4A5568</color>
 
     <!-- רווח / הפסד -->
-    <color name="gain">#00A878</color>
-    <color name="loss">#D93025</color>
+    <color name="gain">#00C896</color>
+    <color name="loss">#FF4D4D</color>
 
     <!-- aliases נפוצים -->
-    <color name="colorProfit">#00A878</color>
-    <color name="colorLoss">#D93025</color>
+    <color name="colorProfit">#00C896</color>
+    <color name="colorLoss">#FF4D4D</color>
     <color name="colorBorder">#CBD5E0</color>
     <color name="colorDivider">#E2E8F0</color>
 
@@ -38,7 +38,7 @@
 
     <!-- Nav bar -->
     <color name="nav_bar_bg">#F0F4F8</color>
-    <color name="nav_active">#1A6DD0</color>
+    <color name="nav_active">#4DA3FF</color>
     <color name="nav_inactive">#718096</color>
 
 </resources>
