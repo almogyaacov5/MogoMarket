@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Base.Theme.Chart" parent="Theme.Material3.DayNight.NoActionBar">
+    <!-- ☀️ Light Theme -->
+    <style name="Base.Theme.MogoMarket" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/primary</item>
         <item name="colorPrimaryVariant">@color/primary_dark</item>
-        <item name="colorOnPrimary">@color/bg_primary</item>
+        <item name="colorOnPrimary">@color/white</item>
         <item name="colorSecondary">@color/bg_card</item>
         <item name="colorOnSecondary">@color/text_primary</item>
         <item name="colorSurface">@color/bg_secondary</item>
@@ -17,45 +18,26 @@
         <item name="android:textColor">@color/text_primary</item>
         <item name="materialCardViewStyle">@style/CardStyle</item>
         <item name="android:statusBarColor">@color/bg_primary</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 
-    <style name="Theme.Chart" parent="Base.Theme.Chart" />
+    <style name="Theme.MogoMarket" parent="Base.Theme.MogoMarket" />
+    <style name="Theme.Chart" parent="Base.Theme.MogoMarket" />
+    <style name="Base.Theme.Chart" parent="Base.Theme.MogoMarket" />
 
-    <!-- תאימות לשם Theme.MogoMarket -->
-    <style name="Theme.MogoMarket" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorPrimaryVariant">@color/primary_dark</item>
-        <item name="colorOnPrimary">@color/bg_primary</item>
-        <item name="colorSecondary">@color/bg_card</item>
-        <item name="colorOnSecondary">@color/text_primary</item>
-        <item name="colorSurface">@color/bg_secondary</item>
-        <item name="colorOnSurface">@color/text_primary</item>
-        <item name="android:colorBackground">@color/bg_primary</item>
-        <item name="colorBackground">@color/bg_primary</item>
-        <item name="colorOnBackground">@color/text_primary</item>
-        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
-        <item name="colorError">@color/loss</item>
-        <item name="colorOnError">@color/white</item>
-        <item name="android:textColor">@color/text_primary</item>
-        <item name="materialCardViewStyle">@style/CardStyle</item>
-        <item name="android:statusBarColor">@color/bg_primary</item>
-        <item name="android:windowLightStatusBar">false</item>
-    </style>
-
-    <!-- סטייל כרטיס - Premium Dark Card -->
+    <!-- סטייל כרטיס - Light Card -->
     <style name="CardStyle" parent="Widget.Material3.CardView.Elevated">
         <item name="cardBackgroundColor">@color/bg_card</item>
         <item name="strokeColor">@color/colorDivider</item>
-        <item name="strokeWidth">0dp</item>
+        <item name="strokeWidth">1dp</item>
         <item name="cardCornerRadius">16dp</item>
-        <item name="cardElevation">6dp</item>
+        <item name="cardElevation">2dp</item>
     </style>
 
     <!-- סטייל כפתור - Trading Style -->
     <style name="ButtonStyle" parent="Widget.Material3.Button">
         <item name="backgroundTint">@color/primary</item>
-        <item name="android:textColor">@color/bg_primary</item>
+        <item name="android:textColor">@color/white</item>
         <item name="cornerRadius">12dp</item>
         <item name="android:textStyle">bold</item>
     </style>
@@ -77,5 +59,14 @@
     <style name="TextLoss">
         <item name="android:textColor">@color/loss</item>
         <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- סטייל כפתור Toggle Theme -->
+    <style name="ThemeToggleButton" parent="Widget.Material3.Button.IconButton">
+        <item name="backgroundTint">@color/theme_toggle_bg</item>
+        <item name="iconTint">@color/theme_toggle_icon</item>
+        <item name="android:layout_width">44dp</item>
+        <item name="android:layout_height">44dp</item>
+        <item name="cornerRadius">22dp</item>
     </style>
 </resources>

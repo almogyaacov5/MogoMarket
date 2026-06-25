@@ -4,70 +4,68 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <!-- 🌑 Dark Mode - Trading Terminal -->
+    <!-- ☀️ Light Mode (ברירת מחדל) -->
+    <color name="bg_primary">#F0F4F8</color>
+    <color name="bg_secondary">#FFFFFF</color>
+    <color name="bg_card">#FFFFFF</color>
+    <color name="text_primary">#1A1D23</color>
+    <color name="text_secondary">#6B7280</color>
+
+    <!-- תאימות לשמות ישנים -->
+    <color name="bg_primary_light">#F0F4F8</color>
+    <color name="bg_secondary_light">#FFFFFF</color>
+    <color name="bg_card_light">#FFFFFF</color>
+    <color name="text_primary_light">#1A1D23</color>
+    <color name="text_secondary_light">#6B7280</color>
     <color name="bg_primary_dark">#0B0F14</color>
     <color name="bg_secondary_dark">#111826</color>
     <color name="bg_card_dark">#151C2E</color>
     <color name="text_primary_dark">#E6EDF3</color>
     <color name="text_secondary_dark">#8B98A5</color>
 
-    <!-- ☀️ Light Mode -->
-    <color name="bg_primary_light">#F0F4F8</color>
-    <color name="bg_secondary_light">#FFFFFF</color>
-    <color name="bg_card_light">#FFFFFF</color>
-    <color name="text_primary_light">#1A1D23</color>
-    <color name="text_secondary_light">#6B7280</color>
-
-    <!-- ברירת מחדל (כהה) -->
-    <color name="bg_primary">#0B0F14</color>
-    <color name="bg_secondary">#111826</color>
-    <color name="bg_card">#151C2E</color>
-    <color name="text_primary">#E6EDF3</color>
-    <color name="text_secondary">#8B98A5</color>
-
     <!-- תאימות לשמות ישנים -->
-    <color name="colorBackground">#0B0F14</color>
-    <color name="colorSurface">#111826</color>
-    <color name="colorSurface2">#151C2E</color>
-    <color name="colorNavBar">#0B0F14</color>
+    <color name="colorBackground">#F0F4F8</color>
+    <color name="colorSurface">#FFFFFF</color>
+    <color name="colorSurface2">#F8FAFC</color>
+    <color name="colorNavBar">#FFFFFF</color>
 
     <!-- 🔵 ראשי - Neon Blue -->
     <color name="primary">#4DA3FF</color>
     <color name="primary_dark">#1C6DD0</color>
-
-    <!-- תאימות לשמות ישנים -->
     <color name="colorPrimary">#4DA3FF</color>
     <color name="colorPrimaryDark">#1C6DD0</color>
     <color name="colorAccent">#4DA3FF</color>
 
     <!-- 📝 טקסט -->
-    <color name="colorTextPrimary">#E6EDF3</color>
-    <color name="colorTextSecondary">#8B98A5</color>
-    <color name="colorTextHint">#4A5568</color>
-    <color name="colorTextOnPrimary">#0B0F14</color>
+    <color name="colorTextPrimary">#1A1D23</color>
+    <color name="colorTextSecondary">#6B7280</color>
+    <color name="colorTextHint">#9CA3AF</color>
+    <color name="colorTextOnPrimary">#FFFFFF</color>
 
     <!-- גבולות וחלוקות -->
-    <color name="colorDivider">#1E2A3A</color>
-    <color name="colorBorder">#243044</color>
+    <color name="colorDivider">#E5E7EB</color>
+    <color name="colorBorder">#D1D5DB</color>
 
     <!-- 📈 מצבים - Gain/Loss -->
     <color name="gain">#00C896</color>
     <color name="loss">#FF4D4D</color>
-
-    <!-- תאימות לשמות ישנים -->
     <color name="colorProfit">#00C896</color>
     <color name="colorLoss">#FF4D4D</color>
-    <color name="colorNeutral">#8B98A5</color>
+    <color name="colorNeutral">#6B7280</color>
     <color name="colorWarning">#F0A500</color>
 
     <!-- כרטיס -->
-    <color name="colorCard">#151C2E</color>
-    <color name="colorCardStroke">#1E2A3A</color>
+    <color name="colorCard">#FFFFFF</color>
+    <color name="colorCardStroke">#E5E7EB</color>
 
     <!-- Chart -->
-    <color name="chartBg">#0B0F14</color>
+    <color name="chartBg">#F0F4F8</color>
 
     <!-- Bottom Nav -->
     <color name="navActive">#4DA3FF</color>
-    <color name="navInactive">#4A5568</color>
+    <color name="navInactive">#9CA3AF</color>
+
+    <!-- Theme toggle button -->
+    <color name="theme_toggle_bg">#E5E7EB</color>
+    <color name="theme_toggle_icon">#4DA3FF</color>
 </resources>
