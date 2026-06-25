@@ -33,6 +33,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.github.mikephil.charting.charts.BarLineChartBase;
 import com.github.mikephil.charting.charts.CandleStickChart;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.XAxis;
@@ -182,93 +183,144 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         return v;
     }
 
-    // ========================= SMART AXIS GESTURE LISTENER =========================
+    // ========================= SMART PINCH ZOOM (ציר בודד לפי כיוון האצבעות) =========================
 
     /**
-     * מאזין חכם שמזהה אוטומטית את כיוון ה-Pinch:
-     *  - אם הזום יותר אופקי  → X בלבד
-     *  - אם הזום יותר אנכי   → Y בלבד
-     *  - אם הצבטה אלכסונית   → שניהם
+     * מחשב את הזווית בין שתי אצבעות ומחליט:
+     *  - זווית קרובה ל-0°/180° (אופקי)  → Zoom X בלבד + Drag X
+     *  - זווית קרובה ל-90°/270° (אנכי)  → Zoom Y בלבד + Drag Y
+     * אין כפתורים — הכל אוטומטי לפי כיוון המגע.
      */
-    private class SmartAxisGestureListener implements OnChartGestureListener {
+    private static class SmartPinchTouchListener implements View.OnTouchListener {
 
-        private final com.github.mikephil.charting.charts.BarLineChartBase<?> chart;
+        private final BarLineChartBase<?> chart;
 
-        // נקודות מגע ראשונות של הפינץ'
-        private float startDx = 0f;
-        private float startDy = 0f;
+        // מצב נוכחי
+        private static final int STATE_IDLE  = 0;
+        private static final int STATE_PINCH = 1;
+        private static final int STATE_DRAG  = 2;
+        private int state = STATE_IDLE;
+
+        // נקודות התחלה של ה-pinch
+        private float pinchStartX0, pinchStartY0;
+        private float pinchStartX1, pinchStartY1;
         private boolean axisDetermined = false;
-        // true = X בלבד, false = Y בלבד, null = שניהם
-        private Boolean lockedAxisX = null;
+        private boolean isAxisX = true; // true=X, false=Y
 
-        SmartAxisGestureListener(com.github.mikephil.charting.charts.BarLineChartBase<?> chart) {
+        // נקודת התחלה של ה-drag
+        private float dragStartX, dragStartY;
+
+        // סף מינימלי לקביעת ציר (בפיקסלים)
+        private static final float AXIS_THRESHOLD = 10f;
+
+        SmartPinchTouchListener(BarLineChartBase<?> chart) {
             this.chart = chart;
+            // נאפשר הכל — נשלוט בעצמנו
+            chart.setTouchEnabled(false); // נכבה את המגע הפנימי של MPAndroidChart
         }
 
         @Override
-        public void onChartGestureStart(MotionEvent me, ChartTouchListener.ChartGesture lastPerformedGesture) {
-            // איפוס בתחילת כל מחווה
-            axisDetermined = false;
-            lockedAxisX    = null;
-            startDx = 0f;
-            startDy = 0f;
-            // אפשר הכל
-            chart.setScaleXEnabled(true);
-            chart.setScaleYEnabled(true);
-            chart.setPinchZoom(true);
-        }
+        public boolean onTouch(View v, MotionEvent event) {
+            int pointerCount = event.getPointerCount();
+            int action = event.getActionMasked();
 
-        @Override
-        public void onChartScale(MotionEvent me, float scaleX, float scaleY) {
-            if (!axisDetermined) {
-                // חשב את ההפרש היחסי בין הצירים
-                float dx = Math.abs(scaleX - 1f);
-                float dy = Math.abs(scaleY - 1f);
+            switch (action) {
 
-                // רק אם יש מספיק מידע להחלטה (סף 0.01)
-                if (dx + dy < 0.01f) return;
+                case MotionEvent.ACTION_DOWN:
+                    state = STATE_DRAG;
+                    dragStartX = event.getX();
+                    dragStartY = event.getY();
+                    return true;
 
-                axisDetermined = true;
-                float ratio = (dy > 0) ? dx / dy : 999f;
+                case MotionEvent.ACTION_POINTER_DOWN:
+                    if (pointerCount == 2) {
+                        state = STATE_PINCH;
+                        axisDetermined = false;
+                        pinchStartX0 = event.getX(0);
+                        pinchStartY0 = event.getY(0);
+                        pinchStartX1 = event.getX(1);
+                        pinchStartY1 = event.getY(1);
+                    }
+                    return true;
 
-                if (ratio > 2.5f) {
-                    // אופקי מובהק — X בלבד
-                    lockedAxisX = true;
-                    chart.setPinchZoom(false);
-                    chart.setScaleXEnabled(true);
-                    chart.setScaleYEnabled(false);
-                } else if (ratio < 0.4f) {
-                    // אנכי מובהק — Y בלבד
-                    lockedAxisX = false;
-                    chart.setPinchZoom(false);
-                    chart.setScaleXEnabled(false);
-                    chart.setScaleYEnabled(true);
-                } else {
-                    // אלכסוני — שניהם
-                    lockedAxisX = null;
-                    chart.setPinchZoom(true);
-                    chart.setScaleXEnabled(true);
-                    chart.setScaleYEnabled(true);
-                }
+                case MotionEvent.ACTION_MOVE:
+                    if (state == STATE_PINCH && pointerCount == 2) {
+                        handlePinchMove(event);
+                    } else if (state == STATE_DRAG && pointerCount == 1) {
+                        handleDragMove(event);
+                        dragStartX = event.getX();
+                        dragStartY = event.getY();
+                    }
+                    return true;
+
+                case MotionEvent.ACTION_POINTER_UP:
+                    if (pointerCount <= 2) {
+                        state = STATE_DRAG;
+                        axisDetermined = false;
+                        if (event.getActionIndex() == 0 && pointerCount > 1) {
+                            dragStartX = event.getX(1);
+                            dragStartY = event.getY(1);
+                        } else {
+                            dragStartX = event.getX(0);
+                            dragStartY = event.getY(0);
+                        }
+                    }
+                    return true;
+
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    state = STATE_IDLE;
+                    axisDetermined = false;
+                    return true;
             }
+            return false;
         }
 
-        @Override
-        public void onChartGestureEnd(MotionEvent me, ChartTouchListener.ChartGesture lastPerformedGesture) {
-            // החזר לברירת מחדל אחרי שחרור האצבעות
-            chart.setScaleXEnabled(true);
-            chart.setScaleYEnabled(true);
-            chart.setPinchZoom(true);
-            axisDetermined = false;
-            lockedAxisX    = null;
+        private void handlePinchMove(MotionEvent event) {
+            float curX0 = event.getX(0), curY0 = event.getY(0);
+            float curX1 = event.getX(1), curY1 = event.getY(1);
+
+            // מרחקים נוכחיים ומרחקי התחלה
+            float curDistX  = Math.abs(curX1 - curX0);
+            float curDistY  = Math.abs(curY1 - curY0);
+            float initDistX = Math.abs(pinchStartX1 - pinchStartX0);
+            float initDistY = Math.abs(pinchStartY1 - pinchStartY0);
+
+            // קבע ציר לפי כיוון ה-pinch הראשוני (רק פעם אחת)
+            if (!axisDetermined) {
+                float dxTotal = Math.abs((curX0 + curX1) / 2f - (pinchStartX0 + pinchStartX1) / 2f);
+                float dyTotal = Math.abs((curY0 + curY1) / 2f - (pinchStartY0 + pinchStartY1) / 2f);
+                float spreadDX = Math.abs(curDistX - initDistX);
+                float spreadDY = Math.abs(curDistY - initDistY);
+
+                if (spreadDX + spreadDY < AXIS_THRESHOLD) return; // עוד לא מספיק תנועה
+
+                // קביעה לפי הפרש מרחק בין האצבעות
+                isAxisX = spreadDX >= spreadDY;
+                axisDetermined = true;
+            }
+
+            // חישוב scale factor
+            if (isAxisX) {
+                if (initDistX < 1f) return;
+                float scaleX = curDistX / initDistX;
+                chart.zoom(scaleX, 1f, (curX0 + curX1) / 2f, (curY0 + curY1) / 2f);
+            } else {
+                if (initDistY < 1f) return;
+                float scaleY = initDistY / curDistY; // הפוך כי Y הפוך במסך
+                chart.zoom(1f, scaleY, (curX0 + curX1) / 2f, (curY0 + curY1) / 2f);
+            }
+
+            // עדכן נקודות ייחוס
+            pinchStartX0 = curX0; pinchStartY0 = curY0;
+            pinchStartX1 = curX1; pinchStartY1 = curY1;
         }
 
-        // שאר ה-callbacks חובה לממש
-        @Override public void onChartLongPressed(MotionEvent me) {}
-        @Override public void onChartDoubleTapped(MotionEvent me) {}
-        @Override public void onChartSingleTapped(MotionEvent me) {}
-        @Override public void onChartFling(MotionEvent me1, MotionEvent me2, float vx, float vy) {}
-        @Override public void onChartTranslate(MotionEvent me, float dX, float dY) {}
+        private void handleDragMove(MotionEvent event) {
+            float dx = event.getX() - dragStartX;
+            float dy = event.getY() - dragStartY;
+            chart.moveViewByX(-dx / chart.getViewPortHandler().getScaleX());
+        }
     }
 
     // ========================= THEME =========================
@@ -374,16 +426,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         candleStickChart.setDrawGridBackground(false);
         candleStickChart.getDescription().setEnabled(false);
         candleStickChart.getLegend().setEnabled(false);
-        candleStickChart.setTouchEnabled(true);
-        candleStickChart.setDoubleTapToZoomEnabled(true);
-        candleStickChart.setScaleXEnabled(true);
-        candleStickChart.setScaleYEnabled(true);
-        candleStickChart.setPinchZoom(true);
-        candleStickChart.setDragXEnabled(true);
-        candleStickChart.setDragYEnabled(true);
 
-        // מאזין חכם לזיהוי כיוון Pinch
-        candleStickChart.setOnChartGestureListener(new SmartAxisGestureListener(candleStickChart));
+        // כיבוי מגע פנימי של MPAndroidChart — נשלוט בעצמנו
+        candleStickChart.setTouchEnabled(false);
+        candleStickChart.setOnTouchListener(new SmartPinchTouchListener(candleStickChart));
 
         XAxis xAxis = candleStickChart.getXAxis();
         xAxis.setDrawGridLines(false);
@@ -412,16 +458,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.setDrawGridBackground(false);
         lineChart.getDescription().setEnabled(false);
         lineChart.getLegend().setEnabled(false);
-        lineChart.setTouchEnabled(true);
-        lineChart.setDoubleTapToZoomEnabled(true);
-        lineChart.setScaleXEnabled(true);
-        lineChart.setScaleYEnabled(true);
-        lineChart.setPinchZoom(true);
-        lineChart.setDragXEnabled(true);
-        lineChart.setDragYEnabled(true);
 
-        // מאזין חכם לזיהוי כיוון Pinch
-        lineChart.setOnChartGestureListener(new SmartAxisGestureListener(lineChart));
+        // כיבוי מגע פנימי של MPAndroidChart — נשלוט בעצמנו
+        lineChart.setTouchEnabled(false);
+        lineChart.setOnTouchListener(new SmartPinchTouchListener(lineChart));
 
         XAxis xAxis = lineChart.getXAxis();
         xAxis.setDrawGridLines(false);
