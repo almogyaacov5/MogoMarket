@@ -22,11 +22,15 @@
     <color name="gain">#00C896</color>
     <color name="loss">#FF4D4D</color>
 
+    <!-- aliases נפוצים -->
+    <color name="colorProfit">#00C896</color>
+    <color name="colorLoss">#FF4D4D</color>
+    <color name="colorBorder">#1E2A3A</color>
+    <color name="colorDivider">#1E2A3A</color>
+
     <!-- ספריים כלליים -->
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
-    <color name="colorDivider">#1E2A3A</color>
-    <color name="colorLoss">#FF4D4D</color>
 
     <!-- Theme toggle כפתור -->
     <color name="theme_toggle_bg">#1E2A3A</color>
