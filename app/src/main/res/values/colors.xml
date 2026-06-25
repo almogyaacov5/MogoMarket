@@ -4,10 +4,26 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <!-- 🌑 רקעים כהים - Trading Terminal Style -->
+    <!-- 🌑 Dark Mode - Trading Terminal -->
+    <color name="bg_primary_dark">#0B0F14</color>
+    <color name="bg_secondary_dark">#111826</color>
+    <color name="bg_card_dark">#151C2E</color>
+    <color name="text_primary_dark">#E6EDF3</color>
+    <color name="text_secondary_dark">#8B98A5</color>
+
+    <!-- ☀️ Light Mode -->
+    <color name="bg_primary_light">#F0F4F8</color>
+    <color name="bg_secondary_light">#FFFFFF</color>
+    <color name="bg_card_light">#FFFFFF</color>
+    <color name="text_primary_light">#1A1D23</color>
+    <color name="text_secondary_light">#6B7280</color>
+
+    <!-- ברירת מחדל (כהה) -->
     <color name="bg_primary">#0B0F14</color>
     <color name="bg_secondary">#111826</color>
     <color name="bg_card">#151C2E</color>
+    <color name="text_primary">#E6EDF3</color>
+    <color name="text_secondary">#8B98A5</color>
 
     <!-- תאימות לשמות ישנים -->
     <color name="colorBackground">#0B0F14</color>
@@ -25,10 +41,6 @@
     <color name="colorAccent">#4DA3FF</color>
 
     <!-- 📝 טקסט -->
-    <color name="text_primary">#E6EDF3</color>
-    <color name="text_secondary">#8B98A5</color>
-
-    <!-- תאימות לשמות ישנים -->
     <color name="colorTextPrimary">#E6EDF3</color>
     <color name="colorTextSecondary">#8B98A5</color>
     <color name="colorTextHint">#4A5568</color>

@@ -3,7 +3,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main"
+    android:id="@+id/chartRootLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -12,6 +12,7 @@
 
     <!-- ===== HEADER: Financial Terminal Top Bar ===== -->
     <LinearLayout
+        android:id="@+id/headerSection"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
@@ -39,6 +40,17 @@
                 android:textColor="@color/text_primary"
                 android:letterSpacing="0.02"/>
 
+            <!-- 🌙☀️ כפתור מצב כהה/בהיר -->
+            <ImageButton
+                android:id="@+id/btnThemeToggle"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/baseline_brightness_2_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Toggle theme"
+                android:tint="@color/text_secondary"
+                android:layout_marginEnd="8dp"/>
+
             <TextView
                 android:id="@+id/priceText"
                 android:layout_width="wrap_content"
@@ -50,7 +62,7 @@
                 android:letterSpacing="0.02"/>
         </LinearLayout>
 
-        <!-- Row 2: Daily Change + Extra Info -->
+        <!-- Row 2: Daily Change -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -80,8 +92,9 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- ===== SEARCH ROW: Input + Open Button ===== -->
+    <!-- ===== SEARCH ROW ===== -->
     <LinearLayout
+        android:id="@+id/searchSection"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -121,9 +134,9 @@
             android:elevation="2dp"/>
     </LinearLayout>
 
-    <!-- ===== CONTROLS ROW: Buttons ===== -->
+    <!-- ===== CONTROLS ROW ===== -->
     <LinearLayout
-        android:id="@+id/controls_row"
+        android:id="@+id/controlsSection"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -176,6 +189,17 @@
             android:layout_marginStart="10dp"
             android:stateListAnimator="@null"/>
 
+        <!-- 🔲 כפתור הגדלת גרף -->
+        <ImageButton
+            android:id="@+id/btnExpandChart"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:src="@drawable/baseline_fullscreen_24"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="הגדל גרף"
+            android:tint="@color/text_secondary"
+            android:layout_marginStart="10dp"/>
+
         <ProgressBar
             android:id="@+id/progressAI"
             android:layout_width="wrap_content"
@@ -184,8 +208,9 @@
             android:visibility="gone"/>
     </LinearLayout>
 
-    <!-- ===== CHART AREA (Main — takes remaining space) ===== -->
+    <!-- ===== CHART AREA ===== -->
     <FrameLayout
+        android:id="@+id/chartContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -207,10 +232,24 @@
             android:layout_height="match_parent"
             android:background="@color/bg_card"
             android:visibility="gone"/>
+
+        <!-- כפתור יציאה ממסך מלא (מוסתר בהתחלה) -->
+        <ImageButton
+            android:id="@+id/btnExitFullscreen"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:src="@drawable/baseline_fullscreen_exit_24"
+            android:background="#AA151C2E"
+            android:tint="@color/text_primary"
+            android:contentDescription="צא ממסך מלא"
+            android:layout_gravity="top|end"
+            android:layout_margin="8dp"
+            android:visibility="gone"/>
     </FrameLayout>
 
-    <!-- ===== BOTTOM INFO BAR (Volume / High / Low) ===== -->
+    <!-- ===== BOTTOM INFO BAR ===== -->
     <LinearLayout
+        android:id="@+id/bottomBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
