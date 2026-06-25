@@ -304,14 +304,25 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             float[] vals = new float[9];
             matrix.getValues(vals);
 
-            float offsetLeft   = chart.getViewPortHandler().offsetLeft();
-            float contentWidth = chart.getViewPortHandler().getContentRect().width();
-            float scaleX       = vals[Matrix.MSCALE_X];
-            float minTransX    = -(contentWidth * scaleX - contentWidth) + offsetLeft;
+            float scaleX        = vals[Matrix.MSCALE_X];
+            float transX        = vals[Matrix.MTRANS_X];
+            float offsetLeft    = chart.getViewPortHandler().offsetLeft();
+            float offsetRight   = chart.getViewPortHandler().offsetRight();
+            float chartWidth    = chart.getViewPortHandler().getChartWidth();
+            float contentWidth  = chartWidth - offsetLeft - offsetRight;
 
-            vals[Matrix.MTRANS_X] = Math.min(offsetLeft,
-                    Math.max(minTransX, vals[Matrix.MTRANS_X] + dx));
+            // גבול שמאלי: לא מעבר לתחילת הנתונים
+            float maxTransX = offsetLeft;
 
+            // גבול ימני: מאפשר גלילה עד הנקודה האחרונה (הכי ימנית)
+            // contentWidth * scaleX = רוחב הגרף הכולל אחרי זום
+            // צריך שהצד הימני של הגרף לא יעבור מעבר לגבול ימין התוכן
+            float minTransX = -(contentWidth * scaleX - contentWidth) + offsetLeft;
+
+            float newTransX = transX + dx;
+            newTransX = Math.min(maxTransX, Math.max(minTransX, newTransX));
+
+            vals[Matrix.MTRANS_X] = newTransX;
             matrix.setValues(vals);
             chart.getViewPortHandler().refresh(matrix, chart, true);
         }
@@ -423,10 +434,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         candleStickChart.setTouchEnabled(false);
         candleStickChart.setOnTouchListener(new SmartPinchTouchListener(candleStickChart));
 
-        // ===== Crosshair highlight (TradingView style) =====
         candleStickChart.setHighlightPerTapEnabled(true);
         candleStickChart.setHighlightPerDragEnabled(true);
-        // ====================================================
 
         XAxis xAxis = candleStickChart.getXAxis();
         xAxis.setDrawGridLines(false);
@@ -458,10 +467,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.setTouchEnabled(false);
         lineChart.setOnTouchListener(new SmartPinchTouchListener(lineChart));
 
-        // ===== Crosshair highlight (TradingView style) =====
         lineChart.setHighlightPerTapEnabled(true);
         lineChart.setHighlightPerDragEnabled(true);
-        // ====================================================
 
         XAxis xAxis = lineChart.getXAxis();
         xAxis.setDrawGridLines(false);
@@ -589,15 +596,11 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         dataSet.setDrawValues(false);
         dataSet.setHighlightEnabled(true);
         dataSet.setHighLightColor(COLOR_PRIMARY);
-        // ===== Dashed crosshair line (TradingView style) =====
         dataSet.enableDashedHighlightLine(10f, 5f, 0f);
-        // =====================================================
         candleStickChart.setData(new CandleData(dataSet));
-        // ===== חיבור TradingMarkerView =====
         TradingMarkerView candleMarker = new TradingMarkerView(requireContext());
         candleMarker.setChartView(candleStickChart);
         candleStickChart.setMarker(candleMarker);
-        // ===================================
         candleStickChart.animateX(400);
         candleStickChart.invalidate();
     }
@@ -614,18 +617,14 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         ds.setMode(LineDataSet.Mode.CUBIC_BEZIER);
         ds.setHighLightColor(COLOR_PRIMARY);
         ds.setHighlightEnabled(true);
-        // ===== Dashed crosshair line (TradingView style) =====
         ds.enableDashedHighlightLine(10f, 5f, 0f);
-        // =====================================================
         ds.setDrawFilled(true);
         ds.setFillColor(COLOR_FILL);
         ds.setFillAlpha(isDarkTheme ? 90 : 50);
         lineChart.setData(new LineData(ds));
-        // ===== חיבור TradingMarkerView =====
         TradingMarkerView lineMarker = new TradingMarkerView(requireContext());
         lineMarker.setChartView(lineChart);
         lineChart.setMarker(lineMarker);
-        // ===================================
         lineChart.animateX(400);
         lineChart.invalidate();
     }
