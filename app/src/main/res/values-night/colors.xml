@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- בסיס -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- רקעים -->
+    <color name="colorBackground">#0A0F1A</color>
+    <color name="colorSurface">#111827</color>
+    <color name="colorSurface2">#1C2535</color>
+    <color name="colorNavBar">#0D1520</color>
+
+    <!-- ראשי / אקסנט -->
+    <color name="colorPrimary">#3B82F6</color>
+    <color name="colorPrimaryDark">#2563EB</color>
+    <color name="colorAccent">#00E5D1</color>
+
+    <!-- טקסט -->
+    <color name="colorTextPrimary">#E8F0FE</color>
+    <color name="colorTextSecondary">#8BAAC8</color>
+    <color name="colorTextHint">#4A6080</color>
+    <color name="colorTextOnPrimary">#FFFFFF</color>
+
+    <!-- גבולות וחלוקות -->
+    <color name="colorDivider">#1E2D42</color>
+    <color name="colorBorder">#253448</color>
+
+    <!-- מצבים -->
+    <color name="colorProfit">#00E676</color>
+    <color name="colorLoss">#FF5252</color>
+    <color name="colorNeutral">#78909C</color>
+    <color name="colorWarning">#FFD740</color>
+
+    <!-- כרטיס -->
+    <color name="colorCard">#111827</color>
+    <color name="colorCardStroke">#1E2D42</color>
+
+    <!-- Chart -->
+    <color name="chartBg">#0A0F1A</color>
+
+    <!-- Bottom Nav -->
+    <color name="navActive">#FFFFFF</color>
+    <color name="navInactive">#4A6080</color>
+</resources>

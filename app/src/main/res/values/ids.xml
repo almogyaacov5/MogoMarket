@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="nav_chart"         type="id" />
+    <item name="nav_stocks"        type="id" />
+    <item name="nav_portfolio"     type="id" />
+    <item name="nav_closed_trades" type="id" />
+    <item name="nav_simulator"     type="id" />
+    <item name="nav_settings"      type="id" />
+</resources>

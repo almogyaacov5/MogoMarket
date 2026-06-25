@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F4F6F8"
+    tools:context=".MainActivity">
+
+    <!-- ===== Top row: Price, Change, Ticker ===== -->
+
+    <TextView
+        android:id="@+id/priceText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Current price: "
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="#0F172A"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:includeFontPadding="false"
+        android:background="#FFFFFF"
+        android:elevation="2dp"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="8dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/changeText"
+        app:layout_constraintHorizontal_chainStyle="spread_inside"
+        app:layout_constraintHorizontal_weight="1.25"
+        app:layout_constrainedWidth="true" />
+
+    <TextView
+        android:id="@+id/changeText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Daily change: "
+        android:textSize="12.5sp"
+        android:textColor="#334155"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:includeFontPadding="false"
+        android:background="#FFFFFF"
+        android:elevation="2dp"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="8dp"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintTop_toTopOf="@id/priceText"
+        app:layout_constraintBottom_toBottomOf="@id/priceText"
+        app:layout_constraintStart_toEndOf="@id/priceText"
+        app:layout_constraintEnd_toStartOf="@id/tickerText"
+        app:layout_constraintHorizontal_weight="1.0"
+        app:layout_constrainedWidth="true" />
+
+    <TextView
+        android:id="@+id/tickerText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Ticker: "
+        android:textSize="12.5sp"
+        android:textColor="#334155"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:includeFontPadding="false"
+        android:background="#FFFFFF"
+        android:elevation="2dp"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="8dp"
+        android:layout_marginEnd="12dp"
+        app:layout_constraintTop_toTopOf="@id/priceText"
+        app:layout_constraintBottom_toBottomOf="@id/priceText"
+        app:layout_constraintStart_toEndOf="@id/changeText"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_weight="0.9"
+        app:layout_constrainedWidth="true" />
+
+    <!-- ===== Charts ===== -->
+
+    <com.github.mikephil.charting.charts.CandleStickChart
+        android:id="@+id/stock_chart"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="10dp"
+        android:background="#FFFFFF"
+        android:elevation="1dp"
+        app:layout_constraintTop_toBottomOf="@id/priceText"
+        app:layout_constraintBottom_toTopOf="@id/ticker_input"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <com.github.mikephil.charting.charts.LineChart
+        android:id="@+id/line_chart"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="10dp"
+        android:background="#FFFFFF"
+        android:elevation="1dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/priceText"
+        app:layout_constraintBottom_toTopOf="@id/ticker_input"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- ===== Search Input + Open Button ===== -->
+
+    <androidx.appcompat.widget.AppCompatAutoCompleteTextView
+        android:id="@+id/ticker_input"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:hint="Enter a ticker"
+        android:paddingHorizontal="14dp"
+        android:textColor="#111827"
+        android:textColorHint="#9CA3AF"
+        android:textSize="15sp"
+        android:background="#FFFFFF"
+        android:elevation="3dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="10dp"
+        android:inputType="text"
+        android:singleLine="true"
+        android:imeOptions="actionSearch"
+        android:textDirection="ltr"
+        android:popupBackground="#FFFFFF"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/btnLoad"
+        app:layout_constraintBottom_toTopOf="@id/controls_row" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/btnLoad"
+        android:layout_width="110dp"
+        android:layout_height="48dp"
+        android:text="OPEN"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold"
+        android:background="@drawable/btn_open"
+        android:elevation="3dp"
+        android:layout_marginEnd="12dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/ticker_input"
+        app:layout_constraintBottom_toBottomOf="@id/ticker_input" />
+
+
+    <!-- ===== Control Buttons Row ===== -->
+
+    <LinearLayout
+        android:id="@+id/controls_row"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="8dp"
+        android:background="#FFFFFF"
+        android:elevation="3dp"
+        android:padding="10dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layoutDirection="ltr"
+        app:layout_constraintBottom_toTopOf="@id/timeFrameText">
+
+        <ImageButton
+            android:id="@+id/btnChartRefresh"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:background="@drawable/main_refresh_button"
+            android:contentDescription="רענן את המעקב"
+            android:src="@drawable/baseline_refresh_24" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnSelectTimeFrame"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:text="Time frame"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/btn_timeframe"
+            android:paddingHorizontal="12dp"
+            android:layout_marginStart="10dp" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnToggleChart"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:text="Line chart"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/btn_linechart"
+            android:paddingHorizontal="12dp"
+            android:layout_marginStart="10dp" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnAIAnalysis"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:text="AI"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/btn_ai"
+            android:paddingHorizontal="12dp"
+            android:layout_marginStart="10dp" />
+
+
+
+        <ProgressBar
+            android:id="@+id/progressAI"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- ===== Current Price Display ===== -->
+
+    <TextView
+        android:id="@+id/currentPriceDisplay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="💰 מחיר נוכחי: $0.00"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="#B45309"
+        android:background="#FFF7ED"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="8dp"
+        android:visibility="gone"
+        android:layout_marginStart="12dp"
+        android:layout_marginBottom="6dp"
+        app:layout_constraintBottom_toTopOf="@id/timeFrameText"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <!-- ===== Time Frame Text ===== -->
+
+    <TextView
+        android:id="@+id/timeFrameText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Time frame: "
+        android:textSize="14sp"
+        android:textColor="#475569"
+        android:layout_marginBottom="10dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
