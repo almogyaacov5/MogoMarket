@@ -33,6 +33,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.example.mogomarket.TradingMarkerView;
 import com.github.mikephil.charting.charts.BarLineChartBase;
 import com.github.mikephil.charting.charts.CandleStickChart;
 import com.github.mikephil.charting.charts.LineChart;
@@ -299,7 +300,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         private void handleDragMove(MotionEvent event) {
             float dx = event.getX() - dragStartX;
 
-            // moveViewByX() אינו זמין ב-BarLineChartBase<?> — משתמשים ב-Matrix ישירות
             Matrix matrix = chart.getViewPortHandler().getMatrixTouch();
             float[] vals = new float[9];
             matrix.getValues(vals);
@@ -423,6 +423,11 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         candleStickChart.setTouchEnabled(false);
         candleStickChart.setOnTouchListener(new SmartPinchTouchListener(candleStickChart));
 
+        // ===== Crosshair highlight (TradingView style) =====
+        candleStickChart.setHighlightPerTapEnabled(true);
+        candleStickChart.setHighlightPerDragEnabled(true);
+        // ====================================================
+
         XAxis xAxis = candleStickChart.getXAxis();
         xAxis.setDrawGridLines(false);
         xAxis.setDrawAxisLine(false);
@@ -452,6 +457,11 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.getLegend().setEnabled(false);
         lineChart.setTouchEnabled(false);
         lineChart.setOnTouchListener(new SmartPinchTouchListener(lineChart));
+
+        // ===== Crosshair highlight (TradingView style) =====
+        lineChart.setHighlightPerTapEnabled(true);
+        lineChart.setHighlightPerDragEnabled(true);
+        // ====================================================
 
         XAxis xAxis = lineChart.getXAxis();
         xAxis.setDrawGridLines(false);
@@ -579,7 +589,15 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         dataSet.setDrawValues(false);
         dataSet.setHighlightEnabled(true);
         dataSet.setHighLightColor(COLOR_PRIMARY);
+        // ===== Dashed crosshair line (TradingView style) =====
+        dataSet.enableDashedHighlightLine(10f, 5f, 0f);
+        // =====================================================
         candleStickChart.setData(new CandleData(dataSet));
+        // ===== חיבור TradingMarkerView =====
+        TradingMarkerView candleMarker = new TradingMarkerView(requireContext());
+        candleMarker.setChartView(candleStickChart);
+        candleStickChart.setMarker(candleMarker);
+        // ===================================
         candleStickChart.animateX(400);
         candleStickChart.invalidate();
     }
@@ -596,10 +614,18 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         ds.setMode(LineDataSet.Mode.CUBIC_BEZIER);
         ds.setHighLightColor(COLOR_PRIMARY);
         ds.setHighlightEnabled(true);
+        // ===== Dashed crosshair line (TradingView style) =====
+        ds.enableDashedHighlightLine(10f, 5f, 0f);
+        // =====================================================
         ds.setDrawFilled(true);
         ds.setFillColor(COLOR_FILL);
         ds.setFillAlpha(isDarkTheme ? 90 : 50);
         lineChart.setData(new LineData(ds));
+        // ===== חיבור TradingMarkerView =====
+        TradingMarkerView lineMarker = new TradingMarkerView(requireContext());
+        lineMarker.setChartView(lineChart);
+        lineChart.setMarker(lineMarker);
+        // ===================================
         lineChart.animateX(400);
         lineChart.invalidate();
     }
