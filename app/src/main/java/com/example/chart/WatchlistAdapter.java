@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -22,14 +23,22 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-// אדפטר ל-Watchlist - מציג מחיר נוכחי, שינוי יומי, ותמיכה בהתראות מחיר
 public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.WatchViewHolder> {
+
+    // ── Trading Dark Theme colors ──────────────────────────
+    private static final int BG_CARD       = 0xFF151C2E;
+    private static final int TEXT_PRIMARY  = 0xFFE6EDF3;
+    private static final int TEXT_SECONDARY= 0xFF8B98A5;
+    private static final int COLOR_GAIN    = 0xFF00C896;
+    private static final int COLOR_LOSS    = 0xFFFF4D4D;
+    private static final int COLOR_PRIMARY = 0xFF4DA3FF;
+    // ──────────────────────────────────────────────────────
 
     public interface OnWatchStockClickListener {
         void onStockClick(String symbol);
         void onStockDelete(String symbol);
-        void onSetPriceAlert(StockWatchData stock); // פתיחת דיאלוג הגדרת יעד
-        void onAlertStateChanged(String symbol, boolean triggered); // עדכון Firebase
+        void onSetPriceAlert(StockWatchData stock);
+        void onAlertStateChanged(String symbol, boolean triggered);
     }
 
     public static final String ALERT_CHANNEL_ID = "stock_alert_channel";
@@ -47,29 +56,49 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
     @NonNull
     @Override
     public WatchViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_watchlist_stock, parent, false);
+        View v = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.item_watchlist_stock, parent, false);
         return new WatchViewHolder(v);
     }
 
     @Override
     public void onBindViewHolder(@NonNull WatchViewHolder holder, int position) {
         StockWatchData stock = stocks.get(position);
-        holder.symbolText.setText(stock.symbol);
-        updateAlertText(holder, stock); // עדכון טקסט ההתראה
 
-        // שליפת מחיר נוכחי ושינוי יומי מה-API
+        // ── עיצוב כרטיס ───────────────────────────────────
+        holder.itemView.setBackgroundColor(BG_CARD);
+
+        holder.symbolText.setText(stock.symbol);
+        holder.symbolText.setTextColor(TEXT_PRIMARY);
+        updateAlertText(holder, stock);
+
+        // ── שליפת מחיר ───────────────────────────────────
         fetchStockData(stock.symbol, "1day", new StockDataCallback() {
             @Override
             public void onDataReceived(float price, float dayChange) {
-                holder.priceText.post(() -> holder.priceText.setText("Stock Price: " + price));
-                holder.dayChangeText.post(() -> holder.dayChangeText.setText("Day Change: " + String.format("%.2f", dayChange) + "%"));
-                processAlert(stock, price, holder.itemView.getContext()); // בדיקת התראה
+                holder.priceText.post(() -> {
+                    holder.priceText.setText(String.format(Locale.US, "$%.2f", price));
+                    holder.priceText.setTextColor(COLOR_PRIMARY);
+                });
+                holder.dayChangeText.post(() -> {
+                    String arrow = dayChange >= 0 ? "▲" : "▼";
+                    holder.dayChangeText.setText(
+                            String.format(Locale.US, "%s %.2f%%", arrow, Math.abs(dayChange)));
+                    holder.dayChangeText.setTextColor(dayChange >= 0 ? COLOR_GAIN : COLOR_LOSS);
+                });
+                processAlert(stock, price, holder.itemView.getContext());
             }
 
             @Override
             public void onError(Exception e) {
-                holder.priceText.post(() -> holder.priceText.setText("Stock Price: ?"));
-                holder.dayChangeText.post(() -> holder.dayChangeText.setText("Day Change: ?"));
+                holder.priceText.post(() -> {
+                    holder.priceText.setText("$—");
+                    holder.priceText.setTextColor(TEXT_SECONDARY);
+                });
+                holder.dayChangeText.post(() -> {
+                    holder.dayChangeText.setText("—");
+                    holder.dayChangeText.setTextColor(TEXT_SECONDARY);
+                });
             }
         });
 
@@ -81,37 +110,35 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
     @Override
     public int getItemCount() { return stocks != null ? stocks.size() : 0; }
 
-    // עדכון הצגת סטטוס ההתראה
     private void updateAlertText(WatchViewHolder holder, StockWatchData stock) {
         if (stock.alertEnabled && stock.alertTargetPrice > 0f) {
-            holder.alertText.setText("Price Alert: " + stock.alertTargetPrice);
+            holder.alertText.setText(String.format(Locale.US, "🔔 $%.2f", stock.alertTargetPrice));
+            holder.alertText.setTextColor(COLOR_PRIMARY);
         } else {
-            holder.alertText.setText("Price Alert: Off");
+            holder.alertText.setText("🔕 Off");
+            holder.alertText.setTextColor(TEXT_SECONDARY);
         }
     }
 
-    // בדיקה אם מחיר חצה יעד - שליחת/ביטול התראה
     private void processAlert(StockWatchData stock, float currentPrice, Context context) {
         if (!stock.alertEnabled || stock.alertTargetPrice <= 0f) return;
-
         if (currentPrice >= stock.alertTargetPrice && !stock.alertTriggered) {
-            // מחיר הגיע ליעד - שלח התראה!
             showPriceAlertNotification(context, stock.symbol, stock.alertTargetPrice, currentPrice);
             stock.alertTriggered = true;
-            listener.onAlertStateChanged(stock.symbol, true); // עדכן Firebase
+            listener.onAlertStateChanged(stock.symbol, true);
         } else if (currentPrice < stock.alertTargetPrice && stock.alertTriggered) {
-            // מחיר ירד מתחת ליעד - אפס את ההתראה
             stock.alertTriggered = false;
             listener.onAlertStateChanged(stock.symbol, false);
         }
     }
 
-    // שליחת Notification מקומית
-    private void showPriceAlertNotification(Context context, String symbol, float targetPrice, float currentPrice) {
+    private void showPriceAlertNotification(Context context, String symbol,
+                                              float targetPrice, float currentPrice) {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, ALERT_CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
-                .setContentTitle("Stock Alert: " + symbol)
-                .setContentText("Price crossed " + targetPrice + " (now " + currentPrice + ")")
+                .setContentTitle("🚨 Stock Alert: " + symbol)
+                .setContentText(String.format(Locale.US,
+                        "Price crossed $%.2f (now $%.2f)", targetPrice, currentPrice))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true);
 
@@ -129,27 +156,21 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
 
         public WatchViewHolder(@NonNull View itemView) {
             super(itemView);
-            symbolText = itemView.findViewById(R.id.stockSymbolText);
-            priceText = itemView.findViewById(R.id.stockPriceText);
+            symbolText    = itemView.findViewById(R.id.stockSymbolText);
+            priceText     = itemView.findViewById(R.id.stockPriceText);
             dayChangeText = itemView.findViewById(R.id.stockDayChangeText);
-            alertText = itemView.findViewById(R.id.stockAlertText);
-            deleteButton = itemView.findViewById(R.id.btnDeleteStock);
-            alertButton = itemView.findViewById(R.id.btnSetAlert);
+            alertText     = itemView.findViewById(R.id.stockAlertText);
+            deleteButton  = itemView.findViewById(R.id.btnDeleteStock);
+            alertButton   = itemView.findViewById(R.id.btnSetAlert);
         }
     }
 
-    // שליפת מחיר ושינוי יומי מ-TwelveData (2 נקודות לחישוב שינוי)
     private void fetchStockData(String symbol, String interval, StockDataCallback callback) {
-        String url = "https://api.twelvedata.com/time_series?symbol=" + symbol +
-                "&interval=" + interval + "&apikey=" + API_KEY + "&outputsize=2";
-        Request request = new Request.Builder().url(url).build();
-
-        httpClient.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) { callback.onError(e); }
-
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
+        String url = "https://api.twelvedata.com/time_series?symbol=" + symbol
+                + "&interval=" + interval + "&apikey=" + API_KEY + "&outputsize=2";
+        httpClient.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
+            @Override public void onFailure(@NonNull Call call, @NonNull IOException e) { callback.onError(e); }
+            @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 String body = response.body().string();
                 try {
                     org.json.JSONObject json = new org.json.JSONObject(body);
@@ -163,10 +184,8 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
                             return;
                         }
                     }
-                    callback.onError(new Exception("לא נמצא מידע"));
-                } catch (Exception e) {
-                    callback.onError(e);
-                }
+                    callback.onError(new Exception("No data"));
+                } catch (Exception e) { callback.onError(e); }
             }
         });
     }

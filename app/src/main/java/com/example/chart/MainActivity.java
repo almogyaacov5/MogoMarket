@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -17,8 +18,14 @@ import androidx.fragment.app.Fragment;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String PREFS_NAME  = "app_prefs";
-    private static final String KEY_THEME   = "dark_mode";
+    private static final String PREFS_NAME = "app_prefs";
+    private static final String KEY_THEME  = "dark_mode";
+
+    // ── צבעי ניווט תחתון ──────────────────────────────────
+    private static final int COLOR_NAV_ACTIVE   = 0xFF4DA3FF;  // כחול ניאון
+    private static final int COLOR_NAV_INACTIVE = 0xFF8B98A5;  // אפור משני
+    private static final int COLOR_NAV_BG       = 0xFF111826;  // bg_secondary
+    // ──────────────────────────────────────────────────────
 
     private boolean isDarkMode = true;
     private int currentNavId = -1;
@@ -29,10 +36,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // super.onCreate חייב להיות ראשון לגמרי
         super.onCreate(savedInstanceState);
 
-        // טעינת Theme מ-SharedPreferences
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         isDarkMode = prefs.getBoolean(KEY_THEME, true);
         AppCompatDelegate.setDefaultNightMode(
@@ -41,9 +46,15 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_main);
 
+        // הסתר ActionBar — אנחנו משתמשים ב-Custom TopBar
+        if (getSupportActionBar() != null) getSupportActionBar().hide();
+
+        // צבע רקע לניווט תחתון
+        LinearLayout bottomNav = findViewById(R.id.bottom_nav_bar);
+        if (bottomNav != null) bottomNav.setBackgroundColor(COLOR_NAV_BG);
+
         requestNotificationPermissionIfNeeded();
         PriceAlertScheduler.schedule(this);
-
         setupBottomNav();
 
         if (savedInstanceState == null) {
@@ -51,34 +62,34 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // --- Bottom Nav Setup ---
+    // ─── Bottom Nav ───────────────────────────────────────
     private void setupBottomNav() {
-        findViewById(R.id.nav_btn_chart).setOnClickListener(v      -> navigateTo(R.id.nav_chart));
-        findViewById(R.id.nav_btn_stocks).setOnClickListener(v     -> navigateTo(R.id.nav_stocks));
-        findViewById(R.id.nav_btn_portfolio).setOnClickListener(v  -> navigateTo(R.id.nav_portfolio));
-        findViewById(R.id.nav_btn_closed).setOnClickListener(v     -> navigateTo(R.id.nav_closed_trades));
-        findViewById(R.id.nav_btn_simulator).setOnClickListener(v  -> navigateTo(R.id.nav_simulator));
-        findViewById(R.id.nav_btn_settings).setOnClickListener(v   -> navigateTo(R.id.nav_settings));
+        findViewById(R.id.nav_btn_chart).setOnClickListener(v     -> navigateTo(R.id.nav_chart));
+        findViewById(R.id.nav_btn_stocks).setOnClickListener(v    -> navigateTo(R.id.nav_stocks));
+        findViewById(R.id.nav_btn_portfolio).setOnClickListener(v -> navigateTo(R.id.nav_portfolio));
+        findViewById(R.id.nav_btn_closed).setOnClickListener(v    -> navigateTo(R.id.nav_closed_trades));
+        findViewById(R.id.nav_btn_simulator).setOnClickListener(v -> navigateTo(R.id.nav_simulator));
+        findViewById(R.id.nav_btn_settings).setOnClickListener(v  -> navigateTo(R.id.nav_settings));
     }
 
     private void navigateTo(int id) {
         if (id == currentNavId) return;
         currentNavId = id;
 
-        Fragment selectedFragment = null;
-        String   title            = "";
+        Fragment fragment = null;
+        String   title    = "";
 
-        if      (id == R.id.nav_chart)         { selectedFragment = new ChartFragment();        title = "Chart"; }
-        else if (id == R.id.nav_stocks)        { selectedFragment = new WatchlistFragment();    title = "Watchlist"; }
-        else if (id == R.id.nav_portfolio)     { selectedFragment = new PortfolioFragment();    title = "Portfolio"; }
-        else if (id == R.id.nav_closed_trades) { selectedFragment = new ClosedTradesFragment(); title = "Closed Trades"; }
-        else if (id == R.id.nav_simulator)     { selectedFragment = new SimulatorFragment();    title = "Simulator"; }
-        else if (id == R.id.nav_settings)      { selectedFragment = new SettingsFragment();     title = "Settings"; }
+        if      (id == R.id.nav_chart)         { fragment = new ChartFragment();        title = "Chart"; }
+        else if (id == R.id.nav_stocks)        { fragment = new WatchlistFragment();    title = "Watchlist"; }
+        else if (id == R.id.nav_portfolio)     { fragment = new PortfolioFragment();    title = "Portfolio"; }
+        else if (id == R.id.nav_closed_trades) { fragment = new ClosedTradesFragment(); title = "Closed Trades"; }
+        else if (id == R.id.nav_simulator)     { fragment = new SimulatorFragment();    title = "Simulator"; }
+        else if (id == R.id.nav_settings)      { fragment = new SettingsFragment();     title = "Settings"; }
 
-        if (selectedFragment != null) {
+        if (fragment != null) {
             getSupportFragmentManager()
                     .beginTransaction()
-                    .replace(R.id.fragment_container, selectedFragment)
+                    .replace(R.id.fragment_container, fragment)
                     .commit();
             setTitle(title);
             updateNavHighlight(id);
@@ -86,9 +97,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateNavHighlight(int selectedId) {
-        int activeColor   = 0xFFFFFFFF;
-        int inactiveColor = 0xFF80B8D4;
-
         int[][] navMap = {
             {R.id.nav_chart,         R.id.nav_icon_chart,     R.id.nav_label_chart},
             {R.id.nav_stocks,        R.id.nav_icon_stocks,    R.id.nav_label_stocks},
@@ -100,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
 
         for (int[] entry : navMap) {
             boolean   active = (entry[0] == selectedId);
-            int       color  = active ? activeColor : inactiveColor;
+            int       color  = active ? COLOR_NAV_ACTIVE : COLOR_NAV_INACTIVE;
             ImageView icon   = findViewById(entry[1]);
             TextView  label  = findViewById(entry[2]);
             if (icon  != null) icon.setColorFilter(color);

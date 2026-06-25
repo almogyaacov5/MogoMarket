@@ -10,29 +10,30 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.List;
+import java.util.Locale;
 
 public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapter.ViewHolder> {
 
-    public interface OnTradeEditListener {
-        void onEditTrade(StockData trade);
-    }
-
-    public interface OnSummaryUpdateListener {
-        void onSummaryUpdated(double totalPnl, int wins, int total);
-    }
-
-    private final List<StockData> closedTrades;
-    private final OnTradeEditListener editListener;
-    private OnSummaryUpdateListener summaryListener;
-
-    private static final int COLOR_PROFIT  = 0xFF00E676;
-    private static final int COLOR_LOSS    = 0xFFFF5252;
-    private static final int COLOR_NEUTRAL = 0xFF78909C;
+    // ── Trading Dark Theme colors ──────────────────────────
+    private static final int BG_CARD       = 0xFF151C2E;
+    private static final int TEXT_PRIMARY  = 0xFFE6EDF3;
+    private static final int TEXT_SECONDARY= 0xFF8B98A5;
+    private static final int COLOR_GAIN    = 0xFF00C896;
+    private static final int COLOR_LOSS    = 0xFFFF4D4D;
+    private static final int COLOR_NEUTRAL = 0xFF8B98A5;
+    // ──────────────────────────────────────────────────────
 
     private static final int[] CIRCLE_COLORS = {
         0xFF1565C0, 0xFF6A1B9A, 0xFF00695C,
         0xFFE65100, 0xFF4A148C, 0xFF1B5E20
     };
+
+    public interface OnTradeEditListener   { void onEditTrade(StockData trade); }
+    public interface OnSummaryUpdateListener { void onSummaryUpdated(double totalPnl, int wins, int total); }
+
+    private final List<StockData> closedTrades;
+    private final OnTradeEditListener editListener;
+    private OnSummaryUpdateListener summaryListener;
 
     public ClosedTradesAdapter(List<StockData> closedTrades, OnTradeEditListener listener) {
         this.closedTrades = closedTrades;
@@ -44,15 +45,11 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
         notifySummary();
     }
 
-    /** נקרא מה-Fragment אחרי כל רענון נתונים מ-Firebase */
-    public void triggerSummaryUpdate() {
-        notifySummary();
-    }
+    public void triggerSummaryUpdate() { notifySummary(); }
 
     private void notifySummary() {
         if (summaryListener == null || closedTrades == null) return;
-        double total = 0;
-        int wins = 0;
+        double total = 0; int wins = 0;
         for (StockData t : closedTrades) {
             double pnl = t.sellPrice - t.buyPrice;
             total += pnl;
@@ -73,61 +70,51 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         StockData trade = closedTrades.get(position);
 
-        // סמל
-        String symbol = trade.symbol != null ? trade.symbol.toUpperCase() : "?";
-        holder.symbolText.setText(symbol);
+        // ── עיצוב כרטיס ───────────────────────────────────
+        holder.itemView.setBackgroundColor(BG_CARD);
 
-        // עיגול - אות ראשונה + צבע
+        String symbol = trade.symbol != null ? trade.symbol.toUpperCase(Locale.US) : "?";
+        holder.symbolText.setText(symbol);
+        holder.symbolText.setTextColor(TEXT_PRIMARY);
+
+        // עיגול ראשית מניה
         if (holder.symbolInitial != null) {
             String initial = symbol.length() > 0 ? String.valueOf(symbol.charAt(0)) : "?";
             holder.symbolInitial.setText(initial);
-            int colorIndex = (symbol.charAt(0) - 'A') % CIRCLE_COLORS.length;
-            if (colorIndex < 0) colorIndex = 0;
+            int colorIndex = Math.abs((symbol.charAt(0) - 'A') % CIRCLE_COLORS.length);
             holder.symbolInitial.getBackground().setTint(CIRCLE_COLORS[colorIndex]);
         }
 
-        // מחירים
         double buyPrice  = trade.buyPrice;
         double sellPrice = trade.sellPrice;
         double currPrice = (trade.currentPrice > 0) ? trade.currentPrice : sellPrice;
 
-        holder.buyPriceView.setText(String.format("$%.2f", buyPrice));
-        holder.sellPriceView.setText(String.format("$%.2f", sellPrice));
-        holder.currPriceView.setText(String.format("$%.2f", currPrice));
+        holder.buyPriceView.setText(String.format(Locale.US, "$%.2f", buyPrice));
+        holder.buyPriceView.setTextColor(TEXT_SECONDARY);
+        holder.sellPriceView.setText(String.format(Locale.US, "$%.2f", sellPrice));
+        holder.sellPriceView.setTextColor(TEXT_SECONDARY);
+        holder.currPriceView.setText(String.format(Locale.US, "$%.2f", currPrice));
+        holder.currPriceView.setTextColor(TEXT_PRIMARY);
 
-        // P&L
         double pnlAbs     = sellPrice - buyPrice;
         double pnlPercent = (buyPrice != 0) ? ((sellPrice - buyPrice) / buyPrice) * 100 : 0;
 
         int    pnlColor;
         String pnlSign;
-        if (pnlAbs > 0) {
-            pnlColor = COLOR_PROFIT;
-            pnlSign  = "+";
-        } else if (pnlAbs < 0) {
-            pnlColor = COLOR_LOSS;
-            pnlSign  = "";
-        } else {
-            pnlColor = COLOR_NEUTRAL;
-            pnlSign  = "";
-        }
+        if (pnlAbs > 0)      { pnlColor = COLOR_GAIN;    pnlSign = "+"; }
+        else if (pnlAbs < 0) { pnlColor = COLOR_LOSS;    pnlSign = "";  }
+        else                 { pnlColor = COLOR_NEUTRAL;  pnlSign = "";  }
 
-        holder.pnlView.setText(String.format("%s$%.2f", pnlSign, pnlAbs));
+        holder.pnlView.setText(String.format(Locale.US, "%s$%.2f", pnlSign, pnlAbs));
         holder.pnlView.setTextColor(pnlColor);
-
-        holder.percentText.setText(String.format("%s%.2f%%", pnlSign, pnlPercent));
+        holder.percentText.setText(String.format(Locale.US, "%s%.2f%%", pnlSign, pnlPercent));
         holder.percentText.setTextColor(pnlColor);
 
-        // כפתור עריכה
-        holder.editButton.setOnClickListener(v -> {
-            if (editListener != null) editListener.onEditTrade(trade);
-        });
+        holder.editButton.setOnClickListener(v -> { if (editListener != null) editListener.onEditTrade(trade); });
     }
 
     @Override
-    public int getItemCount() {
-        return closedTrades != null ? closedTrades.size() : 0;
-    }
+    public int getItemCount() { return closedTrades != null ? closedTrades.size() : 0; }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         TextView   symbolInitial, symbolText, tradeDateText;

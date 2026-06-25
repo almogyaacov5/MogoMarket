@@ -9,26 +9,39 @@ import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
+
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
+import org.json.JSONObject;
+
+import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
+
+import okhttp3.Call;
+import okhttp3.Callback;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import okhttp3.Call;
-import okhttp3.Callback;
-import org.json.JSONObject;
-import java.io.IOException;
 
 public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewHolder> {
+
+    // ── Trading Dark Theme colors ──────────────────────────
+    private static final int BG_CARD      = 0xFF151C2E;
+    private static final int TEXT_PRIMARY = 0xFFE6EDF3;
+    private static final int TEXT_SECONDARY= 0xFF8B98A5;
+    private static final int COLOR_GAIN   = 0xFF00C896;
+    private static final int COLOR_LOSS   = 0xFFFF4D4D;
+    private static final int COLOR_NEUTRAL= 0xFF8B98A5;
+    // ──────────────────────────────────────────────────────
 
     public interface OnStockClickListener {
         void onStockClick(String symbol);
         void onStockDelete(String symbol, double sellPrice);
     }
 
-    private List<StockData> stocks;
+    private final List<StockData> stocks;
     private final OnStockClickListener listener;
     private final OkHttpClient client = new OkHttpClient();
 
@@ -40,7 +53,8 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
     @NonNull
     @Override
     public StockViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_portfolio, parent, false);
+        View v = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.item_portfolio, parent, false);
         return new StockViewHolder(v);
     }
 
@@ -48,97 +62,96 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
     public void onBindViewHolder(@NonNull StockViewHolder holder, int position) {
         StockData stock = stocks.get(position);
 
+        // ── עיצוב כרטיס ───────────────────────────────────
+        holder.itemView.setBackgroundColor(BG_CARD);
+
         String sym = (stock.symbol != null) ? stock.symbol.trim() : "?";
         holder.symbolText.setText(sym);
+        holder.symbolText.setTextColor(TEXT_PRIMARY);
         holder.buyPriceText.setText(String.format(Locale.US, "$%.2f", stock.buyPrice));
+        holder.buyPriceText.setTextColor(TEXT_SECONDARY);
 
         if (stock.targetPrice > 0) {
             holder.targetPriceText.setText(String.format(Locale.US, "$%.2f", stock.targetPrice));
         } else {
             holder.targetPriceText.setText("-");
         }
+        holder.targetPriceText.setTextColor(TEXT_SECONDARY);
 
+        // ── מחיר נוכחי + P&L ─────────────────────────────
         fetchCurrentPrice(stock.symbol, new PriceCallback() {
             @Override
             public void onPriceReceived(float price) {
-                holder.currentPriceText.post(() ->
-                        holder.currentPriceText.setText(String.format(Locale.US, "$%.2f", price)));
+                holder.currentPriceText.post(() -> {
+                    holder.currentPriceText.setText(String.format(Locale.US, "$%.2f", price));
+                    holder.currentPriceText.setTextColor(TEXT_PRIMARY);
+                });
 
-                float percentChange = (stock.buyPrice != 0f) ?
-                        ((price - stock.buyPrice) / stock.buyPrice * 100f) : 0f;
-                double pnlDollar = (stock.tradeAmount > 0) ?
-                        stock.tradeAmount * (percentChange / 100.0) : 0;
+                float percentChange = (stock.buyPrice != 0f)
+                        ? ((price - stock.buyPrice) / stock.buyPrice * 100f) : 0f;
+                double pnlDollar = (stock.tradeAmount > 0)
+                        ? stock.tradeAmount * (percentChange / 100.0) : 0;
+
+                int gainLossColor = percentChange >= 0 ? COLOR_GAIN : COLOR_LOSS;
+                String arrow      = percentChange >= 0 ? "▲" : "▼";
 
                 holder.changePercentText.post(() -> {
-                    String arrow = percentChange >= 0 ? "▲" : "▼";
-                    int color = percentChange >= 0 ? 0xFF16A34A : 0xFFEF4444;
                     holder.changePercentText.setText(
                             String.format(Locale.US, "%s %.2f%%", arrow, Math.abs(percentChange)));
-                    holder.changePercentText.setTextColor(color);
+                    holder.changePercentText.setTextColor(gainLossColor);
                 });
 
                 holder.changePercentDetailText.post(() -> {
-                    String arrow = percentChange >= 0 ? "▲" : "▼";
-                    int color = percentChange >= 0 ? 0xFF16A34A : 0xFFEF4444;
                     holder.changePercentDetailText.setText(
                             String.format(Locale.US, "%s %.2f%%", arrow, Math.abs(percentChange)));
-                    holder.changePercentDetailText.setTextColor(color);
+                    holder.changePercentDetailText.setTextColor(gainLossColor);
                 });
 
                 if (stock.tradeAmount > 0) {
                     holder.pnlDollarText.post(() -> {
-                        int color = pnlDollar >= 0 ? 0xFF16A34A : 0xFFEF4444;
                         String sign = pnlDollar >= 0 ? "+" : "";
                         holder.pnlDollarText.setText(
                                 String.format(Locale.US, "%s$%.2f", sign, pnlDollar));
-                        holder.pnlDollarText.setTextColor(color);
+                        holder.pnlDollarText.setTextColor(pnlDollar >= 0 ? COLOR_GAIN : COLOR_LOSS);
                     });
                 } else {
-                    holder.pnlDollarText.post(() -> holder.pnlDollarText.setText("-"));
+                    holder.pnlDollarText.post(() -> {
+                        holder.pnlDollarText.setText("-");
+                        holder.pnlDollarText.setTextColor(COLOR_NEUTRAL);
+                    });
                 }
             }
 
             @Override
             public void onError(Exception e) {
-                holder.currentPriceText.post(() -> holder.currentPriceText.setText("?"));
+                holder.currentPriceText.post(() -> {
+                    holder.currentPriceText.setText("?");
+                    holder.currentPriceText.setTextColor(COLOR_NEUTRAL);
+                });
                 holder.changePercentText.post(() -> holder.changePercentText.setText("?"));
             }
         });
 
         holder.btnEdit.setOnClickListener(view -> listener.onStockClick(stock.symbol));
-
-        holder.btnDelete.setOnClickListener(view ->
-                showSellPriceDialog(view.getContext(), stock.symbol));
-
+        holder.btnDelete.setOnClickListener(view -> showSellPriceDialog(view.getContext(), stock.symbol));
         holder.itemView.setOnClickListener(view -> listener.onStockClick(stock.symbol));
     }
 
     @Override
-    public int getItemCount() {
-        return stocks != null ? stocks.size() : 0;
-    }
+    public int getItemCount() { return stocks != null ? stocks.size() : 0; }
 
     private void fetchCurrentPrice(String symbol, PriceCallback callback) {
         String apiKey = "0518811f0d394fa39842a8024a25c049";
         String url = "https://api.twelvedata.com/price?symbol=" + symbol + "&apikey=" + apiKey;
-        Request request = new Request.Builder().url(url).build();
-
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                callback.onError(e);
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
+        client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
+            @Override public void onFailure(@NonNull Call call, @NonNull IOException e) { callback.onError(e); }
+            @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 try {
                     String body = response.body().string();
                     JSONObject obj = new JSONObject(body);
                     float price = Float.parseFloat(obj.getString("price"));
                     callback.onPriceReceived(price);
-                } catch (Exception e) {
-                    callback.onError(e);
-                }
+                } catch (Exception e) { callback.onError(e); }
             }
         });
     }
@@ -149,16 +162,9 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
     }
 
     static class StockViewHolder extends RecyclerView.ViewHolder {
-        TextView symbolText;
-        TextView currentPriceText;
-        TextView changePercentText;
-        TextView changePercentDetailText;
-        TextView buyPriceText;
-        TextView targetPriceText;
-        TextView pnlDollarText;
-        TextView stockNameText;
-        ImageButton btnEdit;
-        ImageButton btnDelete;
+        TextView symbolText, currentPriceText, changePercentText;
+        TextView changePercentDetailText, buyPriceText, targetPriceText, pnlDollarText, stockNameText;
+        ImageButton btnEdit, btnDelete;
 
         public StockViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -175,15 +181,14 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         }
     }
 
-    public void refreshPrices() {
-        notifyDataSetChanged();
-    }
+    public void refreshPrices() { notifyDataSetChanged(); }
 
     private void showSellPriceDialog(Context context, String symbol) {
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
         builder.setTitle("הזן מחיר סגירה ל-" + symbol);
         final EditText input = new EditText(context);
         input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        input.setTextColor(TEXT_PRIMARY);
         builder.setView(input);
         builder.setPositiveButton("סגור טרייד", (dialog, which) -> {
             String priceStr = input.getText().toString();
