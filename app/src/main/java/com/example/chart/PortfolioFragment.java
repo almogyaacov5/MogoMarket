@@ -103,6 +103,7 @@ public class PortfolioFragment extends Fragment {
 
         btnAddStockToPortfolio.setOnClickListener(view -> {
             requireActivity().getSupportFragmentManager().beginTransaction()
+                    .setCustomAnimations(R.anim.fade_in_fast, R.anim.fade_out_fast)
                     .replace(R.id.fragment_container, new PortfolioAddStockFragment())
                     .addToBackStack(null)
                     .commit();
