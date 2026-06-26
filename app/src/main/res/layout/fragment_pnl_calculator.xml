@@ -25,7 +25,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Calculate your profit, loss & risk/reward"
+            android:text="P&amp;L Calculator"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="14sp" />
 
