@@ -97,7 +97,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
 
     // <-- תיקון: הכרזת המשתנה החסר
-    private LinearLayout headerSection, searchSection, controlsSection, bottomBar;
+    private View headerSection;
+    private View searchSection;
+    private View controlsSection;
+    private View bottomBar;
     private FrameLayout chartContainer;
     private View chartRootLayout;
     private TextView timeFrameText, tickerText, priceText, changeText, currentPriceDisplay;
