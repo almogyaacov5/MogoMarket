@@ -318,15 +318,35 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             float[] vals = new float[9];
             matrix.getValues(vals);
 
-            float scaleX        = vals[Matrix.MSCALE_X];
-            float transX        = vals[Matrix.MTRANS_X];
-            float offsetLeft    = chart.getViewPortHandler().offsetLeft();
-            float offsetRight   = chart.getViewPortHandler().offsetRight();
-            float chartWidth    = chart.getViewPortHandler().getChartWidth();
-            float contentWidth  = chartWidth - offsetLeft - offsetRight;
+            float scaleX      = vals[Matrix.MSCALE_X];
+            float transX      = vals[Matrix.MTRANS_X];
+            float offsetLeft  = chart.getViewPortHandler().offsetLeft();
+            float contentWidth = chart.getViewPortHandler().contentWidth();
 
+            // מספר הנרות הכולל
+            int entryCount = 0;
+            if (chart.getData() != null && chart.getData().getDataSetCount() > 0) {
+                entryCount = chart.getData().getDataSetByIndex(0).getEntryCount();
+            }
+            if (entryCount == 0) {
+                vals[Matrix.MTRANS_X] = transX + dx;
+                matrix.setValues(vals);
+                chart.getViewPortHandler().refresh(matrix, chart, true);
+                return;
+            }
+
+            // כמה פיקסלים לוקח כל נר בסקייל הנוכחי
+            float pixelsPerEntry = (contentWidth * scaleX) / entryCount;
+
+            // הגבול השמאלי: לא לחצות את תחילת הנתונים
             float maxTransX = offsetLeft;
-            float minTransX = -(contentWidth * scaleX - contentWidth) + offsetLeft;
+
+            // הגבול הימני: הנר האחרון צריך להיות גלוי מימין
+            // התוכן הסרוק כולו = contentWidth * scaleX
+            // אנחנו רוצים שהנר האחרון (index = entryCount-1) יוכל להיות בצד ימין של המסך
+            // + padding של נר אחד נוסף כדי שיהיה נוח לראות
+            float totalScaledWidth = pixelsPerEntry * entryCount;
+            float minTransX = offsetLeft - (totalScaledWidth - contentWidth) - pixelsPerEntry;
 
             float newTransX = transX + dx;
             newTransX = Math.min(maxTransX, Math.max(minTransX, newTransX));
