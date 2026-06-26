@@ -95,8 +95,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private Button   btnLoad, btnTimeFrame, btnToggleChart, btnAIAnalysis;
     private com.google.android.material.button.MaterialButton btnChartRefresh, btnExpandChart, btnExitFullscreen, btnThemeToggle, btnSettings;
 
-
-    // <-- תיקון: הכרזת המשתנה החסר
     private View headerSection;
     private View searchSection;
     private View controlsSection;
@@ -196,168 +194,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         setupClickListeners();
         fetchStockData(symbol, interval);
         return v;
-    }
-
-    // ========================= SMART PINCH ZOOM =========================
-
-    private static class SmartPinchTouchListener implements View.OnTouchListener {
-
-        private final BarLineChartBase<?> chart;
-
-        private static final int STATE_IDLE  = 0;
-        private static final int STATE_PINCH = 1;
-        private static final int STATE_DRAG  = 2;
-        private int state = STATE_IDLE;
-
-        private float pinchStartX0, pinchStartY0;
-        private float pinchStartX1, pinchStartY1;
-        private boolean axisDetermined = false;
-        private boolean isAxisX = true;
-
-        private float dragStartX, dragStartY;
-
-        private static final float AXIS_THRESHOLD = 10f;
-
-        SmartPinchTouchListener(BarLineChartBase<?> chart) {
-            this.chart = chart;
-            chart.setTouchEnabled(false);
-        }
-
-        @Override
-        public boolean onTouch(View v, MotionEvent event) {
-            int pointerCount = event.getPointerCount();
-            int action = event.getActionMasked();
-
-            switch (action) {
-
-                case MotionEvent.ACTION_DOWN:
-                    state = STATE_DRAG;
-                    dragStartX = event.getX();
-                    dragStartY = event.getY();
-                    return true;
-
-                case MotionEvent.ACTION_POINTER_DOWN:
-                    if (pointerCount == 2) {
-                        state = STATE_PINCH;
-                        axisDetermined = false;
-                        pinchStartX0 = event.getX(0);
-                        pinchStartY0 = event.getY(0);
-                        pinchStartX1 = event.getX(1);
-                        pinchStartY1 = event.getY(1);
-                    }
-                    return true;
-
-                case MotionEvent.ACTION_MOVE:
-                    if (state == STATE_PINCH && pointerCount == 2) {
-                        handlePinchMove(event);
-                    } else if (state == STATE_DRAG && pointerCount == 1) {
-                        handleDragMove(event);
-                        dragStartX = event.getX();
-                        dragStartY = event.getY();
-                    }
-                    return true;
-
-                case MotionEvent.ACTION_POINTER_UP:
-                    if (pointerCount <= 2) {
-                        state = STATE_DRAG;
-                        axisDetermined = false;
-                        if (event.getActionIndex() == 0 && pointerCount > 1) {
-                            dragStartX = event.getX(1);
-                            dragStartY = event.getY(1);
-                        } else {
-                            dragStartX = event.getX(0);
-                            dragStartY = event.getY(0);
-                        }
-                    }
-                    return true;
-
-                case MotionEvent.ACTION_UP:
-                case MotionEvent.ACTION_CANCEL:
-                    state = STATE_IDLE;
-                    axisDetermined = false;
-                    return true;
-            }
-            return false;
-        }
-
-        private void handlePinchMove(MotionEvent event) {
-            float curX0 = event.getX(0), curY0 = event.getY(0);
-            float curX1 = event.getX(1), curY1 = event.getY(1);
-
-            float curDistX  = Math.abs(curX1 - curX0);
-            float curDistY  = Math.abs(curY1 - curY0);
-            float initDistX = Math.abs(pinchStartX1 - pinchStartX0);
-            float initDistY = Math.abs(pinchStartY1 - pinchStartY0);
-
-            if (!axisDetermined) {
-                float spreadDX = Math.abs(curDistX - initDistX);
-                float spreadDY = Math.abs(curDistY - initDistY);
-                if (spreadDX + spreadDY < AXIS_THRESHOLD) return;
-                isAxisX = spreadDX >= spreadDY;
-                axisDetermined = true;
-            }
-
-            if (isAxisX) {
-                if (initDistX < 1f) return;
-                float scaleX = curDistX / initDistX;
-                chart.zoom(scaleX, 1f, (curX0 + curX1) / 2f, (curY0 + curY1) / 2f);
-            } else {
-                if (initDistY < 1f) return;
-                float scaleY = curDistY / initDistY;
-                chart.zoom(1f, scaleY, (curX0 + curX1) / 2f, (curY0 + curY1) / 2f);
-            }
-
-            pinchStartX0 = curX0; pinchStartY0 = curY0;
-            pinchStartX1 = curX1; pinchStartY1 = curY1;
-        }
-
-        private void handleDragMove(MotionEvent event) {
-            float dx = event.getX() - dragStartX;
-            float dy = event.getY() - dragStartY;
-
-            Matrix matrix = chart.getViewPortHandler().getMatrixTouch();
-            float[] vals = new float[9];
-            matrix.getValues(vals);
-
-            float scaleX       = vals[Matrix.MSCALE_X];
-            float scaleY       = vals[Matrix.MSCALE_Y];
-            float transX       = vals[Matrix.MTRANS_X];
-            float transY       = vals[Matrix.MTRANS_Y];
-            float offsetLeft   = chart.getViewPortHandler().offsetLeft();
-            float offsetTop    = chart.getViewPortHandler().offsetTop();
-            float contentWidth = chart.getViewPortHandler().contentWidth();
-            float contentHeight= chart.getViewPortHandler().contentHeight();
-
-            // ---- גבולות X ----
-            int entryCount = 0;
-            if (chart.getData() != null && chart.getData().getDataSetCount() > 0) {
-                entryCount = chart.getData().getDataSetByIndex(0).getEntryCount();
-            }
-
-            float newTransX;
-            if (entryCount > 1) {
-                float pixelsPerEntry = (contentWidth * scaleX) / entryCount;
-                float totalScaledWidth = pixelsPerEntry * entryCount;
-                float maxTransX = offsetLeft;
-                // מאפשר לגלול עד שהנר האחרון נמצא בקצה שמאל + רווח של נר אחד
-                float minTransX = offsetLeft - totalScaledWidth + contentWidth - pixelsPerEntry * 2f;
-                newTransX = Math.min(maxTransX, Math.max(minTransX, transX + dx));
-            } else {
-                newTransX = transX + dx;
-            }
-
-            // ---- גבולות Y ----
-            // כשיש זום על Y, מאפשרים גלילה חופשית למעלה ולמטה
-            float totalScaledHeight = contentHeight * scaleY;
-            float maxTransY = offsetTop;
-            float minTransY = offsetTop - totalScaledHeight + contentHeight;
-            float newTransY = Math.min(maxTransY, Math.max(minTransY, transY + dy));
-
-            vals[Matrix.MTRANS_X] = newTransX;
-            vals[Matrix.MTRANS_Y] = newTransY;
-            matrix.setValues(vals);
-            chart.getViewPortHandler().refresh(matrix, chart, true);
-        }
     }
 
     // ========================= THEME =========================
@@ -463,8 +299,17 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         candleStickChart.setDrawGridBackground(false);
         candleStickChart.getDescription().setEnabled(false);
         candleStickChart.getLegend().setEnabled(false);
-        candleStickChart.setTouchEnabled(false);
-        candleStickChart.setOnTouchListener(new SmartPinchTouchListener(candleStickChart));
+
+        // מנגנון מובנה של MPAndroidChart — zoom X ו-Y בנפרד + drag
+        candleStickChart.setTouchEnabled(true);
+        candleStickChart.setDragEnabled(true);
+        candleStickChart.setScaleEnabled(true);
+        candleStickChart.setScaleXEnabled(true);
+        candleStickChart.setScaleYEnabled(true);
+        candleStickChart.setPinchZoom(false); // false = זום X ו-Y בנפרד
+        candleStickChart.setDoubleTapToZoomEnabled(false);
+        candleStickChart.setDragDecelerationEnabled(true);
+        candleStickChart.setDragDecelerationFrictionCoef(0.92f);
 
         candleStickChart.setHighlightPerTapEnabled(true);
         candleStickChart.setHighlightPerDragEnabled(true);
@@ -496,8 +341,17 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.setDrawGridBackground(false);
         lineChart.getDescription().setEnabled(false);
         lineChart.getLegend().setEnabled(false);
-        lineChart.setTouchEnabled(false);
-        lineChart.setOnTouchListener(new SmartPinchTouchListener(lineChart));
+
+        // מנגנון מובנה של MPAndroidChart — zoom X ו-Y בנפרד + drag
+        lineChart.setTouchEnabled(true);
+        lineChart.setDragEnabled(true);
+        lineChart.setScaleEnabled(true);
+        lineChart.setScaleXEnabled(true);
+        lineChart.setScaleYEnabled(true);
+        lineChart.setPinchZoom(false); // false = זום X ו-Y בנפרד
+        lineChart.setDoubleTapToZoomEnabled(false);
+        lineChart.setDragDecelerationEnabled(true);
+        lineChart.setDragDecelerationFrictionCoef(0.92f);
 
         lineChart.setHighlightPerTapEnabled(true);
         lineChart.setHighlightPerDragEnabled(true);
