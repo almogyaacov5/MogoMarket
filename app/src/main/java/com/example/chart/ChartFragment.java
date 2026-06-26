@@ -93,7 +93,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private LineChart        lineChart;
     private AutoCompleteTextView tickerInput;
     private Button   btnLoad, btnTimeFrame, btnToggleChart, btnAIAnalysis;
-    private ImageButton btnChartRefresh, btnExpandChart, btnExitFullscreen;     private com.google.android.material.button.MaterialButton btnThemeToggle;
+    private ImageButton btnChartRefresh, btnExpandChart, btnExitFullscreen;
+    private com.google.android.material.button.MaterialButton btnThemeToggle;
     private ImageButton btnSettings; // <-- תיקון: הכרזת המשתנה החסר
     private LinearLayout headerSection, searchSection, controlsSection, bottomBar;
     private FrameLayout chartContainer;
@@ -365,9 +366,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             lineChart.invalidate();
         }
         if (btnThemeToggle != null) {
-            btnThemeToggle.setImageResource(
-                isDarkTheme ? android.R.drawable.ic_menu_day : android.R.drawable.ic_menu_month);
-            btnThemeToggle.setColorFilter(textSec);
+            btnThemeToggle.setIconResource(
+                    isDarkTheme ? R.drawable.ic_nav_theme_dark : R.drawable.ic_nav_theme_light);
+            btnThemeToggle.setIconTint(android.content.res.ColorStateList.valueOf(textSec));
         }
     }
 
@@ -416,7 +417,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             view.animate().alpha(1f).setDuration(220).start();
         } else {
             view.animate().alpha(0f).setDuration(180)
-                .withEndAction(() -> view.setVisibility(View.GONE)).start();
+                    .withEndAction(() -> view.setVisibility(View.GONE)).start();
         }
     }
 
@@ -544,8 +545,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     else               updateLineChart(new ArrayList<>(currentEntries));
                 }
                 Toast.makeText(requireContext(),
-                    isDarkTheme ? "\uD83C\uDF11 \u05de\u05e6\u05d1 \u05db\u05d4\u05d4" : "\u2600\uFE0F \u05de\u05e6\u05d1 \u05d1\u05d4\u05d9\u05e8",
-                    Toast.LENGTH_SHORT).show();
+                        isDarkTheme ? "\uD83C\uDF11 \u05de\u05e6\u05d1 \u05db\u05d4\u05d4" : "\u2600\uFE0F \u05de\u05e6\u05d1 \u05d1\u05d4\u05d9\u05e8",
+                        Toast.LENGTH_SHORT).show();
             });
         }
         if (btnExpandChart != null) btnExpandChart.setOnClickListener(v -> toggleFullscreen());
@@ -724,7 +725,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     }
 
     private void sendQuestionToAI(String question, TextView tvResponse, ProgressBar progressBar,
-                                   android.widget.EditText etQuestion, AlertDialog dialog) {
+                                  android.widget.EditText etQuestion, AlertDialog dialog) {
         progressBar.setVisibility(View.VISIBLE);
         etQuestion.setEnabled(false);
         String context = String.format(Locale.US, "\u05de\u05e0\u05d9\u05d4: %s | \u05de\u05d7\u05d9\u05e8: $%.2f | \u05d8\u05d5\u05d5\u05d7: %s | %d \u05e0\u05e7\u05d5\u05d3\u05d5\u05ea",
@@ -820,7 +821,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     }
 
     private void fetchSymbolSuggestionsOneExchange(String encoded, String originalQuery,
-                                                    String exchange, java.util.HashSet<String> addedSymbols) {
+                                                   String exchange, java.util.HashSet<String> addedSymbols) {
         String url = "https://api.twelvedata.com/symbol_search?symbol=" + encoded
                 + "&outputsize=20&country=US&exchange=" + exchange + "&apikey=" + API_KEY;
         client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
