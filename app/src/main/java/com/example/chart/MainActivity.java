@@ -130,4 +130,17 @@ public class MainActivity extends AppCompatActivity {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
         }
     }
+    
+    // — Public helper so any fragment can open Settings ——————————
+    public void openSettings() {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .setCustomAnimations(
+                        android.R.anim.slide_in_left,
+                        android.R.anim.slide_out_right
+                )
+                .replace(R.id.fragment_container, new SettingsFragment())
+                .addToBackStack(null)
+                .commit();
+    }
 }
