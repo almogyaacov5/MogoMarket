@@ -149,7 +149,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         btnToggleChart     = v.findViewById(R.id.btnToggleChart);
         btnChartRefresh    = v.findViewById(R.id.btnChartRefresh);
         btnAIAnalysis      = v.findViewById(R.id.btnAIAnalysis);
-        btnThemeToggle     = v.findViewById(R.id.btnThemeToggle);
+        btnThemeToggle     = v.findViewById(R.id.btnThemeToggle);         btnSettings           = v.findViewById(R.id.btnSettings);         if (btnSettings != null) {             btnSettings.setOnClickListener(vv -> {                 if (getActivity() instanceof MainActivity) {                     ((MainActivity) getActivity()).openSettings();                 }             });         }
         btnExpandChart     = v.findViewById(R.id.btnExpandChart);
         btnExitFullscreen  = v.findViewById(R.id.btnExitFullscreen);
         progressAI         = v.findViewById(R.id.progressAI);
