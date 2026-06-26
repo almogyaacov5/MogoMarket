@@ -42,12 +42,14 @@
         <item name="android:background">?attr/colorSurface</item>
         <item name="elevation">8dp</item>
         <item name="labelVisibilityMode">labeled</item>
+        <item name="itemActiveIndicatorStyle">@style/BottomNavIndicatorStyle</item>
     </style>
 
-    <!-- Bottom Nav Active Indicator (pill) -->
-    <style name="BottomNavIndicatorStyle">
-        <item name="android:color">@color/primary</item>
-        <item name="shapeAppearance">@style/ShapeAppearance.Material3.Corner.Full</item>
+    <!-- Bottom Nav Active Indicator - hidden (transparent, zero size) -->
+    <style name="BottomNavIndicatorStyle" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:color">@android:color/transparent</item>
+        <item name="android:width">0dp</item>
+        <item name="android:height">0dp</item>
     </style>
 
     <!-- Primary Button -->
