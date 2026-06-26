@@ -93,7 +93,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private LineChart        lineChart;
     private AutoCompleteTextView tickerInput;
     private Button   btnLoad, btnTimeFrame, btnToggleChart, btnAIAnalysis;
-    private ImageButton btnChartRefresh, btnThemeToggle, btnExpandChart, btnExitFullscreen;
+    private ImageButton btnChartRefresh, btnExpandChart, btnExitFullscreen;     private com.google.android.material.button.MaterialButton btnThemeToggle;
     private ImageButton btnSettings; // <-- תיקון: הכרזת המשתנה החסר
     private LinearLayout headerSection, searchSection, controlsSection, bottomBar;
     private FrameLayout chartContainer;
