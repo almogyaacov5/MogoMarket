@@ -23,7 +23,8 @@
         <FrameLayout
             android:layout_width="44dp"
             android:layout_height="44dp"
-            android:background="@drawable/circle_bg">
+            android:background="@drawable/circle_bg"
+            android:clipToOutline="true">
 
             <TextView
                 android:id="@+id/symbolInitialWatchlist"
