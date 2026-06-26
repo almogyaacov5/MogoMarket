@@ -45,6 +45,7 @@ import com.github.mikephil.charting.data.CandleEntry;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
+import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.listener.ChartTouchListener;
 import com.github.mikephil.charting.listener.OnChartGestureListener;
 import com.google.firebase.database.DatabaseReference;
@@ -116,6 +117,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private LLMService llmService;
     private final List<CandleEntry> currentEntries = new ArrayList<>();
     private final List<Float>       fullCloses     = new ArrayList<>();
+    private final List<String>      dateLabels     = new ArrayList<>();
     private float   lastPrice          = 0f;
     private boolean isManualSelection  = false;
 
@@ -300,13 +302,12 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         candleStickChart.getDescription().setEnabled(false);
         candleStickChart.getLegend().setEnabled(false);
 
-        // מנגנון מובנה של MPAndroidChart — zoom X ו-Y בנפרד + drag
         candleStickChart.setTouchEnabled(true);
         candleStickChart.setDragEnabled(true);
         candleStickChart.setScaleEnabled(true);
         candleStickChart.setScaleXEnabled(true);
         candleStickChart.setScaleYEnabled(true);
-        candleStickChart.setPinchZoom(false); // false = זום X ו-Y בנפרד
+        candleStickChart.setPinchZoom(false);
         candleStickChart.setDoubleTapToZoomEnabled(false);
         candleStickChart.setDragDecelerationEnabled(true);
         candleStickChart.setDragDecelerationFrictionCoef(0.92f);
@@ -321,6 +322,14 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         xAxis.setTextSize(10f);
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
         xAxis.setLabelCount(5, true);
+        xAxis.setValueFormatter(new ValueFormatter() {
+            @Override
+            public String getFormattedValue(float value) {
+                int index = (int) value;
+                if (index >= 0 && index < dateLabels.size()) return dateLabels.get(index);
+                return "";
+            }
+        });
 
         YAxis leftAxis = candleStickChart.getAxisLeft();
         leftAxis.setDrawGridLines(false);
@@ -342,13 +351,12 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.getDescription().setEnabled(false);
         lineChart.getLegend().setEnabled(false);
 
-        // מנגנון מובנה של MPAndroidChart — zoom X ו-Y בנפרד + drag
         lineChart.setTouchEnabled(true);
         lineChart.setDragEnabled(true);
         lineChart.setScaleEnabled(true);
         lineChart.setScaleXEnabled(true);
         lineChart.setScaleYEnabled(true);
-        lineChart.setPinchZoom(false); // false = זום X ו-Y בנפרד
+        lineChart.setPinchZoom(false);
         lineChart.setDoubleTapToZoomEnabled(false);
         lineChart.setDragDecelerationEnabled(true);
         lineChart.setDragDecelerationFrictionCoef(0.92f);
@@ -363,6 +371,14 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         xAxis.setTextSize(10f);
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
         xAxis.setLabelCount(5, true);
+        xAxis.setValueFormatter(new ValueFormatter() {
+            @Override
+            public String getFormattedValue(float value) {
+                int index = (int) value;
+                if (index >= 0 && index < dateLabels.size()) return dateLabels.get(index);
+                return "";
+            }
+        });
 
         YAxis leftAxis = lineChart.getAxisLeft();
         leftAxis.setDrawGridLines(false);
@@ -528,6 +544,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     JSONObject json   = new JSONObject(response.body().string());
                     JSONArray  series = json.getJSONArray("values");
                     fullCloses.clear();
+                    dateLabels.clear();
                     List<CandleEntry> candleEntries = new ArrayList<>();
                     float lastClose = 0, prevClose = 0;
                     if (series.length() > 0)
@@ -542,6 +559,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     int startIndex = Math.max(0, series.length() - 252);
                     for (int i = series.length() - 1; i >= startIndex; i--) {
                         JSONObject data = series.getJSONObject(i);
+                        String datetime = data.optString("datetime", "");
+                        // Keep only MM-dd or MM/dd for brevity (chars 5-9 of "2024-01-15")
+                        String label = datetime.length() >= 10 ? datetime.substring(5, 10) : datetime;
+                        dateLabels.add(label);
                         candleEntries.add(new CandleEntry(chartIndex++,
                                 Float.parseFloat(data.getString("high")),
                                 Float.parseFloat(data.getString("low")),
