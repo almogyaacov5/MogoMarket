@@ -1,6 +1,8 @@
 package com.example.chart;
 
 import android.content.Context;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -81,7 +83,19 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
             String initial = symbol.length() > 0 ? String.valueOf(symbol.charAt(0)) : "?";
             holder.symbolInitial.setText(initial);
             int colorIndex = Math.abs((symbol.charAt(0) - 'A') % CIRCLE_COLORS.length);
-            holder.symbolInitial.getBackground().setTint(CIRCLE_COLORS[colorIndex]);
+            int circleColor = CIRCLE_COLORS[colorIndex];
+
+            Drawable bg = holder.symbolInitial.getBackground();
+            if (bg != null) {
+                bg = bg.mutate();
+                bg.setTint(circleColor);
+                holder.symbolInitial.setBackground(bg);
+            } else {
+                GradientDrawable circle = new GradientDrawable();
+                circle.setShape(GradientDrawable.OVAL);
+                circle.setColor(circleColor);
+                holder.symbolInitial.setBackground(circle);
+            }
         }
 
         double buyPrice  = trade.buyPrice;
