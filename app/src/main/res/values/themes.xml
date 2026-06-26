@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <!-- Base Theme — צבעים דינמיים דרך @color מגיבים light/dark אוטומטית -->
+    <!-- Base Theme -->
     <style name="Base.Theme.MogoMarket" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/primary</item>
         <item name="colorPrimaryVariant">@color/primary_dark</item>
@@ -20,22 +20,37 @@
         <item name="materialCardViewStyle">@style/CardStyle</item>
         <item name="android:statusBarColor">@color/bg_primary</item>
         <item name="android:windowLightStatusBar">false</item>
+        <!-- Bottom Nav -->
+        <item name="bottomNavigationStyle">@style/BottomNavStyle</item>
     </style>
 
     <style name="Theme.MogoMarket" parent="Base.Theme.MogoMarket" />
     <style name="Theme.Chart" parent="Base.Theme.MogoMarket" />
     <style name="Base.Theme.Chart" parent="Base.Theme.MogoMarket" />
 
-    <!-- Card -->
+    <!-- Material Card -->
     <style name="CardStyle" parent="Widget.Material3.CardView.Elevated">
         <item name="cardBackgroundColor">@color/bg_card</item>
         <item name="strokeColor">@color/colorDivider</item>
-        <item name="strokeWidth">1dp</item>
+        <item name="strokeWidth">0dp</item>
         <item name="cardCornerRadius">16dp</item>
         <item name="cardElevation">2dp</item>
     </style>
 
-    <!-- כפתור ראשי -->
+    <!-- Bottom Navigation -->
+    <style name="BottomNavStyle" parent="Widget.Material3.BottomNavigationView">
+        <item name="android:background">?attr/colorSurface</item>
+        <item name="elevation">8dp</item>
+        <item name="labelVisibilityMode">labeled</item>
+    </style>
+
+    <!-- Bottom Nav Active Indicator (pill) -->
+    <style name="BottomNavIndicatorStyle">
+        <item name="android:color">@color/primary</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.Material3.Corner.Full</item>
+    </style>
+
+    <!-- Primary Button -->
     <style name="ButtonStyle" parent="Widget.Material3.Button">
         <item name="backgroundTint">@color/primary</item>
         <item name="android:textColor">@color/white</item>
@@ -43,26 +58,26 @@
         <item name="android:textStyle">bold</item>
     </style>
 
-    <!-- כפתור Outlined -->
+    <!-- Outlined Button -->
     <style name="ButtonOutlinedStyle" parent="Widget.Material3.Button.OutlinedButton">
         <item name="strokeColor">@color/primary</item>
         <item name="android:textColor">@color/primary</item>
         <item name="cornerRadius">12dp</item>
     </style>
 
-    <!-- טקסט Gain -->
+    <!-- Gain Text -->
     <style name="TextGain">
         <item name="android:textColor">@color/gain</item>
         <item name="android:textStyle">bold</item>
     </style>
 
-    <!-- טקסט Loss -->
+    <!-- Loss Text -->
     <style name="TextLoss">
         <item name="android:textColor">@color/loss</item>
         <item name="android:textStyle">bold</item>
     </style>
 
-    <!-- Theme Toggle Button -->
+    <!-- Theme Toggle -->
     <style name="ThemeToggleButton" parent="Widget.Material3.Button.IconButton">
         <item name="backgroundTint">@color/theme_toggle_bg</item>
         <item name="iconTint">@color/theme_toggle_icon</item>

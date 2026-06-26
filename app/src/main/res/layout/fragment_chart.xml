@@ -10,84 +10,91 @@
     android:background="@color/bg_primary"
     tools:context=".MainActivity">
 
-    <!-- ===== HEADER ===== -->
-    <LinearLayout
+    <!-- ===== HEADER CARD ===== -->
+    <com.google.android.material.card.MaterialCardView
         android:id="@+id/headerSection"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="@color/bg_card"
-        android:padding="16dp"
         android:layout_marginStart="12dp"
         android:layout_marginEnd="12dp"
-        android:layout_marginTop="12dp">
+        android:layout_marginTop="12dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="4dp"
+        app:strokeWidth="0dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:orientation="vertical"
+            android:padding="16dp">
 
-            <TextView
-                android:id="@+id/tickerText"
-                android:layout_width="0dp"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="-- / --"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:textColor="@color/text_primary"
-                android:letterSpacing="0.02"/>
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
-            <ImageButton
-                android:id="@+id/btnThemeToggle"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:src="@drawable/baseline_brightness_2_24"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Toggle theme"
-                android:tint="@color/text_secondary"
-                android:layout_marginEnd="8dp"/>
+                <TextView
+                    android:id="@+id/tickerText"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="-- / --"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorOnSurface"
+                    android:letterSpacing="0.02"/>
 
-            <TextView
-                android:id="@+id/priceText"
-                android:layout_width="wrap_content"
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnThemeToggle"
+                    style="@style/Widget.Material3.Button.IconButton"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:contentDescription="Toggle theme"
+                    app:icon="@drawable/baseline_brightness_2_24"
+                    app:iconTint="?attr/colorOnSurfaceVariant"
+                    android:layout_marginEnd="4dp" />
+
+                <TextView
+                    android:id="@+id/priceText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="$0.00"
+                    android:textSize="26sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorPrimary"
+                    android:letterSpacing="0.02"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="$0.00"
-                android:textSize="26sp"
-                android:textStyle="bold"
-                android:textColor="@color/primary"
-                android:letterSpacing="0.02"/>
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="4dp">
+
+                <TextView
+                    android:id="@+id/changeText"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="--"
+                    android:textSize="14sp"
+                    android:textColor="@color/gain"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.02"/>
+
+                <TextView
+                    android:id="@+id/currentPriceDisplay"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textSize="12sp"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:visibility="gone"/>
+            </LinearLayout>
         </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginTop="4dp">
-
-            <TextView
-                android:id="@+id/changeText"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="--"
-                android:textSize="14sp"
-                android:textColor="@color/gain"
-                android:textStyle="bold"
-                android:letterSpacing="0.02"/>
-
-            <TextView
-                android:id="@+id/currentPriceDisplay"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text=""
-                android:textSize="12sp"
-                android:textColor="@color/text_secondary"
-                android:visibility="gone"/>
-        </LinearLayout>
-    </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
     <!-- ===== SEARCH ROW ===== -->
     <LinearLayout
@@ -100,112 +107,119 @@
         android:layout_marginTop="10dp"
         android:gravity="center_vertical">
 
-        <androidx.appcompat.widget.AppCompatAutoCompleteTextView
-            android:id="@+id/ticker_input"
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="Enter a ticker"
-            android:paddingHorizontal="14dp"
-            android:textColor="@color/text_primary"
-            android:textColorHint="@color/text_secondary"
-            android:textSize="15sp"
-            android:background="@color/bg_card"
-            android:elevation="2dp"
-            android:inputType="text"
-            android:singleLine="true"
-            android:imeOptions="actionSearch"
-            android:textDirection="ltr"
-            android:popupBackground="@color/bg_card"
-            android:layout_marginEnd="10dp"/>
+            android:layout_marginEnd="10dp"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            app:startIconDrawable="@android:drawable/ic_menu_search"
+            app:startIconTint="?attr/colorOnSurfaceVariant">
 
-        <androidx.appcompat.widget.AppCompatButton
+            <androidx.appcompat.widget.AppCompatAutoCompleteTextView
+                android:id="@+id/ticker_input"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:hint="Enter a ticker"
+                android:textColor="?attr/colorOnSurface"
+                android:textColorHint="?attr/colorOnSurfaceVariant"
+                android:textSize="15sp"
+                android:inputType="text"
+                android:singleLine="true"
+                android:imeOptions="actionSearch"
+                android:textDirection="ltr"
+                android:popupBackground="?attr/colorSurface" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnLoad"
+            style="@style/Widget.Material3.Button"
             android:layout_width="110dp"
             android:layout_height="48dp"
             android:text="OPEN"
-            android:textColor="@color/bg_primary"
-            android:textStyle="bold"
-            android:backgroundTint="@color/primary"
-            android:stateListAnimator="@null"
-            android:elevation="2dp"/>
+            android:textStyle="bold" />
     </LinearLayout>
 
     <!-- ===== CONTROLS ROW ===== -->
-    <LinearLayout
+    <com.google.android.material.card.MaterialCardView
         android:id="@+id/controlsSection"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
         android:layout_marginStart="12dp"
         android:layout_marginEnd="12dp"
         android:layout_marginTop="8dp"
-        android:background="@color/bg_card"
-        android:padding="10dp"
-        android:layoutDirection="ltr">
+        app:cardCornerRadius="14dp"
+        app:cardElevation="2dp"
+        app:strokeWidth="0dp">
 
-        <ImageButton
-            android:id="@+id/btnChartRefresh"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
-            android:background="@drawable/main_refresh_button"
-            android:contentDescription="רענן"
-            android:src="@drawable/baseline_refresh_24"/>
-
-        <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/btnSelectTimeFrame"
-            android:layout_width="wrap_content"
-            android:layout_height="44dp"
-            android:text="Time frame"
-            android:textColor="@color/bg_primary"
-            android:backgroundTint="@color/primary"
-            android:paddingHorizontal="12dp"
-            android:layout_marginStart="10dp"
-            android:stateListAnimator="@null"/>
-
-        <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/btnToggleChart"
-            android:layout_width="wrap_content"
-            android:layout_height="44dp"
-            android:text="Line chart"
-            android:textColor="@color/bg_primary"
-            android:backgroundTint="@color/primary_dark"
-            android:paddingHorizontal="12dp"
-            android:layout_marginStart="10dp"
-            android:stateListAnimator="@null"/>
-
-        <androidx.appcompat.widget.AppCompatButton
-            android:id="@+id/btnAIAnalysis"
-            android:layout_width="wrap_content"
-            android:layout_height="44dp"
-            android:text="AI"
-            android:textColor="@color/bg_primary"
-            android:backgroundTint="@color/gain"
-            android:paddingHorizontal="12dp"
-            android:layout_marginStart="10dp"
-            android:stateListAnimator="@null"/>
-
-        <ImageButton
-            android:id="@+id/btnExpandChart"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:src="@drawable/baseline_fullscreen_24"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="הגדל גרף"
-            android:tint="@color/text_secondary"
-            android:layout_marginStart="10dp"/>
-
-        <ProgressBar
-            android:id="@+id/progressAI"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:visibility="gone"/>
-    </LinearLayout>
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="10dp"
+            android:layoutDirection="ltr">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnChartRefresh"
+                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:contentDescription="רענן"
+                app:icon="@drawable/baseline_refresh_24" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSelectTimeFrame"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:text="Timeframe"
+                android:paddingHorizontal="12dp"
+                android:layout_marginStart="8dp"
+                android:textAllCaps="false" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnToggleChart"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:text="Line"
+                android:paddingHorizontal="12dp"
+                android:layout_marginStart="8dp"
+                android:textAllCaps="false" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAIAnalysis"
+                style="@style/Widget.Material3.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:text="AI ✦"
+                android:backgroundTint="@color/gain"
+                android:paddingHorizontal="12dp"
+                android:layout_marginStart="8dp"
+                android:textAllCaps="false" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnExpandChart"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:contentDescription="הגדל גרף"
+                android:layout_marginStart="4dp"
+                app:icon="@drawable/baseline_fullscreen_24"
+                app:iconTint="?attr/colorOnSurfaceVariant" />
+
+            <ProgressBar
+                android:id="@+id/progressAI"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:visibility="gone" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
     <!-- ===== CHART AREA ===== -->
-    <FrameLayout
+    <com.google.android.material.card.MaterialCardView
         android:id="@+id/chartContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -213,74 +227,89 @@
         android:layout_marginStart="12dp"
         android:layout_marginEnd="12dp"
         android:layout_marginTop="8dp"
-        android:background="@color/bg_card"
-        android:padding="4dp">
+        app:cardCornerRadius="16dp"
+        app:cardElevation="2dp"
+        app:strokeWidth="0dp">
 
-        <com.github.mikephil.charting.charts.CandleStickChart
-            android:id="@+id/stock_chart"
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@color/bg_card"/>
+            android:padding="4dp">
 
-        <com.github.mikephil.charting.charts.LineChart
-            android:id="@+id/line_chart"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="@color/bg_card"
-            android:visibility="gone"/>
+            <com.github.mikephil.charting.charts.CandleStickChart
+                android:id="@+id/stock_chart"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="?attr/colorSurface" />
 
-        <ImageButton
-            android:id="@+id/btnExitFullscreen"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:src="@drawable/baseline_fullscreen_exit_24"
-            android:background="#AA151C2E"
-            android:tint="@color/text_primary"
-            android:contentDescription="צא ממסך מלא"
-            android:layout_gravity="top|end"
-            android:layout_margin="8dp"
-            android:visibility="gone"/>
-    </FrameLayout>
+            <com.github.mikephil.charting.charts.LineChart
+                android:id="@+id/line_chart"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="?attr/colorSurface"
+                android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnExitFullscreen"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:backgroundTint="#AA151C2E"
+                android:contentDescription="צא ממסך מלא"
+                android:layout_gravity="top|end"
+                android:layout_margin="8dp"
+                android:visibility="gone"
+                app:icon="@drawable/baseline_fullscreen_exit_24"
+                app:iconTint="?attr/colorOnSurface" />
+        </FrameLayout>
+    </com.google.android.material.card.MaterialCardView>
 
     <!-- ===== BOTTOM INFO BAR ===== -->
-    <LinearLayout
+    <com.google.android.material.card.MaterialCardView
         android:id="@+id/bottomBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:background="@color/bg_card"
-        android:padding="12dp"
         android:layout_marginStart="12dp"
         android:layout_marginEnd="12dp"
         android:layout_marginTop="6dp"
-        android:layout_marginBottom="6dp">
+        android:layout_marginBottom="6dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="2dp"
+        app:strokeWidth="0dp">
 
-        <TextView
-            android:id="@+id/timeFrameText"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Timeframe: --"
-            android:textSize="12sp"
-            android:textColor="@color/text_secondary"
-            android:letterSpacing="0.02"/>
+            android:orientation="horizontal"
+            android:padding="12dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="H: --"
-            android:textSize="12sp"
-            android:textColor="@color/gain"
-            android:layout_marginEnd="12dp"
-            android:letterSpacing="0.02"/>
+            <TextView
+                android:id="@+id/timeFrameText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Timeframe: --"
+                android:textSize="12sp"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:letterSpacing="0.02" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="L: --"
-            android:textSize="12sp"
-            android:textColor="@color/loss"
-            android:letterSpacing="0.02"/>
-    </LinearLayout>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="H: --"
+                android:textSize="12sp"
+                android:textColor="@color/gain"
+                android:layout_marginEnd="12dp"
+                android:letterSpacing="0.02" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="L: --"
+                android:textSize="12sp"
+                android:textColor="@color/loss"
+                android:letterSpacing="0.02" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
 </LinearLayout>

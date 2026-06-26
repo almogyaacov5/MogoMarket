@@ -5,9 +5,6 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -15,13 +12,15 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
+
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String PREFS_NAME = "app_prefs";
     private static final String KEY_THEME  = "dark_mode";
 
-    private boolean isDarkMode = true;
     private int currentNavId = -1;
 
     private final ActivityResultLauncher<String> notificationPermissionLauncher =
@@ -33,7 +32,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        isDarkMode = prefs.getBoolean(KEY_THEME, true);
+        boolean isDarkMode = prefs.getBoolean(KEY_THEME, true);
         AppCompatDelegate.setDefaultNightMode(
                 isDarkMode ? AppCompatDelegate.MODE_NIGHT_YES
                            : AppCompatDelegate.MODE_NIGHT_NO);
@@ -41,12 +40,6 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         if (getSupportActionBar() != null) getSupportActionBar().hide();
-
-        // צבע ניווט תחתון דינמי מה-Theme
-        LinearLayout bottomNav = findViewById(R.id.bottom_nav_bar);
-        if (bottomNav != null) {
-            bottomNav.setBackgroundColor(getColor(R.color.nav_bar_bg));
-        }
 
         requestNotificationPermissionIfNeeded();
         PriceAlertScheduler.schedule(this);
@@ -58,12 +51,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupBottomNav() {
-        findViewById(R.id.nav_btn_chart).setOnClickListener(v     -> navigateTo(R.id.nav_chart));
-        findViewById(R.id.nav_btn_stocks).setOnClickListener(v    -> navigateTo(R.id.nav_stocks));
-        findViewById(R.id.nav_btn_portfolio).setOnClickListener(v -> navigateTo(R.id.nav_portfolio));
-        findViewById(R.id.nav_btn_closed).setOnClickListener(v    -> navigateTo(R.id.nav_closed_trades));
-        findViewById(R.id.nav_btn_simulator).setOnClickListener(v -> navigateTo(R.id.nav_simulator));
-        findViewById(R.id.nav_btn_settings).setOnClickListener(v  -> navigateTo(R.id.nav_settings));
+        BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
+        bottomNav.setOnItemSelectedListener(item -> {
+            navigateTo(item.getItemId());
+            return true;
+        });
     }
 
     private void navigateTo(int id) {
@@ -71,7 +63,7 @@ public class MainActivity extends AppCompatActivity {
         currentNavId = id;
 
         Fragment fragment = null;
-        String   title    = "";
+        String title = "";
 
         if      (id == R.id.nav_chart)         { fragment = new ChartFragment();        title = "Chart"; }
         else if (id == R.id.nav_stocks)        { fragment = new WatchlistFragment();    title = "Watchlist"; }
@@ -81,36 +73,21 @@ public class MainActivity extends AppCompatActivity {
         else if (id == R.id.nav_settings)      { fragment = new SettingsFragment();     title = "Settings"; }
 
         if (fragment != null) {
-            getSupportFragmentManager()
+            FragmentTransaction tx = getSupportFragmentManager()
                     .beginTransaction()
-                    .replace(R.id.fragment_container, fragment)
-                    .commit();
+                    .setCustomAnimations(
+                            android.R.anim.fade_in,
+                            android.R.anim.fade_out
+                    )
+                    .replace(R.id.fragment_container, fragment);
+            tx.commit();
             setTitle(title);
-            updateNavHighlight(id);
-        }
-    }
 
-    private void updateNavHighlight(int selectedId) {
-        int[][] navMap = {
-            {R.id.nav_chart,         R.id.nav_icon_chart,     R.id.nav_label_chart},
-            {R.id.nav_stocks,        R.id.nav_icon_stocks,    R.id.nav_label_stocks},
-            {R.id.nav_portfolio,     R.id.nav_icon_portfolio, R.id.nav_label_portfolio},
-            {R.id.nav_closed_trades, R.id.nav_icon_closed,    R.id.nav_label_closed},
-            {R.id.nav_simulator,     R.id.nav_icon_simulator, R.id.nav_label_simulator},
-            {R.id.nav_settings,      R.id.nav_icon_settings,  R.id.nav_label_settings},
-        };
-
-        // צבעים דינמיים מה-Theme
-        int activeColor   = getColor(R.color.nav_active);
-        int inactiveColor = getColor(R.color.nav_inactive);
-
-        for (int[] entry : navMap) {
-            boolean   active = (entry[0] == selectedId);
-            int       color  = active ? activeColor : inactiveColor;
-            ImageView icon   = findViewById(entry[1]);
-            TextView  label  = findViewById(entry[2]);
-            if (icon  != null) icon.setColorFilter(color);
-            if (label != null) label.setTextColor(color);
+            // sync bottom nav selected item
+            BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
+            if (bottomNav != null && bottomNav.getSelectedItemId() != id) {
+                bottomNav.setSelectedItemId(id);
+            }
         }
     }
 
@@ -119,13 +96,31 @@ public class MainActivity extends AppCompatActivity {
         Bundle args = new Bundle();
         args.putString("symbol", symbol);
         chartFragment.setArguments(args);
+
+        FragmentTransaction tx = getSupportFragmentManager()
+                .beginTransaction()
+                .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
+                .replace(R.id.fragment_container, chartFragment);
+        tx.commit();
+
+        setTitle("Chart");
+        currentNavId = R.id.nav_chart;
+
+        BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
+        if (bottomNav != null) bottomNav.setSelectedItemId(R.id.nav_chart);
+    }
+
+    // ── Public helper so any fragment can open P&L Calculator ────────────────
+    public void openPnlCalculator() {
         getSupportFragmentManager()
                 .beginTransaction()
-                .replace(R.id.fragment_container, chartFragment)
+                .setCustomAnimations(
+                        android.R.anim.slide_in_left,
+                        android.R.anim.slide_out_right
+                )
+                .replace(R.id.fragment_container, new PnlCalculatorFragment())
+                .addToBackStack(null)
                 .commit();
-        setTitle("Chart");
-        updateNavHighlight(R.id.nav_chart);
-        currentNavId = R.id.nav_chart;
     }
 
     private void requestNotificationPermissionIfNeeded() {
