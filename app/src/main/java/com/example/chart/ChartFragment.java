@@ -313,45 +313,48 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
         private void handleDragMove(MotionEvent event) {
             float dx = event.getX() - dragStartX;
+            float dy = event.getY() - dragStartY;
 
             Matrix matrix = chart.getViewPortHandler().getMatrixTouch();
             float[] vals = new float[9];
             matrix.getValues(vals);
 
-            float scaleX      = vals[Matrix.MSCALE_X];
-            float transX      = vals[Matrix.MTRANS_X];
-            float offsetLeft  = chart.getViewPortHandler().offsetLeft();
+            float scaleX       = vals[Matrix.MSCALE_X];
+            float scaleY       = vals[Matrix.MSCALE_Y];
+            float transX       = vals[Matrix.MTRANS_X];
+            float transY       = vals[Matrix.MTRANS_Y];
+            float offsetLeft   = chart.getViewPortHandler().offsetLeft();
+            float offsetTop    = chart.getViewPortHandler().offsetTop();
             float contentWidth = chart.getViewPortHandler().contentWidth();
+            float contentHeight= chart.getViewPortHandler().contentHeight();
 
-            // מספר הנרות הכולל
+            // ---- גבולות X ----
             int entryCount = 0;
             if (chart.getData() != null && chart.getData().getDataSetCount() > 0) {
                 entryCount = chart.getData().getDataSetByIndex(0).getEntryCount();
             }
-            if (entryCount == 0) {
-                vals[Matrix.MTRANS_X] = transX + dx;
-                matrix.setValues(vals);
-                chart.getViewPortHandler().refresh(matrix, chart, true);
-                return;
+
+            float newTransX;
+            if (entryCount > 1) {
+                float pixelsPerEntry = (contentWidth * scaleX) / entryCount;
+                float totalScaledWidth = pixelsPerEntry * entryCount;
+                float maxTransX = offsetLeft;
+                // מאפשר לגלול עד שהנר האחרון נמצא בקצה שמאל + רווח של נר אחד
+                float minTransX = offsetLeft - totalScaledWidth + contentWidth - pixelsPerEntry * 2f;
+                newTransX = Math.min(maxTransX, Math.max(minTransX, transX + dx));
+            } else {
+                newTransX = transX + dx;
             }
 
-            // כמה פיקסלים לוקח כל נר בסקייל הנוכחי
-            float pixelsPerEntry = (contentWidth * scaleX) / entryCount;
-
-            // הגבול השמאלי: לא לחצות את תחילת הנתונים
-            float maxTransX = offsetLeft;
-
-            // הגבול הימני: הנר האחרון צריך להיות גלוי מימין
-            // התוכן הסרוק כולו = contentWidth * scaleX
-            // אנחנו רוצים שהנר האחרון (index = entryCount-1) יוכל להיות בצד ימין של המסך
-            // + padding של נר אחד נוסף כדי שיהיה נוח לראות
-            float totalScaledWidth = pixelsPerEntry * entryCount;
-            float minTransX = offsetLeft - (totalScaledWidth - contentWidth) - pixelsPerEntry;
-
-            float newTransX = transX + dx;
-            newTransX = Math.min(maxTransX, Math.max(minTransX, newTransX));
+            // ---- גבולות Y ----
+            // כשיש זום על Y, מאפשרים גלילה חופשית למעלה ולמטה
+            float totalScaledHeight = contentHeight * scaleY;
+            float maxTransY = offsetTop;
+            float minTransY = offsetTop - totalScaledHeight + contentHeight;
+            float newTransY = Math.min(maxTransY, Math.max(minTransY, transY + dy));
 
             vals[Matrix.MTRANS_X] = newTransX;
+            vals[Matrix.MTRANS_Y] = newTransY;
             matrix.setValues(vals);
             chart.getViewPortHandler().refresh(matrix, chart, true);
         }
