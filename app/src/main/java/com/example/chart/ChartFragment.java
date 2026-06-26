@@ -318,15 +318,19 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             float[] vals = new float[9];
             matrix.getValues(vals);
 
-            float scaleX        = vals[Matrix.MSCALE_X];
-            float transX        = vals[Matrix.MTRANS_X];
-            float offsetLeft    = chart.getViewPortHandler().offsetLeft();
-            float offsetRight   = chart.getViewPortHandler().offsetRight();
-            float chartWidth    = chart.getViewPortHandler().getChartWidth();
-            float contentWidth  = chartWidth - offsetLeft - offsetRight;
+            float scaleX       = vals[Matrix.MSCALE_X];
+            float transX       = vals[Matrix.MTRANS_X];
+            float offsetLeft   = chart.getViewPortHandler().offsetLeft();
+            float offsetRight  = chart.getViewPortHandler().offsetRight();
+            float chartWidth   = chart.getViewPortHandler().getChartWidth();
+            float contentWidth = chartWidth - offsetLeft - offsetRight;
 
+            // maxTransX: גבול שמאלי (תחילת הנתונים)
             float maxTransX = offsetLeft;
-            float minTransX = -(contentWidth * scaleX - contentWidth) + offsetLeft;
+            // minTransX: גבול ימני — מאפשר לגלול עד לנר האחרון (הנוכחי)
+            // הוספת contentWidth / scaleX מאפשרת לנר האחרון להופיע בצד שמאל של המסך
+            float scaledContent = contentWidth * scaleX;
+            float minTransX = -(scaledContent - contentWidth) + offsetLeft;
 
             float newTransX = transX + dx;
             newTransX = Math.min(maxTransX, Math.max(minTransX, newTransX));
