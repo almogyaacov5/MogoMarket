@@ -26,4 +26,9 @@
         android:icon="@drawable/ic_nav_simulator"
         android:title="Simulator" />
 
+    <item
+        android:id="@+id/nav_settings"
+        android:icon="@drawable/ic_nav_settings"
+        android:title="Settings" />
+
 </menu>
