@@ -19,7 +19,6 @@
         android:gravity="center_vertical"
         android:padding="14dp">
 
-        <!-- עיגול אות -->
         <TextView
             android:id="@+id/symbolInitialWatchlist"
             android:layout_width="44dp"
@@ -28,9 +27,9 @@
             android:textColor="@color/white"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:background="@drawable/circle_bg" />
+            android:background="@drawable/circle_bg"
+            android:clipToOutline="true" />
 
-        <!-- שם + שינוי + התראה -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -64,7 +63,6 @@
                 android:text="Price Alert: Off" />
         </LinearLayout>
 
-        <!-- מחיר + כפתורים -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -85,7 +83,6 @@
                 android:orientation="horizontal"
                 android:layout_marginTop="4dp">
 
-                <!-- כפתור התראת מחיר -->
                 <ImageButton
                     android:id="@+id/btnSetAlert"
                     android:layout_width="32dp"
@@ -95,7 +92,6 @@
                     android:contentDescription="Set Alert"
                     android:tint="?attr/colorPrimary" />
 
-                <!-- כפתור מחיקה -->
                 <ImageButton
                     android:id="@+id/btnDeleteStock"
                     android:layout_width="32dp"
