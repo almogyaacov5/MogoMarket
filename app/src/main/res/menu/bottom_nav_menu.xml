@@ -19,16 +19,11 @@
     <item
         android:id="@+id/nav_closed_trades"
         android:icon="@drawable/ic_nav_closed"
-        android:title="Closed" />
+        android:title="Trades" />
 
     <item
         android:id="@+id/nav_simulator"
         android:icon="@drawable/ic_nav_simulator"
-        android:title="Sim" />
-
-    <item
-        android:id="@+id/nav_settings"
-        android:icon="@drawable/ic_nav_settings"
-        android:title="Settings" />
+        android:title="Simulator" />
 
 </menu>
