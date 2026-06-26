@@ -318,15 +318,29 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             float[] vals = new float[9];
             matrix.getValues(vals);
 
-            float scaleX        = vals[Matrix.MSCALE_X];
-            float transX        = vals[Matrix.MTRANS_X];
-            float offsetLeft    = chart.getViewPortHandler().offsetLeft();
-            float offsetRight   = chart.getViewPortHandler().offsetRight();
-            float chartWidth    = chart.getViewPortHandler().getChartWidth();
-            float contentWidth  = chartWidth - offsetLeft - offsetRight;
+            float scaleX      = vals[Matrix.MSCALE_X];
+            float transX      = vals[Matrix.MTRANS_X];
+            float offsetLeft  = chart.getViewPortHandler().offsetLeft();
+            float offsetRight = chart.getViewPortHandler().offsetRight();
+            float chartWidth  = chart.getViewPortHandler().getChartWidth();
+            float contentWidth = chartWidth - offsetLeft - offsetRight;
 
+            // מספר הנרות הכולל מהדאטא
+            float entryCount = 0;
+            if (chart.getData() != null && chart.getData().getDataSetCount() > 0) {
+                entryCount = chart.getData().getDataSetByIndex(0).getEntryCount();
+            }
+
+            // רוחב כל נר בפיקסלים לפי הסקייל הנוכחי
+            float candleWidthPx = (entryCount > 1) ? (contentWidth * scaleX / (entryCount - 1)) : contentWidth * scaleX;
+
+            // maxTransX: גבול שמאלי — תחילת הנתונים
             float maxTransX = offsetLeft;
-            float minTransX = -(contentWidth * scaleX - contentWidth) + offsetLeft;
+
+            // minTransX: גבול ימני — הנר האחרון (הנוכחי) יוצג בצד ימין עם קצת רווח
+            // נחשב את המיקום של הנר האחרון בפיקסלים ומוסיפים רווח של חצי מרוחב נר
+            float totalScaledWidth = contentWidth * scaleX;
+            float minTransX = -(totalScaledWidth - contentWidth) + offsetLeft - candleWidthPx * 0.5f;
 
             float newTransX = transX + dx;
             newTransX = Math.min(maxTransX, Math.max(minTransX, newTransX));
