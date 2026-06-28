@@ -57,13 +57,12 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         StockData stock = stocks.get(position);
         Context ctx = holder.itemView.getContext();
 
-        int colorGain    = ctx.getColor(R.color.gain);
-        int colorLoss    = ctx.getColor(R.color.loss);
-        int colorPrimary = ctx.getColor(R.color.primary);
-        int textPrimary  = ctx.getColor(R.color.text_primary);
-        int textSecondary= ctx.getColor(R.color.text_secondary);
-        int bgCard       = ctx.getColor(R.color.bg_card);
-        int colorNeutral = textSecondary;
+        int colorGain     = ctx.getColor(R.color.gain);
+        int colorLoss     = ctx.getColor(R.color.loss);
+        int textPrimary   = ctx.getColor(R.color.text_primary);
+        int textSecondary = ctx.getColor(R.color.text_secondary);
+        int bgCard        = ctx.getColor(R.color.bg_card);
+        int colorNeutral  = textSecondary;
 
         holder.itemView.setBackgroundColor(bgCard);
 
@@ -133,7 +132,6 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
             }
         });
 
-        // לחיצה על כפתור עריכה -> פותח דיאלוג עריכה
         holder.btnEdit.setOnClickListener(view -> showEditDialog(ctx, stock));
         holder.btnDelete.setOnClickListener(view -> showSellPriceDialog(ctx, stock.symbol));
         holder.itemView.setOnClickListener(view -> listener.onStockClick(stock.symbol));
@@ -152,62 +150,38 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         layout.setOrientation(LinearLayout.VERTICAL);
         int pad = dpToPx(context, 16);
         layout.setPadding(pad, pad, pad, pad);
-        layout.setSpacing(dpToPx(context, 8));
+        // אין setSpacing ב-LinearLayout - משתמשים ב-LayoutParams margins
 
-        // טיקר
-        TextView lblSymbol = new TextView(context);
-        lblSymbol.setText("טיקר (סימבול)");
-        EditText etSymbol = new EditText(context);
-        etSymbol.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
+        layout.addView(makeLabel(context, "טיקר (סימבול)"));
+        EditText etSymbol = makeEditText(context, InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
         etSymbol.setText(stock.symbol != null ? stock.symbol : "");
-        layout.addView(lblSymbol);
         layout.addView(etSymbol);
 
-        // שם החברה
-        TextView lblName = new TextView(context);
-        lblName.setText("שם החברה (אופציונלי)");
-        EditText etName = new EditText(context);
-        etName.setInputType(InputType.TYPE_CLASS_TEXT);
+        layout.addView(makeLabel(context, "שם החברה (אופציונלי)"));
+        EditText etName = makeEditText(context, InputType.TYPE_CLASS_TEXT);
         etName.setText(stock.name != null ? stock.name : "");
-        layout.addView(lblName);
         layout.addView(etName);
 
-        // מחיר קנייה
-        TextView lblBuyPrice = new TextView(context);
-        lblBuyPrice.setText("מחיר קנייה ($)");
-        EditText etBuyPrice = new EditText(context);
-        etBuyPrice.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        layout.addView(makeLabel(context, "מחיר קנייה ($)"));
+        EditText etBuyPrice = makeEditText(context, InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         etBuyPrice.setText(stock.buyPrice > 0 ? String.format(Locale.US, "%.2f", stock.buyPrice) : "");
-        layout.addView(lblBuyPrice);
         layout.addView(etBuyPrice);
 
-        // סכום השקעה
-        TextView lblAmount = new TextView(context);
-        lblAmount.setText("סכום השקעה ($)");
-        EditText etAmount = new EditText(context);
-        etAmount.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        layout.addView(makeLabel(context, "סכום השקעה ($)"));
+        EditText etAmount = makeEditText(context, InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         etAmount.setText(stock.tradeAmount > 0 ? String.format(Locale.US, "%.2f", stock.tradeAmount) : "");
-        layout.addView(lblAmount);
         layout.addView(etAmount);
 
-        // מחיר יעד
-        TextView lblTarget = new TextView(context);
-        lblTarget.setText("מחיר יעד ($) - אופציונלי");
-        EditText etTarget = new EditText(context);
-        etTarget.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        layout.addView(makeLabel(context, "מחיר יעד ($) - אופציונלי"));
+        EditText etTarget = makeEditText(context, InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         etTarget.setText(stock.targetPrice > 0 ? String.format(Locale.US, "%.2f", stock.targetPrice) : "");
-        layout.addView(lblTarget);
         layout.addView(etTarget);
 
-        // הערות
-        TextView lblNotes = new TextView(context);
-        lblNotes.setText("הערות / סיבת קנייה - אופציונלי");
-        EditText etNotes = new EditText(context);
-        etNotes.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        layout.addView(makeLabel(context, "הערות / סיבת קנייה - אופציונלי"));
+        EditText etNotes = makeEditText(context, InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
         etNotes.setLines(2);
         etNotes.setMaxLines(3);
         etNotes.setText(stock.notes != null ? stock.notes : "");
-        layout.addView(lblNotes);
         layout.addView(etNotes);
 
         builder.setView(layout);
@@ -218,22 +192,16 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
                 Toast.makeText(context, "טיקר לא יכול להיות ריק", Toast.LENGTH_SHORT).show();
                 return;
             }
-
-            String oldSymbol = stock.symbol;
-
-            stock.symbol = newSymbol;
-            stock.name   = etName.getText().toString().trim();
-
-            String buyStr = etBuyPrice.getText().toString().trim();
-            stock.buyPrice = buyStr.isEmpty() ? 0f : Float.parseFloat(buyStr);
-
-            String amountStr = etAmount.getText().toString().trim();
+            String oldSymbol  = stock.symbol;
+            stock.symbol      = newSymbol;
+            stock.name        = etName.getText().toString().trim();
+            String buyStr     = etBuyPrice.getText().toString().trim();
+            stock.buyPrice    = buyStr.isEmpty() ? 0f : Float.parseFloat(buyStr);
+            String amountStr  = etAmount.getText().toString().trim();
             stock.tradeAmount = amountStr.isEmpty() ? 0 : Double.parseDouble(amountStr);
-
-            String targetStr = etTarget.getText().toString().trim();
+            String targetStr  = etTarget.getText().toString().trim();
             stock.targetPrice = targetStr.isEmpty() ? 0f : Float.parseFloat(targetStr);
-
-            stock.notes = etNotes.getText().toString().trim();
+            stock.notes       = etNotes.getText().toString().trim();
 
             listener.onStockEdit(stock, oldSymbol);
             notifyDataSetChanged();
@@ -242,6 +210,30 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
 
         builder.setNegativeButton("ביטול", (dialog, which) -> dialog.cancel());
         builder.show();
+    }
+
+    // ========================= HELPERS =========================
+
+    private TextView makeLabel(Context context, String text) {
+        TextView tv = new TextView(context);
+        tv.setText(text);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = dpToPx(context, 10);
+        tv.setLayoutParams(lp);
+        return tv;
+    }
+
+    private EditText makeEditText(Context context, int inputType) {
+        EditText et = new EditText(context);
+        et.setInputType(inputType);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.bottomMargin = dpToPx(context, 4);
+        et.setLayoutParams(lp);
+        return et;
     }
 
     // ========================= FETCH PRICE =========================
