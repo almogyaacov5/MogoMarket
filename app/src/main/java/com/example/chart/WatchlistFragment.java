@@ -5,7 +5,9 @@ import android.app.NotificationManager;
 import android.content.Context;
 import android.os.Build;
 import android.os.Bundle;
+import android.text.Editable;
 import android.text.InputType;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,6 +22,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -71,15 +75,16 @@ public class WatchlistFragment extends Fragment {
         };
 
         adapter = new WatchlistAdapter(watchlist, listener);
+
         RecyclerView recyclerView = v.findViewById(R.id.watchlistRecyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(adapter);
 
+        // ---- Add stock ----
         TextInputEditText stockInput       = v.findViewById(R.id.stockInput);
         MaterialButton   addStockBtn       = v.findViewById(R.id.addStockBtn);
         MaterialButton   btnRefreshWatchlist = v.findViewById(R.id.btnRefreshWatchlist);
 
-        // null-safety: אם ה-Views לא קיימים ב-XML לא קורסים
         if (addStockBtn != null && stockInput != null) {
             addStockBtn.setOnClickListener(view -> {
                 String symbol = stockInput.getText().toString().trim().toUpperCase();
@@ -95,11 +100,37 @@ public class WatchlistFragment extends Fragment {
 
         if (btnRefreshWatchlist != null) {
             btnRefreshWatchlist.setOnClickListener(view -> {
-                if (adapter != null) adapter.notifyDataSetChanged();
-                Toast.makeText(getContext(), "Watchlist refreshed", Toast.LENGTH_SHORT).show();
+                if (adapter != null) adapter.refresh();
+                Toast.makeText(getContext(), "Refreshed", Toast.LENGTH_SHORT).show();
             });
         }
 
+        // ---- Search ----
+        TextInputEditText searchInput = v.findViewById(R.id.searchInput);
+        if (searchInput != null) {
+            searchInput.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    if (adapter != null) adapter.setSearch(s.toString());
+                }
+                @Override public void afterTextChanged(Editable s) {}
+            });
+        }
+
+        // ---- Chips: Default / Gainers / Losers / A-Z ----
+        ChipGroup sortChipGroup = v.findViewById(R.id.sortChipGroup);
+        if (sortChipGroup != null) {
+            sortChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
+                if (checkedIds.isEmpty() || adapter == null) return;
+                int id = checkedIds.get(0);
+                if      (id == R.id.chipSortGain)  adapter.setFilter("gain");
+                else if (id == R.id.chipSortLoss)  adapter.setFilter("loss");
+                else if (id == R.id.chipSortAlpha) adapter.setFilter("alpha");
+                else                               adapter.setFilter("default");
+            });
+        }
+
+        // ---- Firebase listener ----
         watchlistRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -108,7 +139,7 @@ public class WatchlistFragment extends Fragment {
                     StockWatchData data = ds.getValue(StockWatchData.class);
                     if (data != null) watchlist.add(data);
                 }
-                if (adapter != null) adapter.notifyDataSetChanged();
+                if (adapter != null) adapter.refresh();
             }
 
             @Override

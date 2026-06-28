@@ -14,6 +14,8 @@ import androidx.core.app.NotificationManagerCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -34,15 +36,74 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
 
     public static final String ALERT_CHANNEL_ID = "stock_alert_channel";
 
-    private final List<StockWatchData> stocks;
+    // displayList = מה שמוצג כרגע, originalList = כל הנתונים המלאים
+    private final List<StockWatchData> displayList;
+    private final List<StockWatchData> originalList;
     private final OnWatchStockClickListener listener;
     private final OkHttpClient httpClient = new OkHttpClient();
     private final String API_KEY = "0518811f0d394fa39842a8024a25c049";
 
+    // מצב פילטר נוכחי
+    private String currentFilter = "default"; // default / gain / loss / alpha
+    private String currentSearch = "";
+
     public WatchlistAdapter(List<StockWatchData> stocks, OnWatchStockClickListener listener) {
-        this.stocks = stocks;
-        this.listener = listener;
+        this.originalList = stocks;
+        this.displayList  = new ArrayList<>(stocks);
+        this.listener     = listener;
     }
+
+    // ---- Public API לפילטור ומיון ----
+
+    public void setFilter(String filter) {
+        currentFilter = filter;
+        applyFilterAndSort();
+    }
+
+    public void setSearch(String query) {
+        currentSearch = query == null ? "" : query.trim().toUpperCase();
+        applyFilterAndSort();
+    }
+
+    /** קורא לזה כשה-originalList עודכנה (לאחר notifyDataSetChanged ב-Fragment) */
+    public void refresh() {
+        applyFilterAndSort();
+    }
+
+    private void applyFilterAndSort() {
+        // 1. סינון לפי חיפוש
+        List<StockWatchData> filtered = new ArrayList<>();
+        for (StockWatchData s : originalList) {
+            if (s.symbol != null && s.symbol.toUpperCase().contains(currentSearch)) {
+                filtered.add(s);
+            }
+        }
+
+        // 2. מיון לפי פילטר
+        switch (currentFilter) {
+            case "gain":
+                Collections.sort(filtered, (a, b) -> Float.compare(b.dayChange, a.dayChange));
+                break;
+            case "loss":
+                Collections.sort(filtered, (a, b) -> Float.compare(a.dayChange, b.dayChange));
+                break;
+            case "alpha":
+                Collections.sort(filtered, (a, b) -> {
+                    if (a.symbol == null) return 1;
+                    if (b.symbol == null) return -1;
+                    return a.symbol.compareTo(b.symbol);
+                });
+                break;
+            default: // default - סדר הוספה
+                break;
+        }
+
+        displayList.clear();
+        displayList.addAll(filtered);
+        notifyDataSetChanged();
+    }
+
+    // ---- Adapter ----
 
     @NonNull
     @Override
@@ -54,25 +115,40 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
 
     @Override
     public void onBindViewHolder(@NonNull WatchViewHolder holder, int position) {
-        StockWatchData stock = stocks.get(position);
+        StockWatchData stock = displayList.get(position);
         Context ctx = holder.itemView.getContext();
 
-        // צבעים דינמיים מה-Theme
-        int bgCard        = ctx.getColor(R.color.bg_card);
         int textPrimary   = ctx.getColor(R.color.text_primary);
         int textSecondary = ctx.getColor(R.color.text_secondary);
         int colorGain     = ctx.getColor(R.color.gain);
         int colorLoss     = ctx.getColor(R.color.loss);
         int colorPrimary  = ctx.getColor(R.color.primary);
 
-        holder.itemView.setBackgroundColor(bgCard);
         holder.symbolText.setText(stock.symbol);
         holder.symbolText.setTextColor(textPrimary);
         updateAlertText(holder, stock, colorPrimary, textSecondary);
 
+        // אם כבר יש dayChange שמור - נציג אותו מיד (לפני הקריאה)
+        if (stock.dayChange != 0f || stock.currentPrice != 0f) {
+            holder.priceText.setText(String.format(Locale.US, "$%.2f", stock.currentPrice));
+            holder.priceText.setTextColor(colorPrimary);
+            String arrow = stock.dayChange >= 0 ? "▲" : "▼";
+            holder.dayChangeText.setText(
+                    String.format(Locale.US, "%s %.2f%%", arrow, Math.abs(stock.dayChange)));
+            holder.dayChangeText.setTextColor(stock.dayChange >= 0 ? colorGain : colorLoss);
+        } else {
+            holder.priceText.setText("...");
+            holder.priceText.setTextColor(textSecondary);
+            holder.dayChangeText.setText("");
+        }
+
         fetchStockData(stock.symbol, "1day", new StockDataCallback() {
             @Override
             public void onDataReceived(float price, float dayChange) {
+                // שמור במודל כדי שהמיון יעבוד
+                stock.currentPrice = price;
+                stock.dayChange    = dayChange;
+
                 holder.priceText.post(() -> {
                     holder.priceText.setText(String.format(Locale.US, "$%.2f", price));
                     holder.priceText.setTextColor(colorPrimary);
@@ -105,7 +181,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
     }
 
     @Override
-    public int getItemCount() { return stocks != null ? stocks.size() : 0; }
+    public int getItemCount() { return displayList != null ? displayList.size() : 0; }
 
     private void updateAlertText(WatchViewHolder holder, StockWatchData stock,
                                   int colorPrimary, int textSecondary) {
@@ -166,7 +242,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
         String url = "https://api.twelvedata.com/time_series?symbol=" + symbol
                 + "&interval=" + interval + "&apikey=" + API_KEY + "&outputsize=2";
         httpClient.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
-            @Override public void onFailure(@NonNull Call call, @NonNull IOException e) { callback.onError(e); }
+            @Override public void onFailure(@NonNull Call call, @NonNull okhttp3.IOException e) { callback.onError(e); }
             @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 String body = response.body().string();
                 try {
