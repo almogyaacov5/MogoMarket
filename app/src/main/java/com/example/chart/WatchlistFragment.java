@@ -22,7 +22,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
@@ -40,7 +39,6 @@ public class WatchlistFragment extends Fragment {
 
     private static final String ALERT_CHANNEL_ID = "stock_price_alerts";
 
-    private List<StockWatchData> watchlist;
     private WatchlistAdapter adapter;
     private DatabaseReference watchlistRef;
 
@@ -58,35 +56,32 @@ public class WatchlistFragment extends Fragment {
             return v;
         }
 
-        String uid = user.getUid();
         watchlistRef = FirebaseDatabase.getInstance()
-                .getReference("users").child(uid).child("watchlist-stocks");
+                .getReference("users").child(user.getUid()).child("watchlist-stocks");
 
-        watchlist = new ArrayList<>();
-
-        WatchlistAdapter.OnWatchStockClickListener listener = new WatchlistAdapter.OnWatchStockClickListener() {
-            @Override public void onStockClick(String symbol) { openChart(symbol); }
-            @Override public void onStockDelete(String symbol) { deleteStock(symbol); }
-            @Override public void onAlertStateChanged(String symbol, boolean triggered) {
+        // יצירת Adapter ללא רשימה - מתעדכן דרך updateData()
+        adapter = new WatchlistAdapter(new WatchlistAdapter.OnWatchStockClickListener() {
+            @Override public void onStockClick(String symbol)       { openChart(symbol); }
+            @Override public void onStockDelete(String symbol)      { deleteStock(symbol); }
+            @Override public void onSetPriceAlert(StockWatchData s) { showPriceAlertDialog(s); }
+            @Override public void onAlertStateChanged(String sym, boolean t) {
                 if (watchlistRef != null)
-                    watchlistRef.child(symbol).child("alertTriggered").setValue(triggered);
+                    watchlistRef.child(sym).child("alertTriggered").setValue(t);
             }
-            @Override public void onSetPriceAlert(StockWatchData stock) { showPriceAlertDialog(stock); }
-        };
-
-        adapter = new WatchlistAdapter(watchlist, listener);
+        });
 
         RecyclerView recyclerView = v.findViewById(R.id.watchlistRecyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(adapter);
 
         // ---- Add stock ----
-        TextInputEditText stockInput       = v.findViewById(R.id.stockInput);
-        MaterialButton   addStockBtn       = v.findViewById(R.id.addStockBtn);
-        MaterialButton   btnRefreshWatchlist = v.findViewById(R.id.btnRefreshWatchlist);
+        TextInputEditText stockInput = v.findViewById(R.id.stockInput);
+        MaterialButton   addStockBtn = v.findViewById(R.id.addStockBtn);
+        MaterialButton   btnRefresh  = v.findViewById(R.id.btnRefreshWatchlist);
 
-        if (addStockBtn != null && stockInput != null) {
+        if (addStockBtn != null) {
             addStockBtn.setOnClickListener(view -> {
+                if (stockInput == null) return;
                 String symbol = stockInput.getText().toString().trim().toUpperCase();
                 if (symbol.isEmpty()) {
                     Toast.makeText(getContext(), "הזן סימבול", Toast.LENGTH_SHORT).show();
@@ -98,20 +93,17 @@ public class WatchlistFragment extends Fragment {
             });
         }
 
-        if (btnRefreshWatchlist != null) {
-            btnRefreshWatchlist.setOnClickListener(view -> {
-                if (adapter != null) adapter.refresh();
-                Toast.makeText(getContext(), "Refreshed", Toast.LENGTH_SHORT).show();
-            });
+        if (btnRefresh != null) {
+            btnRefresh.setOnClickListener(view -> adapter.refresh());
         }
 
         // ---- Search ----
         TextInputEditText searchInput = v.findViewById(R.id.searchInput);
         if (searchInput != null) {
             searchInput.addTextChangedListener(new TextWatcher() {
-                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
-                    if (adapter != null) adapter.setSearch(s.toString());
+                @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
+                @Override public void onTextChanged(CharSequence s, int st, int b, int c) {
+                    adapter.setSearch(s.toString());
                 }
                 @Override public void afterTextChanged(Editable s) {}
             });
@@ -121,7 +113,7 @@ public class WatchlistFragment extends Fragment {
         ChipGroup sortChipGroup = v.findViewById(R.id.sortChipGroup);
         if (sortChipGroup != null) {
             sortChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
-                if (checkedIds.isEmpty() || adapter == null) return;
+                if (checkedIds.isEmpty()) return;
                 int id = checkedIds.get(0);
                 if      (id == R.id.chipSortGain)  adapter.setFilter("gain");
                 else if (id == R.id.chipSortLoss)  adapter.setFilter("loss");
@@ -134,14 +126,14 @@ public class WatchlistFragment extends Fragment {
         watchlistRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                watchlist.clear();
+                // בונים רשימה חדשה לגמרי - לא נוגעים ב-originalList של האדפטר ישירות
+                List<StockWatchData> fresh = new ArrayList<>();
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     StockWatchData data = ds.getValue(StockWatchData.class);
-                    if (data != null) watchlist.add(data);
+                    if (data != null) fresh.add(data);
                 }
-                if (adapter != null) adapter.refresh();
+                adapter.updateData(fresh);
             }
-
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 if (getContext() != null)
@@ -160,8 +152,7 @@ public class WatchlistFragment extends Fragment {
         chartFragment.setArguments(args);
         requireActivity().getSupportFragmentManager().beginTransaction()
                 .replace(R.id.fragment_container, chartFragment)
-                .addToBackStack(null)
-                .commit();
+                .addToBackStack(null).commit();
     }
 
     private void deleteStock(String symbol) {
@@ -173,36 +164,30 @@ public class WatchlistFragment extends Fragment {
 
     private void showPriceAlertDialog(StockWatchData stock) {
         if (stock == null || stock.symbol == null || !isAdded()) return;
-
         EditText input = new EditText(requireContext());
         input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         input.setHint("לדוגמא: 150.5");
-
         new AlertDialog.Builder(requireContext())
                 .setTitle("התראת מחיר: " + stock.symbol)
                 .setMessage("הזן מחיר יעד.")
                 .setView(input)
-                .setPositiveButton("שמור", (dialog, which) -> {
+                .setPositiveButton("שמור", (d, w) -> {
                     try {
                         float target = Float.parseFloat(input.getText().toString().trim());
                         watchlistRef.child(stock.symbol).child("alertTargetPrice").setValue(target);
                         watchlistRef.child(stock.symbol).child("alertEnabled").setValue(true);
                         watchlistRef.child(stock.symbol).child("alertTriggered").setValue(false);
-                        if (getContext() != null)
-                            Toast.makeText(getContext(), "נשמרה התראת מחיר", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), "נשמרה התראת מחיר", Toast.LENGTH_SHORT).show();
                     } catch (Exception e) {
-                        if (getContext() != null)
-                            Toast.makeText(getContext(), "מספר לא תקין", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), "מספר לא תקין", Toast.LENGTH_SHORT).show();
                     }
                 })
-                .setNeutralButton("כבה", (dialog, which) -> {
+                .setNeutralButton("כבה", (d, w) -> {
                     watchlistRef.child(stock.symbol).child("alertEnabled").setValue(false);
                     watchlistRef.child(stock.symbol).child("alertTriggered").setValue(false);
-                    if (getContext() != null)
-                        Toast.makeText(getContext(), "ההתראה כובתה", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "ההתראה כובתה", Toast.LENGTH_SHORT).show();
                 })
-                .setNegativeButton("ביטול", null)
-                .show();
+                .setNegativeButton("ביטול", null).show();
     }
 
     private void createNotificationChannel() {
