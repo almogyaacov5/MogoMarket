@@ -9,6 +9,7 @@ public class StockData {
     public float changePercent;
     public double sellPrice;
     public double tradeAmount;
+    public String notes;  // הערות / סיבת קנייה
 
     // קונסטרוקטור ריק בשביל Firebase
     public StockData() {}
@@ -22,6 +23,7 @@ public class StockData {
         this.tradeAmount = tradeAmount;
         this.targetPrice = 0;
         this.name = "";
+        this.notes = "";
     }
 
     // קונסטרוקטור 4 פרמטרים
@@ -33,6 +35,7 @@ public class StockData {
         this.tradeAmount = 0;
         this.targetPrice = 0;
         this.name = "";
+        this.notes = "";
     }
 
     // קונסטרוקטור חלקי - 3 פרמטרים
@@ -44,5 +47,6 @@ public class StockData {
         this.tradeAmount = 0;
         this.targetPrice = 0;
         this.name = "";
+        this.notes = "";
     }
 }

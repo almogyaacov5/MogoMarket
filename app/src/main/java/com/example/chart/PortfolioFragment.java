@@ -81,6 +81,15 @@ public class PortfolioFragment extends Fragment {
                     }
                 });
             }
+
+            @Override
+            public void onStockEdit(StockData updatedStock, String oldSymbol) {
+                // אם הטיקר השתנה - מוחקים את הישן ושומרים את החדש
+                if (!updatedStock.symbol.equals(oldSymbol)) {
+                    portfolioRef.child(oldSymbol).removeValue();
+                }
+                portfolioRef.child(updatedStock.symbol).setValue(updatedStock);
+            }
         });
 
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
