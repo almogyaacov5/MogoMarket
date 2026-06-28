@@ -41,7 +41,7 @@ import okhttp3.Response;
 public class PortfolioAddStockFragment extends Fragment {
 
     private AutoCompleteTextView editTicker;
-    private EditText editBuyPrice, editTradeAmount;
+    private EditText editBuyPrice, editTargetPrice, editTradeAmount, editNotes;
     private Button btnAddStock;
     private DatabaseReference stocksRef;
 
@@ -64,7 +64,9 @@ public class PortfolioAddStockFragment extends Fragment {
 
         editTicker      = v.findViewById(R.id.editTicker);
         editBuyPrice    = v.findViewById(R.id.editBuyPrice);
+        editTargetPrice = v.findViewById(R.id.editTargetPrice);
         editTradeAmount = v.findViewById(R.id.editTradeAmount);
+        editNotes       = v.findViewById(R.id.editNotes);
         btnAddStock     = v.findViewById(R.id.btnAddStock);
 
         String uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
@@ -92,7 +94,6 @@ public class PortfolioAddStockFragment extends Fragment {
         editTicker.setAdapter(suggestionAdapter);
         editTicker.setThreshold(1);
 
-        // כשהמשתמש בוחר הצעה מהרשימה
         editTicker.setOnItemClickListener((parent, view, position, id) -> {
             ChartFragment.StockSuggestion sel = suggestionAdapter.getItem(position);
             if (sel == null || sel.symbol == null) return;
@@ -103,7 +104,6 @@ public class PortfolioAddStockFragment extends Fragment {
             editTicker.setSelection(picked.length());
             editTicker.dismissDropDown();
 
-            // עובר אוטומטית לשדה המחיר
             editBuyPrice.requestFocus();
 
             editTicker.postDelayed(() -> isManualSelection = false, 300);
@@ -214,9 +214,11 @@ public class PortfolioAddStockFragment extends Fragment {
     // ==================== הוספת מניה ====================
 
     private void addStock() {
-        String ticker    = editTicker.getText().toString().trim().toUpperCase();
-        String priceStr  = editBuyPrice.getText().toString().trim();
-        String amountStr = editTradeAmount.getText().toString().trim();
+        String ticker      = editTicker.getText().toString().trim().toUpperCase();
+        String priceStr    = editBuyPrice.getText().toString().trim();
+        String targetStr   = editTargetPrice.getText().toString().trim();
+        String amountStr   = editTradeAmount.getText().toString().trim();
+        String notes       = editNotes.getText().toString().trim();
 
         if (ticker.isEmpty() || priceStr.isEmpty()) {
             Toast.makeText(getContext(), "Enter a ticker and price", Toast.LENGTH_SHORT).show();
@@ -231,6 +233,16 @@ public class PortfolioAddStockFragment extends Fragment {
             return;
         }
 
+        float targetPrice = 0;
+        if (!targetStr.isEmpty()) {
+            try {
+                targetPrice = Float.parseFloat(targetStr);
+            } catch (NumberFormatException e) {
+                Toast.makeText(getContext(), "Invalid target price", Toast.LENGTH_SHORT).show();
+                return;
+            }
+        }
+
         double tradeAmount = 0;
         if (!amountStr.isEmpty()) {
             try {
@@ -242,7 +254,9 @@ public class PortfolioAddStockFragment extends Fragment {
         }
 
         StockData data = new StockData(ticker, price, price);
-        data.tradeAmount = tradeAmount;
+        data.tradeAmount  = tradeAmount;
+        data.targetPrice  = targetPrice;
+        data.notes        = notes;
 
         stocksRef.child(ticker).setValue(data)
                 .addOnSuccessListener(unused -> {

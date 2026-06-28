@@ -52,15 +52,42 @@
             android:textSize="20sp" />
 
         <EditText
+            android:id="@+id/editTargetPrice"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:background="#F3F7FE"
+            android:hint="Target Price ($) - optional"
+            android:inputType="numberDecimal"
+            android:padding="16dp"
+            android:textColor="#1E293B"
+            android:textSize="20sp" />
+
+        <EditText
             android:id="@+id/editTradeAmount"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
             android:background="#F3F7FE"
             android:hint="Trade Amount ($) - optional"
             android:inputType="numberDecimal"
             android:padding="16dp"
             android:textColor="#1E293B"
             android:textSize="20sp" />
+
+        <EditText
+            android:id="@+id/editNotes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#F3F7FE"
+            android:hint="Notes / Buy Reason - optional"
+            android:inputType="textMultiLine"
+            android:minLines="2"
+            android:maxLines="4"
+            android:gravity="top"
+            android:padding="16dp"
+            android:textColor="#1E293B"
+            android:textSize="18sp" />
 
     </LinearLayout>
 
