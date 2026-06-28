@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -21,19 +22,35 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import org.json.JSONObject;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class PortfolioFragment extends Fragment {
 
     private RecyclerView recyclerView;
     private MaterialButton btnRefreshPortfolio;
     private MaterialButton btnAddStockToPortfolio;
+    private TextView tvTotalPnl;
+    private TextView tvOpenCount;
 
     private List<StockData> stocksList;
     private StocksAdapter adapter;
     private DatabaseReference portfolioRef;
     private DatabaseReference closedTradesRef;
+
+    private final OkHttpClient httpClient = new OkHttpClient();
+    private static final String API_KEY = "0518811f0d394fa39842a8024a25c049";
 
     @Nullable
     @Override
@@ -46,6 +63,8 @@ public class PortfolioFragment extends Fragment {
         recyclerView           = v.findViewById(R.id.tradesRecyclerView);
         btnAddStockToPortfolio = v.findViewById(R.id.btnAddStockToPortfolio);
         btnRefreshPortfolio    = v.findViewById(R.id.btnRefreshPortfolio);
+        tvTotalPnl             = v.findViewById(R.id.tvTotalPnl);
+        tvOpenCount            = v.findViewById(R.id.tvOpenCount);
 
         stocksList = new ArrayList<>();
 
@@ -84,7 +103,6 @@ public class PortfolioFragment extends Fragment {
 
             @Override
             public void onStockEdit(StockData updatedStock, String oldSymbol) {
-                // אם הטיקר השתנה - מוחקים את הישן ושומרים את החדש
                 if (!updatedStock.symbol.equals(oldSymbol)) {
                     portfolioRef.child(oldSymbol).removeValue();
                 }
@@ -104,6 +122,7 @@ public class PortfolioFragment extends Fragment {
                     if (data != null) stocksList.add(data);
                 }
                 adapter.notifyDataSetChanged();
+                updateSummary();
             }
 
             @Override
@@ -118,8 +137,76 @@ public class PortfolioFragment extends Fragment {
                     .commit();
         });
 
-        btnRefreshPortfolio.setOnClickListener(view -> adapter.refreshPrices());
+        btnRefreshPortfolio.setOnClickListener(view -> {
+            adapter.refreshPrices();
+            updateSummary();
+        });
 
         return v;
+    }
+
+    // ==================== עדכון סיכום ====================
+
+    private void updateSummary() {
+        if (tvOpenCount != null) {
+            tvOpenCount.setText(String.valueOf(stocksList.size()));
+        }
+
+        if (stocksList.isEmpty()) {
+            if (tvTotalPnl != null) tvTotalPnl.setText("$0.00");
+            return;
+        }
+
+        // סופרים כמה מניות יש עם tradeAmount > 0 (אחרת לא ניתן לחשב P&L)
+        List<StockData> withAmount = new ArrayList<>();
+        for (StockData s : stocksList) {
+            if (s.tradeAmount > 0) withAmount.add(s);
+        }
+
+        if (withAmount.isEmpty()) {
+            if (tvTotalPnl != null) tvTotalPnl.setText("N/A");
+            return;
+        }
+
+        // מביאים מחיר עדכני לכל מניה עם סכום ומסכמים
+        final double[] totalPnl = {0.0};
+        final AtomicInteger remaining = new AtomicInteger(withAmount.size());
+
+        for (StockData stock : withAmount) {
+            String url = "https://api.twelvedata.com/price?symbol=" + stock.symbol + "&apikey=" + API_KEY;
+            httpClient.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
+                @Override
+                public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                    if (remaining.decrementAndGet() == 0) showTotalPnl(totalPnl[0]);
+                }
+
+                @Override
+                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                    try {
+                        String body = response.body().string();
+                        JSONObject obj = new JSONObject(body);
+                        float price = Float.parseFloat(obj.getString("price"));
+                        float pct = (stock.buyPrice != 0f)
+                                ? ((price - stock.buyPrice) / stock.buyPrice * 100f) : 0f;
+                        double pnl = stock.tradeAmount * (pct / 100.0);
+                        synchronized (totalPnl) { totalPnl[0] += pnl; }
+                    } catch (Exception ignored) {}
+                    if (remaining.decrementAndGet() == 0) showTotalPnl(totalPnl[0]);
+                }
+            });
+        }
+    }
+
+    private void showTotalPnl(double pnl) {
+        if (getActivity() == null || tvTotalPnl == null) return;
+        getActivity().runOnUiThread(() -> {
+            String sign = pnl >= 0 ? "+" : "";
+            tvTotalPnl.setText(String.format(Locale.US, "%s$%.2f", sign, pnl));
+            try {
+                int colorGain = requireContext().getColor(R.color.gain);
+                int colorLoss = requireContext().getColor(R.color.loss);
+                tvTotalPnl.setTextColor(pnl >= 0 ? colorGain : colorLoss);
+            } catch (Exception ignored) {}
+        });
     }
 }
