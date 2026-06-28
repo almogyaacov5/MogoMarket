@@ -47,7 +47,7 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
     private ImageButton btnRefreshAll;
     private StocksAdapter adapter;
     private List<StockData> stocksList = new ArrayList<>();
-    private DatabaseReference stocksRef; // "user-stocks" - נתיב ישן (לא לפי UID!)
+    private DatabaseReference stocksRef;
     private final OkHttpClient client = new OkHttpClient();
 
     @Nullable
@@ -56,15 +56,15 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
         View view = inflater.inflate(R.layout.fragment_watchlist, container, false);
 
         stocksRecyclerView = view.findViewById(R.id.watchlistRecyclerView);
-        stockInput = view.findViewById(R.id.stockInput);
-        addStockBtn = view.findViewById(R.id.addStockBtn);
-        btnRefreshAll = view.findViewById(R.id.btnRefreshWatchlist);
+        stockInput         = view.findViewById(R.id.stockInput);
+        addStockBtn        = view.findViewById(R.id.addStockBtn);
+        btnRefreshAll      = view.findViewById(R.id.btnRefreshWatchlist);
 
         adapter = new StocksAdapter(stocksList, this);
         stocksRecyclerView.setAdapter(adapter);
         stocksRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
-        stocksRef = FirebaseDatabase.getInstance().getReference("user-stocks"); // נתיב ישן!
+        stocksRef = FirebaseDatabase.getInstance().getReference("user-stocks");
 
         loadStocks();
 
@@ -73,14 +73,13 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
         addStockBtn.setOnClickListener(v -> {
             String symbol = stockInput.getText().toString().trim().toUpperCase();
             if (!symbol.isEmpty()) {
-                stocksRef.child(symbol).setValue(true); // שמירת רק "true" - לא StockWatchData
+                stocksRef.child(symbol).setValue(true);
                 stockInput.setText("");
                 stockInput.clearFocus();
                 hideKeyboard();
             }
         });
 
-        // סגירת מקלדת בלחיצה על "Done"
         stockInput.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 stockInput.clearFocus();
@@ -93,7 +92,6 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
         return view;
     }
 
-    // טעינה מחדש של כל המניות בלחיצה על "רענון"
     private void reloadAllStocks() {
         stocksRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -118,7 +116,6 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
         }
     }
 
-    // טעינה ראשונית עם האזנה בזמן אמת
     private void loadStocks() {
         stocksRef.addValueEventListener(new ValueEventListener() {
             @Override
@@ -126,7 +123,7 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
                 stocksList.clear();
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     String symbol = ds.getKey();
-                    fetchStockInfo(symbol); // שליפת נתוני מחיר לכל סמל
+                    fetchStockInfo(symbol);
                 }
             }
             @Override
@@ -136,7 +133,6 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
         });
     }
 
-    // שליפת מחיר ושינוי יומי מ-TwelveData
     private void fetchStockInfo(String symbol) {
         String url = "https://api.twelvedata.com/time_series?symbol=" + symbol +
                 "&interval=1day&apikey=0518811f0d394fa39842a8024a25c049&outputsize=2";
@@ -153,10 +149,7 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
                     float lastPrice = Float.parseFloat(values.getJSONObject(0).getString("close"));
                     float prevPrice = Float.parseFloat(values.getJSONObject(1).getString("close"));
                     float changePercent = (lastPrice - prevPrice) / prevPrice * 100;
-
-                    // שימוש בקונסטרוקטור 3 פרמטרים (symbol, buyPrice=lastPrice, changePercent)
                     StockData data = new StockData(symbol, lastPrice, changePercent);
-
                     if (getActivity() != null) getActivity().runOnUiThread(() -> {
                         stocksList.add(data);
                         adapter.notifyDataSetChanged();
@@ -168,7 +161,6 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
 
     @Override
     public void onStockClick(String symbol) {
-        // ניווט לגרף דרך MainActivity
         if (getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).showChartWithSymbol(symbol);
         }
@@ -176,7 +168,13 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
 
     @Override
     public void onStockDelete(String symbol, double sellPrice) {
-        stocksRef.child(symbol).removeValue(); // מחיקה פשוטה (לא העברה ל-closed-trades)
+        stocksRef.child(symbol).removeValue();
         Toast.makeText(getContext(), "המניה הוסרה מהרשימה", Toast.LENGTH_SHORT).show();
+    }
+
+    // ב-StocksFragment אין עריכת פרטי מניה - מימוש ריק
+    @Override
+    public void onStockEdit(StockData updatedStock, String oldSymbol) {
+        // פרגמנט זה הוא legacy - עריכה לא רלוונטית כאן
     }
 }
