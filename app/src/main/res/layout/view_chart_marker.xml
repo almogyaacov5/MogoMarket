@@ -4,7 +4,8 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="10dp"
-    android:background="@drawable/marker_background">
+    android:background="@drawable/marker_background"
+    android:clipToOutline="true">
 
     <TextView
         android:id="@+id/markerPrice"
