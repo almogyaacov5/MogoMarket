@@ -19,6 +19,7 @@
         android:orientation="horizontal"
         android:padding="14dp">
 
+        <!-- שמל + אזערה -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -26,7 +27,7 @@
             android:orientation="vertical">
 
             <TextView
-                android:id="@+id/tvSymbol"
+                android:id="@+id/stockSymbolText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="?attr/colorOnSurface"
@@ -34,7 +35,7 @@
                 android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/tvName"
+                android:id="@+id/stockAlertText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
@@ -42,14 +43,16 @@
                 android:textSize="12sp" />
         </LinearLayout>
 
+        <!-- מחיר + שינוי יומי -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="end|center_vertical"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:layout_marginEnd="8dp">
 
             <TextView
-                android:id="@+id/tvPrice"
+                android:id="@+id/stockPriceText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="?attr/colorOnSurface"
@@ -57,18 +60,29 @@
                 android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/tvChange"
+                android:id="@+id/stockDayChangeText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:textSize="13sp" />
         </LinearLayout>
 
+        <!-- כפתור התרעה -->
         <ImageButton
-            android:id="@+id/btnRemoveWatchlist"
+            android:id="@+id/btnSetAlert"
             android:layout_width="36dp"
             android:layout_height="36dp"
-            android:layout_marginStart="8dp"
+            android:layout_marginEnd="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Set Alert"
+            android:src="@drawable/baseline_notifications_24"
+            android:tint="?attr/colorPrimary" />
+
+        <!-- כפתור מחיקה -->
+        <ImageButton
+            android:id="@+id/btnDeleteStock"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Remove"
             android:src="@drawable/baseline_delete_24"
