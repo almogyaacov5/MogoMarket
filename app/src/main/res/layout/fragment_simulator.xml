@@ -29,18 +29,22 @@
             android:textSize="14sp" />
 
         <!-- Card קלט -->
-        <androidx.cardview.widget.CardView
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
+            android:clipToOutline="true"
             app:cardCornerRadius="16dp"
             app:cardElevation="4dp"
-            app:cardBackgroundColor="?attr/colorSurface">
+            app:cardPreventCornerOverlap="true"
+            app:cardBackgroundColor="?attr/colorSurface"
+            app:strokeWidth="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
+                android:background="@android:color/transparent"
                 android:padding="16dp">
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -72,7 +76,6 @@
                         android:textColor="?attr/colorOnSurface" />
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- כפתור הרצה - תומך בשני IDs: btnRunSimulation (ב-Java) ו-btnSimulate -->
                 <Button
                     android:id="@+id/btnRunSimulation"
                     android:layout_width="match_parent"
@@ -85,7 +88,7 @@
                     android:textStyle="bold" />
 
             </LinearLayout>
-        </androidx.cardview.widget.CardView>
+        </com.google.android.material.card.MaterialCardView>
 
         <!-- ProgressBar -->
         <ProgressBar
@@ -107,20 +110,24 @@
             android:text="" />
 
         <!-- Card תוצאות -->
-        <androidx.cardview.widget.CardView
+        <com.google.android.material.card.MaterialCardView
             android:id="@+id/resultsCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
+            android:clipToOutline="true"
             android:visibility="gone"
             app:cardCornerRadius="16dp"
             app:cardElevation="4dp"
-            app:cardBackgroundColor="?attr/colorSurface">
+            app:cardPreventCornerOverlap="true"
+            app:cardBackgroundColor="?attr/colorSurface"
+            app:strokeWidth="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
+                android:background="@android:color/transparent"
                 android:padding="16dp">
 
                 <TextView
@@ -132,7 +139,6 @@
                     android:textSize="16sp"
                     android:textStyle="bold" />
 
-                <!-- תוצאה - ID תואם לשני השמות -->
                 <TextView
                     android:id="@+id/tvSimResult"
                     android:layout_width="wrap_content"
@@ -143,7 +149,7 @@
                     android:lineSpacingExtra="4dp" />
 
             </LinearLayout>
-        </androidx.cardview.widget.CardView>
+        </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>
 </ScrollView>

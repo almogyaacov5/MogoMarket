@@ -34,14 +34,17 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
+            android:clipToOutline="true"
             app:cardCornerRadius="20dp"
             app:cardElevation="4dp"
+            app:cardPreventCornerOverlap="true"
             app:strokeWidth="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
+                android:background="@android:color/transparent"
                 android:padding="20dp">
 
                 <TextView
@@ -53,7 +56,6 @@
                     android:textStyle="bold"
                     android:layout_marginBottom="14dp" />
 
-                <!-- Entry Price -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/layoutEntryPrice"
                     android:layout_width="match_parent"
@@ -69,7 +71,6 @@
                         android:textColor="?attr/colorOnSurface" />
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- Target Price -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/layoutTargetPrice"
                     android:layout_width="match_parent"
@@ -86,7 +87,6 @@
                         android:textColor="?attr/colorOnSurface" />
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- Stop Loss -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/layoutStopLoss"
                     android:layout_width="match_parent"
@@ -103,7 +103,6 @@
                         android:textColor="?attr/colorOnSurface" />
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- Shares / Quantity -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/layoutQuantity"
                     android:layout_width="match_parent"
@@ -119,7 +118,6 @@
                         android:textColor="?attr/colorOnSurface" />
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- Calculate Button -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnCalculate"
                     style="@style/Widget.Material3.Button"
@@ -149,15 +147,18 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
+            android:clipToOutline="true"
             android:visibility="gone"
             app:cardCornerRadius="20dp"
             app:cardElevation="4dp"
+            app:cardPreventCornerOverlap="true"
             app:strokeWidth="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
+                android:background="@android:color/transparent"
                 android:padding="20dp">
 
                 <TextView
@@ -169,11 +170,11 @@
                     android:textStyle="bold"
                     android:layout_marginBottom="16dp" />
 
-                <!-- Profit Row -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
+                    android:background="@android:color/transparent"
                     android:layout_marginBottom="12dp">
                     <TextView
                         android:layout_width="0dp"
@@ -192,11 +193,11 @@
                         android:textColor="@color/gain" />
                 </LinearLayout>
 
-                <!-- Loss Row -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
+                    android:background="@android:color/transparent"
                     android:layout_marginBottom="12dp">
                     <TextView
                         android:layout_width="0dp"
@@ -215,11 +216,11 @@
                         android:textColor="@color/loss" />
                 </LinearLayout>
 
-                <!-- Profit % Row -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
+                    android:background="@android:color/transparent"
                     android:layout_marginBottom="12dp">
                     <TextView
                         android:layout_width="0dp"
@@ -238,11 +239,11 @@
                         android:textColor="@color/gain" />
                 </LinearLayout>
 
-                <!-- R:R Row -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
+                    android:background="@android:color/transparent"
                     android:layout_marginBottom="12dp">
                     <TextView
                         android:layout_width="0dp"
@@ -261,11 +262,11 @@
                         android:textColor="?attr/colorPrimary" />
                 </LinearLayout>
 
-                <!-- Cost Basis Row -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:background="@android:color/transparent">
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"

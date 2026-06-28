@@ -34,14 +34,17 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
+            android:clipToOutline="true"
             app:cardCornerRadius="20dp"
             app:cardElevation="4dp"
+            app:cardPreventCornerOverlap="true"
             app:strokeWidth="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
+                android:background="@android:color/transparent"
                 android:padding="16dp">
 
                 <LinearLayout
@@ -49,6 +52,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:orientation="vertical"
+                    android:background="@android:color/transparent"
                     android:gravity="center">
 
                     <TextView
@@ -79,6 +83,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:orientation="vertical"
+                    android:background="@android:color/transparent"
                     android:gravity="center">
 
                     <TextView
@@ -139,8 +144,10 @@
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="16dp"
         android:layout_marginBottom="12dp"
+        android:clipToOutline="true"
         app:cardCornerRadius="20dp"
         app:cardElevation="4dp"
+        app:cardPreventCornerOverlap="true"
         app:strokeWidth="0dp">
 
         <LinearLayout
@@ -148,6 +155,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
+            android:background="@android:color/transparent"
             android:padding="8dp">
 
             <com.google.android.material.button.MaterialButton
