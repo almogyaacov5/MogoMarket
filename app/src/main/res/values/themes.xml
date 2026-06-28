@@ -19,7 +19,8 @@
         <item name="android:textColor">@color/text_primary</item>
         <item name="materialCardViewStyle">@style/CardStyle</item>
         <item name="android:statusBarColor">@color/bg_primary</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <!-- Light mode: status bar icons are DARK (black) because background is light -->
+        <item name="android:windowLightStatusBar">true</item>
         <!-- Bottom Nav -->
         <item name="bottomNavigationStyle">@style/BottomNavStyle</item>
     </style>
