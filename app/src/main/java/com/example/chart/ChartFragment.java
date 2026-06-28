@@ -501,6 +501,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         dataSet.enableDashedHighlightLine(10f, 5f, 0f);
         candleStickChart.setData(new CandleData(dataSet));
         TradingMarkerView candleMarker = new TradingMarkerView(requireContext());
+        candleMarker.setDateLabels(dateLabels);
         candleMarker.setChartView(candleStickChart);
         candleStickChart.setMarker(candleMarker);
         candleStickChart.animateX(400);
@@ -525,6 +526,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         ds.setFillAlpha(isDarkTheme ? 90 : 50);
         lineChart.setData(new LineData(ds));
         TradingMarkerView lineMarker = new TradingMarkerView(requireContext());
+        lineMarker.setDateLabels(dateLabels);
         lineMarker.setChartView(lineChart);
         lineChart.setMarker(lineMarker);
         lineChart.animateX(400);
