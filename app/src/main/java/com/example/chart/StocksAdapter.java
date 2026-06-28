@@ -8,7 +8,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -30,6 +32,7 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
     public interface OnStockClickListener {
         void onStockClick(String symbol);
         void onStockDelete(String symbol, double sellPrice);
+        void onStockEdit(StockData updatedStock, String oldSymbol);
     }
 
     private final List<StockData> stocks;
@@ -54,7 +57,6 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         StockData stock = stocks.get(position);
         Context ctx = holder.itemView.getContext();
 
-        // צבעים דינמיים מה-Theme (עובד light + dark)
         int colorGain    = ctx.getColor(R.color.gain);
         int colorLoss    = ctx.getColor(R.color.loss);
         int colorPrimary = ctx.getColor(R.color.primary);
@@ -131,13 +133,118 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
             }
         });
 
-        holder.btnEdit.setOnClickListener(view -> listener.onStockClick(stock.symbol));
+        // לחיצה על כפתור עריכה -> פותח דיאלוג עריכה
+        holder.btnEdit.setOnClickListener(view -> showEditDialog(ctx, stock));
         holder.btnDelete.setOnClickListener(view -> showSellPriceDialog(ctx, stock.symbol));
         holder.itemView.setOnClickListener(view -> listener.onStockClick(stock.symbol));
     }
 
     @Override
     public int getItemCount() { return stocks != null ? stocks.size() : 0; }
+
+    // ========================= EDIT DIALOG =========================
+
+    private void showEditDialog(Context context, StockData stock) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle("✏️ עריכת " + stock.symbol);
+
+        LinearLayout layout = new LinearLayout(context);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        int pad = dpToPx(context, 16);
+        layout.setPadding(pad, pad, pad, pad);
+        layout.setSpacing(dpToPx(context, 8));
+
+        // טיקר
+        TextView lblSymbol = new TextView(context);
+        lblSymbol.setText("טיקר (סימבול)");
+        EditText etSymbol = new EditText(context);
+        etSymbol.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
+        etSymbol.setText(stock.symbol != null ? stock.symbol : "");
+        layout.addView(lblSymbol);
+        layout.addView(etSymbol);
+
+        // שם החברה
+        TextView lblName = new TextView(context);
+        lblName.setText("שם החברה (אופציונלי)");
+        EditText etName = new EditText(context);
+        etName.setInputType(InputType.TYPE_CLASS_TEXT);
+        etName.setText(stock.name != null ? stock.name : "");
+        layout.addView(lblName);
+        layout.addView(etName);
+
+        // מחיר קנייה
+        TextView lblBuyPrice = new TextView(context);
+        lblBuyPrice.setText("מחיר קנייה ($)");
+        EditText etBuyPrice = new EditText(context);
+        etBuyPrice.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        etBuyPrice.setText(stock.buyPrice > 0 ? String.format(Locale.US, "%.2f", stock.buyPrice) : "");
+        layout.addView(lblBuyPrice);
+        layout.addView(etBuyPrice);
+
+        // סכום השקעה
+        TextView lblAmount = new TextView(context);
+        lblAmount.setText("סכום השקעה ($)");
+        EditText etAmount = new EditText(context);
+        etAmount.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        etAmount.setText(stock.tradeAmount > 0 ? String.format(Locale.US, "%.2f", stock.tradeAmount) : "");
+        layout.addView(lblAmount);
+        layout.addView(etAmount);
+
+        // מחיר יעד
+        TextView lblTarget = new TextView(context);
+        lblTarget.setText("מחיר יעד ($) - אופציונלי");
+        EditText etTarget = new EditText(context);
+        etTarget.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        etTarget.setText(stock.targetPrice > 0 ? String.format(Locale.US, "%.2f", stock.targetPrice) : "");
+        layout.addView(lblTarget);
+        layout.addView(etTarget);
+
+        // הערות
+        TextView lblNotes = new TextView(context);
+        lblNotes.setText("הערות / סיבת קנייה - אופציונלי");
+        EditText etNotes = new EditText(context);
+        etNotes.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        etNotes.setLines(2);
+        etNotes.setMaxLines(3);
+        etNotes.setText(stock.notes != null ? stock.notes : "");
+        layout.addView(lblNotes);
+        layout.addView(etNotes);
+
+        builder.setView(layout);
+
+        builder.setPositiveButton("שמור", (dialog, which) -> {
+            String newSymbol = etSymbol.getText().toString().trim().toUpperCase(Locale.US);
+            if (newSymbol.isEmpty()) {
+                Toast.makeText(context, "טיקר לא יכול להיות ריק", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            String oldSymbol = stock.symbol;
+
+            stock.symbol = newSymbol;
+            stock.name   = etName.getText().toString().trim();
+
+            String buyStr = etBuyPrice.getText().toString().trim();
+            stock.buyPrice = buyStr.isEmpty() ? 0f : Float.parseFloat(buyStr);
+
+            String amountStr = etAmount.getText().toString().trim();
+            stock.tradeAmount = amountStr.isEmpty() ? 0 : Double.parseDouble(amountStr);
+
+            String targetStr = etTarget.getText().toString().trim();
+            stock.targetPrice = targetStr.isEmpty() ? 0f : Float.parseFloat(targetStr);
+
+            stock.notes = etNotes.getText().toString().trim();
+
+            listener.onStockEdit(stock, oldSymbol);
+            notifyDataSetChanged();
+            Toast.makeText(context, "✅ " + newSymbol + " עודכן בהצלחה", Toast.LENGTH_SHORT).show();
+        });
+
+        builder.setNegativeButton("ביטול", (dialog, which) -> dialog.cancel());
+        builder.show();
+    }
+
+    // ========================= FETCH PRICE =========================
 
     private void fetchCurrentPrice(String symbol, PriceCallback callback) {
         String apiKey = "0518811f0d394fa39842a8024a25c049";
@@ -195,5 +302,9 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         });
         builder.setNegativeButton("ביטול", (dialog, which) -> dialog.cancel());
         builder.show();
+    }
+
+    private int dpToPx(Context context, int dp) {
+        return Math.round(dp * context.getResources().getDisplayMetrics().density);
     }
 }
