@@ -35,55 +35,85 @@
                 android:id="@+id/radio1min"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:text="1min"
+                android:text="1 דקה"
                 android:textSize="15sp"
                 android:textColor="#0F172A"
                 android:gravity="center_vertical"
                 android:paddingHorizontal="12dp"
                 app:useMaterialThemeColors="true" />
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#EEF2F7" />
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#EEF2F7" />
 
             <com.google.android.material.radiobutton.MaterialRadioButton
                 android:id="@+id/radio5min"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:text="5min"
+                android:text="5 דקות"
                 android:textSize="15sp"
                 android:textColor="#0F172A"
                 android:gravity="center_vertical"
                 android:paddingHorizontal="12dp"
                 app:useMaterialThemeColors="true" />
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#EEF2F7" />
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#EEF2F7" />
 
             <com.google.android.material.radiobutton.MaterialRadioButton
                 android:id="@+id/radio15min"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:text="15min"
+                android:text="15 דקות"
                 android:textSize="15sp"
                 android:textColor="#0F172A"
                 android:gravity="center_vertical"
                 android:paddingHorizontal="12dp"
                 app:useMaterialThemeColors="true" />
 
-            <View
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#EEF2F7" />
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radio65min"
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#EEF2F7" />
+                android:layout_height="48dp"
+                android:text="65 דקות"
+                android:textSize="15sp"
+                android:textColor="#0F172A"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="12dp"
+                app:useMaterialThemeColors="true" />
+
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#EEF2F7" />
 
             <com.google.android.material.radiobutton.MaterialRadioButton
                 android:id="@+id/radio1day"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:text="1day"
+                android:text="יום"
+                android:textSize="15sp"
+                android:textColor="#0F172A"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="12dp"
+                app:useMaterialThemeColors="true" />
+
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#EEF2F7" />
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radio1week"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="שבוע"
+                android:textSize="15sp"
+                android:textColor="#0F172A"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="12dp"
+                app:useMaterialThemeColors="true" />
+
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#EEF2F7" />
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radio1month"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="חודש"
                 android:textSize="15sp"
                 android:textColor="#0F172A"
                 android:gravity="center_vertical"

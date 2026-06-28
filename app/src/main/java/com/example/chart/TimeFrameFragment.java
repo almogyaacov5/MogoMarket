@@ -11,10 +11,8 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 
-// דיאלוג לבחירת טווח הזמן של הגרף
 public class TimeFrameFragment extends DialogFragment {
 
-    // ממשק - נקרא כשהמשתמש בוחר טווח זמן
     public interface TimeFrameListener {
         void onTimeFrameSelected(String interval);
     }
@@ -24,8 +22,6 @@ public class TimeFrameFragment extends DialogFragment {
     @Override
     public void onAttach(@NonNull Context context) {
         super.onAttach(context);
-
-        // מנסה לקשר את ה-listener: קודם מהפרגמנט ההורה, אחר כך מה-Activity
         Fragment parent = getParentFragment();
         if (parent instanceof TimeFrameListener) {
             listener = (TimeFrameListener) parent;
@@ -44,16 +40,18 @@ public class TimeFrameFragment extends DialogFragment {
 
         RadioGroup radioGroup = view.findViewById(R.id.radioGroupTimeframes);
         radioGroup.setOnCheckedChangeListener((group, checkedId) -> {
-            // המרת ID של כפתור רדיו לערך interval
-            String interval = "1day"; // ברירת מחדל
-            if (checkedId == R.id.radio1min) interval = "1min";
-            else if (checkedId == R.id.radio5min) interval = "5min";
-            else if (checkedId == R.id.radio15min) interval = "15min";
-            else if (checkedId == R.id.radio1day) interval = "1day";
+            String interval = "1day";
+            if      (checkedId == R.id.radio1min)   interval = "1min";
+            else if (checkedId == R.id.radio5min)   interval = "5min";
+            else if (checkedId == R.id.radio15min)  interval = "15min";
+            else if (checkedId == R.id.radio65min)  interval = "65min";
+            else if (checkedId == R.id.radio1day)   interval = "1day";
+            else if (checkedId == R.id.radio1week)  interval = "1week";
+            else if (checkedId == R.id.radio1month) interval = "1month";
 
             if (listener != null) {
-                listener.onTimeFrameSelected(interval); // שליחת הבחירה לפרגמנט ההורה
-                dismiss(); // סגירת הדיאלוג
+                listener.onTimeFrameSelected(interval);
+                dismiss();
             }
         });
         return view;
