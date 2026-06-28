@@ -5,46 +5,28 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginHorizontal="12dp"
-    android:layout_marginVertical="5dp"
+    android:layout_marginVertical="6dp"
     app:cardBackgroundColor="?attr/colorSurface"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="2dp"
     app:strokeColor="@color/colorBorder"
-    app:strokeWidth="1dp"
-    app:cardCornerRadius="14dp"
-    app:cardElevation="2dp">
+    app:strokeWidth="1dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
         android:gravity="center_vertical"
+        android:orientation="horizontal"
         android:padding="14dp">
-
-        <!-- עיגול אות -->
-        <FrameLayout
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:background="@drawable/circle_bg"
-            android:clipToOutline="true">
-
-            <TextView
-                android:id="@+id/symbolInitialWatchlist"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center"
-                android:textColor="@color/white"
-                android:textSize="16sp"
-                android:textStyle="bold" />
-        </FrameLayout>
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="vertical"
-            android:layout_marginStart="12dp">
+            android:orientation="vertical">
 
             <TextView
-                android:id="@+id/stockSymbolText"
+                android:id="@+id/tvSymbol"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="?attr/colorOnSurface"
@@ -52,64 +34,45 @@
                 android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/stockDayChangeText"
+                android:id="@+id/tvName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="12sp"
-                android:layout_marginTop="2dp" />
-
-            <TextView
-                android:id="@+id/stockAlertText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="?attr/colorPrimary"
-                android:textSize="11sp"
                 android:layout_marginTop="2dp"
-                android:text="Price Alert: Off" />
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="12sp" />
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="end">
+            android:gravity="end|center_vertical"
+            android:orientation="vertical">
 
             <TextView
-                android:id="@+id/stockPriceText"
+                android:id="@+id/tvPrice"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="?attr/colorOnSurface"
                 android:textSize="15sp"
                 android:textStyle="bold" />
 
-            <LinearLayout
+            <TextView
+                android:id="@+id/tvChange"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="4dp">
-
-                <ImageButton
-                    android:id="@+id/btnSetAlert"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:src="@android:drawable/ic_dialog_alert"
-                    android:contentDescription="Set Alert"
-                    android:tint="?attr/colorPrimary" />
-
-                <ImageButton
-                    android:id="@+id/btnDeleteStock"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:layout_marginStart="4dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:src="@drawable/baseline_delete_24"
-                    android:contentDescription="Remove"
-                    android:tint="@color/colorLoss" />
-
-            </LinearLayout>
+                android:layout_marginTop="2dp"
+                android:textSize="13sp" />
         </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/btnRemoveWatchlist"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Remove"
+            android:src="@drawable/baseline_delete_24"
+            android:tint="@color/colorLoss" />
 
     </LinearLayout>
 
