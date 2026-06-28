@@ -79,6 +79,14 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         }
         holder.targetPriceText.setTextColor(textSecondary);
 
+        // הצגת Notes
+        if (stock.notes != null && !stock.notes.trim().isEmpty()) {
+            holder.notesText.setText("\uD83D\uDCDD " + stock.notes.trim());
+            holder.notesText.setVisibility(View.VISIBLE);
+        } else {
+            holder.notesText.setVisibility(View.GONE);
+        }
+
         fetchCurrentPrice(stock.symbol, new PriceCallback() {
             @Override
             public void onPriceReceived(float price) {
@@ -150,7 +158,6 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         layout.setOrientation(LinearLayout.VERTICAL);
         int pad = dpToPx(context, 16);
         layout.setPadding(pad, pad, pad, pad);
-        // אין setSpacing ב-LinearLayout - משתמשים ב-LayoutParams margins
 
         layout.addView(makeLabel(context, "טיקר (סימבול)"));
         EditText etSymbol = makeEditText(context, InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
@@ -261,7 +268,7 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
 
     static class StockViewHolder extends RecyclerView.ViewHolder {
         TextView symbolText, currentPriceText, changePercentText;
-        TextView changePercentDetailText, buyPriceText, targetPriceText, pnlDollarText, stockNameText;
+        TextView changePercentDetailText, buyPriceText, targetPriceText, pnlDollarText, stockNameText, notesText;
         ImageButton btnEdit, btnDelete;
 
         public StockViewHolder(@NonNull View itemView) {
@@ -274,6 +281,7 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
             targetPriceText         = itemView.findViewById(R.id.stockTargetPrice);
             pnlDollarText           = itemView.findViewById(R.id.stockPnlDollar);
             stockNameText           = itemView.findViewById(R.id.stockName);
+            notesText               = itemView.findViewById(R.id.stockNotes);
             btnEdit                 = itemView.findViewById(R.id.btnEditStock);
             btnDelete               = itemView.findViewById(R.id.btnDeleteStock);
         }
