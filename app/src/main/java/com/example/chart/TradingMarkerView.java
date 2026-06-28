@@ -8,14 +8,14 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.highlight.Highlight;
 import com.github.mikephil.charting.utils.MPPointF;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 public class TradingMarkerView extends MarkerView {
 
     private final TextView priceText;
     private final TextView dateText;
+    private List<String> dateLabels;
 
     public TradingMarkerView(Context context) {
         super(context, R.layout.view_chart_marker);
@@ -23,19 +23,20 @@ public class TradingMarkerView extends MarkerView {
         dateText  = findViewById(R.id.markerDate);
     }
 
+    public void setDateLabels(List<String> labels) {
+        this.dateLabels = labels;
+    }
+
     @Override
     public void refreshContent(Entry e, Highlight highlight) {
         if (e != null) {
             priceText.setText("$" + String.format(Locale.US, "%.2f", e.getY()));
 
-            Object data = e.getData();
-            if (data instanceof Long) {
-                long timestamp = (Long) data;
-                String formatted = new SimpleDateFormat("dd MMM yyyy HH:mm", Locale.getDefault())
-                        .format(new Date(timestamp));
-                dateText.setText(formatted);
+            int index = (int) e.getX();
+            if (dateLabels != null && index >= 0 && index < dateLabels.size()) {
+                dateText.setText(dateLabels.get(index));
             } else {
-                dateText.setText("Index: " + (int) e.getX());
+                dateText.setText("Index: " + index);
             }
         }
         super.refreshContent(e, highlight);
