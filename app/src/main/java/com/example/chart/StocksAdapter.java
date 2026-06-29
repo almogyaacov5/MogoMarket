@@ -80,7 +80,6 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         }
         holder.targetPriceText.setTextColor(textSecondary);
 
-        // הצגת Notes
         if (stock.notes != null && !stock.notes.trim().isEmpty()) {
             holder.notesText.setText("\uD83D\uDCDD " + stock.notes.trim());
             holder.notesText.setVisibility(View.VISIBLE);
@@ -88,16 +87,15 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
             holder.notesText.setVisibility(View.GONE);
         }
 
-        // איפוס תצוגה לפני טעינה
         holder.currentPriceText.setText("...");
         holder.changePercentText.setText("...");
         holder.changePercentDetailText.setText("...");
         holder.pnlDollarText.setText("-");
 
+        // משתמש ב-/quote במקום /stock/candle - עובד תמיד גם בשוק סגור
         fetchQuote(stock.symbol, new QuoteCallback() {
             @Override
             public void onQuoteReceived(float currentPrice, float dailyChangePercent) {
-                // אחוז שינוי מהמחיר שקנית
                 float totalChangePercent = (stock.buyPrice != 0f)
                         ? ((currentPrice - stock.buyPrice) / stock.buyPrice * 100f) : 0f;
                 double pnlDollar = (stock.tradeAmount > 0)
@@ -112,21 +110,16 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
                     holder.currentPriceText.setText(String.format(Locale.US, "$%.2f", currentPrice));
                     holder.currentPriceText.setTextColor(textPrimary);
                 });
-
-                // changePercentText = שינוי יומי של המניה (היום בשוק)
                 holder.changePercentText.post(() -> {
                     holder.changePercentText.setText(
                             String.format(Locale.US, "%s %.2f%% היום", arrowDaily, Math.abs(dailyChangePercent)));
                     holder.changePercentText.setTextColor(dailyGainLossColor);
                 });
-
-                // changePercentDetailText = שינוי מול מחיר הקנייה שלך
                 holder.changePercentDetailText.post(() -> {
                     holder.changePercentDetailText.setText(
                             String.format(Locale.US, "%s %.2f%% מהקנייה", arrowTotal, Math.abs(totalChangePercent)));
                     holder.changePercentDetailText.setTextColor(gainLossColor);
                 });
-
                 if (stock.tradeAmount > 0) {
                     holder.pnlDollarText.post(() -> {
                         String sign = pnlDollar >= 0 ? "+" : "";
@@ -256,13 +249,8 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         return et;
     }
 
-    // ========================= FETCH QUOTE (Finnhub) =========================
-
-    /**
-     * מביא מ-Finnhub quote עם:
-     *   c  = מחיר נוכחי
-     *   dp = אחוז שינוי יומי (daily percent change)
-     */
+    // ========================= FETCH QUOTE (Finnhub /quote) =========================
+    // משתמש ב-/quote במקום /stock/candle - עובד תמיד גם בשוק סגור
     private void fetchQuote(String symbol, QuoteCallback callback) {
         String url = "https://finnhub.io/api/v1/quote?symbol=" + symbol + "&token=" + API_KEY;
         client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {

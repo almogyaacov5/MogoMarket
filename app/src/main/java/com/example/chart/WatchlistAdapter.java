@@ -13,7 +13,6 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -138,9 +137,9 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
             holder.dayChangeText.setText("");
         }
 
-        fetchStockData(stock.symbol, new StockDataCallback() {
+        fetchQuote(stock.symbol, new QuoteCallback() {
             @Override
-            public void onDataReceived(float price, float dayChange) {
+            public void onQuoteReceived(float price, float dayChange) {
                 stock.currentPrice = price;
                 stock.dayChange    = dayChange;
                 holder.priceText.post(() -> {
@@ -206,6 +205,35 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
         }
     }
 
+    // ========================= FETCH QUOTE (Finnhub /quote) =========================
+    // משתמש ב-/quote במקום /stock/candle - עובד תמיד גם בשוק סגור
+    private void fetchQuote(String symbol, QuoteCallback callback) {
+        String url = "https://finnhub.io/api/v1/quote?symbol=" + symbol + "&token=" + API_KEY;
+        httpClient.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
+            @Override public void onFailure(@NonNull Call call, @NonNull IOException e) { callback.onError(e); }
+            @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                try {
+                    JSONObject obj = new JSONObject(response.body().string());
+                    float price     = (float) obj.getDouble("c");  // current price
+                    float dayChange = (float) obj.getDouble("dp"); // daily % change
+                    if (price == 0f) { callback.onError(new Exception("price=0")); return; }
+                    callback.onQuoteReceived(price, dayChange);
+                } catch (Exception e) { callback.onError(e); }
+            }
+        });
+    }
+
+    public interface QuoteCallback {
+        void onQuoteReceived(float price, float dayChange);
+        void onError(Exception e);
+    }
+
+    // תאימות אחורה
+    public interface StockDataCallback {
+        void onDataReceived(float price, float dayChange);
+        void onError(Exception e);
+    }
+
     static class WatchViewHolder extends RecyclerView.ViewHolder {
         TextView symbolText, priceText, dayChangeText, alertText;
         ImageButton deleteButton, alertButton;
@@ -218,41 +246,5 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
             deleteButton  = itemView.findViewById(R.id.btnDeleteStock);
             alertButton   = itemView.findViewById(R.id.btnSetAlert);
         }
-    }
-
-    private void fetchStockData(String symbol, StockDataCallback callback) {
-        long toTime   = System.currentTimeMillis() / 1000L;
-        long fromTime = toTime - (3L * 24 * 60 * 60); // 3 days back
-
-        String url = "https://finnhub.io/api/v1/stock/candle?symbol=" + symbol
-                + "&resolution=D&from=" + fromTime
-                + "&to=" + toTime
-                + "&token=" + API_KEY;
-
-        httpClient.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
-            @Override public void onFailure(@NonNull Call call, @NonNull IOException e) { callback.onError(e); }
-            @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                try {
-                    String     body   = response.body().string();
-                    JSONObject json   = new JSONObject(body);
-                    String     status = json.optString("s", "");
-                    if (!"ok".equals(status)) { callback.onError(new Exception("No data")); return; }
-
-                    JSONArray closes = json.getJSONArray("c");
-                    if (closes.length() >= 2) {
-                        float last = (float) closes.getDouble(closes.length() - 1);
-                        float prev = (float) closes.getDouble(closes.length() - 2);
-                        callback.onDataReceived(last, (last - prev) / prev * 100f);
-                    } else {
-                        callback.onError(new Exception("Not enough data"));
-                    }
-                } catch (Exception e) { callback.onError(e); }
-            }
-        });
-    }
-
-    public interface StockDataCallback {
-        void onDataReceived(float price, float dayChange);
-        void onError(Exception e);
     }
 }
