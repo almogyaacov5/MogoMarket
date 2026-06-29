@@ -92,7 +92,6 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         holder.changePercentDetailText.setText("...");
         holder.pnlDollarText.setText("-");
 
-        // משתמש ב-/quote במקום /stock/candle - עובד תמיד גם בשוק סגור
         fetchQuote(stock.symbol, new QuoteCallback() {
             @Override
             public void onQuoteReceived(float currentPrice, float dailyChangePercent) {
@@ -103,21 +102,23 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
 
                 int gainLossColor      = totalChangePercent >= 0 ? colorGain : colorLoss;
                 int dailyGainLossColor = dailyChangePercent >= 0 ? colorGain : colorLoss;
-                String arrowTotal = totalChangePercent >= 0 ? "▲" : "▼";
-                String arrowDaily = dailyChangePercent >= 0 ? "▲" : "▼";
+                String arrowTotal = totalChangePercent >= 0 ? "\u25b2" : "\u25bc";
+                String arrowDaily = dailyChangePercent >= 0 ? "\u25b2" : "\u25bc";
 
                 holder.currentPriceText.post(() -> {
                     holder.currentPriceText.setText(String.format(Locale.US, "$%.2f", currentPrice));
                     holder.currentPriceText.setTextColor(textPrimary);
                 });
+                // "Today" instead of "היום"
                 holder.changePercentText.post(() -> {
                     holder.changePercentText.setText(
-                            String.format(Locale.US, "%s %.2f%% היום", arrowDaily, Math.abs(dailyChangePercent)));
+                            String.format(Locale.US, "%s %.2f%% Today", arrowDaily, Math.abs(dailyChangePercent)));
                     holder.changePercentText.setTextColor(dailyGainLossColor);
                 });
+                // "vs Entry" instead of "מהקנייה"
                 holder.changePercentDetailText.post(() -> {
                     holder.changePercentDetailText.setText(
-                            String.format(Locale.US, "%s %.2f%% מהקנייה", arrowTotal, Math.abs(totalChangePercent)));
+                            String.format(Locale.US, "%s %.2f%% vs Entry", arrowTotal, Math.abs(totalChangePercent)));
                     holder.changePercentDetailText.setTextColor(gainLossColor);
                 });
                 if (stock.tradeAmount > 0) {
@@ -158,39 +159,39 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
 
     private void showEditDialog(Context context, StockData stock) {
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setTitle("✏️ עריכת " + stock.symbol);
+        builder.setTitle("\u270f\ufe0f Edit " + stock.symbol);
 
         LinearLayout layout = new LinearLayout(context);
         layout.setOrientation(LinearLayout.VERTICAL);
         int pad = dpToPx(context, 16);
         layout.setPadding(pad, pad, pad, pad);
 
-        layout.addView(makeLabel(context, "טיקר (סימבול)"));
+        layout.addView(makeLabel(context, "Ticker (Symbol)"));
         EditText etSymbol = makeEditText(context, InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
         etSymbol.setText(stock.symbol != null ? stock.symbol : "");
         layout.addView(etSymbol);
 
-        layout.addView(makeLabel(context, "שם החברה (אופציונלי)"));
+        layout.addView(makeLabel(context, "Company Name (optional)"));
         EditText etName = makeEditText(context, InputType.TYPE_CLASS_TEXT);
         etName.setText(stock.name != null ? stock.name : "");
         layout.addView(etName);
 
-        layout.addView(makeLabel(context, "מחיר קנייה ($)"));
+        layout.addView(makeLabel(context, "Entry Price ($)"));
         EditText etBuyPrice = makeEditText(context, InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         etBuyPrice.setText(stock.buyPrice > 0 ? String.format(Locale.US, "%.2f", stock.buyPrice) : "");
         layout.addView(etBuyPrice);
 
-        layout.addView(makeLabel(context, "סכום השקעה ($)"));
+        layout.addView(makeLabel(context, "Investment Amount ($)"));
         EditText etAmount = makeEditText(context, InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         etAmount.setText(stock.tradeAmount > 0 ? String.format(Locale.US, "%.2f", stock.tradeAmount) : "");
         layout.addView(etAmount);
 
-        layout.addView(makeLabel(context, "מחיר יעד ($) - אופציונלי"));
+        layout.addView(makeLabel(context, "Target Price ($) - optional"));
         EditText etTarget = makeEditText(context, InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         etTarget.setText(stock.targetPrice > 0 ? String.format(Locale.US, "%.2f", stock.targetPrice) : "");
         layout.addView(etTarget);
 
-        layout.addView(makeLabel(context, "הערות / סיבת קנייה - אופציונלי"));
+        layout.addView(makeLabel(context, "Notes / Trade Reason - optional"));
         EditText etNotes = makeEditText(context, InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
         etNotes.setLines(2);
         etNotes.setMaxLines(3);
@@ -199,10 +200,10 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
 
         builder.setView(layout);
 
-        builder.setPositiveButton("שמור", (dialog, which) -> {
+        builder.setPositiveButton("Save", (dialog, which) -> {
             String newSymbol = etSymbol.getText().toString().trim().toUpperCase(Locale.US);
             if (newSymbol.isEmpty()) {
-                Toast.makeText(context, "טיקר לא יכול להיות ריק", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "Ticker cannot be empty", Toast.LENGTH_SHORT).show();
                 return;
             }
             String oldSymbol  = stock.symbol;
@@ -218,10 +219,10 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
 
             listener.onStockEdit(stock, oldSymbol);
             notifyDataSetChanged();
-            Toast.makeText(context, "✅ " + newSymbol + " עודכן בהצלחה", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "\u2705 " + newSymbol + " updated successfully", Toast.LENGTH_SHORT).show();
         });
 
-        builder.setNegativeButton("ביטול", (dialog, which) -> dialog.cancel());
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
         builder.show();
     }
 
@@ -250,7 +251,6 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
     }
 
     // ========================= FETCH QUOTE (Finnhub /quote) =========================
-    // משתמש ב-/quote במקום /stock/candle - עובד תמיד גם בשוק סגור
     private void fetchQuote(String symbol, QuoteCallback callback) {
         String url = "https://finnhub.io/api/v1/quote?symbol=" + symbol + "&token=" + API_KEY;
         client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
@@ -277,7 +277,6 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         void onError(Exception e);
     }
 
-    // נשמר לתאימות אחורה
     public interface PriceCallback {
         void onPriceReceived(float price);
         void onError(Exception e);
@@ -308,16 +307,17 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
 
     private void showSellPriceDialog(Context context, String symbol) {
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setTitle("הזן מחיר סגירה ל-" + symbol);
+        builder.setTitle("Close Position - " + symbol);
         final EditText input = new EditText(context);
         input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        input.setHint("Exit price ($)");
         builder.setView(input);
-        builder.setPositiveButton("סגור טרייד", (dialog, which) -> {
+        builder.setPositiveButton("Close Trade", (dialog, which) -> {
             String priceStr = input.getText().toString();
             double sellPrice = priceStr.isEmpty() ? 0 : Double.parseDouble(priceStr);
             listener.onStockDelete(symbol, sellPrice);
         });
-        builder.setNegativeButton("ביטול", (dialog, which) -> dialog.cancel());
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
         builder.show();
     }
 
