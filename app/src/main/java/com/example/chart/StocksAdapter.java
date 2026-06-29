@@ -2,12 +2,15 @@ package com.example.chart;
 
 import android.app.AlertDialog;
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.text.InputType;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -18,6 +21,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.net.URL;
 import java.util.List;
 import java.util.Locale;
 
@@ -92,6 +96,18 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         holder.changePercentDetailText.setText("...");
         holder.pnlDollarText.setText("-");
 
+        // טעינת לוגו החברה ברקע
+        holder.stockLogoBackground.setImageBitmap(null);
+        String logoUrl = "https://static2.finnhub.io/file/publicdatany/finnhubimage/stock_logo/" + sym + ".png";
+        new Thread(() -> {
+            try {
+                Bitmap bitmap = BitmapFactory.decodeStream(new URL(logoUrl).openStream());
+                if (bitmap != null) {
+                    holder.itemView.post(() -> holder.stockLogoBackground.setImageBitmap(bitmap));
+                }
+            } catch (Exception ignored) {}
+        }).start();
+
         fetchQuote(stock.symbol, new QuoteCallback() {
             @Override
             public void onQuoteReceived(float currentPrice, float dailyChangePercent) {
@@ -103,7 +119,6 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
                 int gainLossColor      = totalChangePercent >= 0 ? colorGain : colorLoss;
                 int dailyGainLossColor = dailyChangePercent >= 0 ? colorGain : colorLoss;
 
-                // explicit +/- sign — both color AND sign show direction
                 String dailySign = dailyChangePercent >= 0 ? "+" : "-";
                 String totalSign = totalChangePercent  >= 0 ? "+" : "-";
 
@@ -112,7 +127,6 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
                     holder.currentPriceText.setTextColor(textPrimary);
                 });
 
-                // top-right: +2.35% Today  /  -1.80% Today
                 holder.changePercentText.post(() -> {
                     holder.changePercentText.setText(
                             String.format(Locale.US, "%s%.2f%% Today",
@@ -120,7 +134,6 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
                     holder.changePercentText.setTextColor(dailyGainLossColor);
                 });
 
-                // P&L %: +5.67% vs Entry  /  -3.12% vs Entry
                 holder.changePercentDetailText.post(() -> {
                     holder.changePercentDetailText.setText(
                             String.format(Locale.US, "%s%.2f%% vs Entry",
@@ -268,8 +281,8 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
                 try {
                     String body = response.body().string();
                     JSONObject obj = new JSONObject(body);
-                    float currentPrice       = (float) obj.getDouble("c");   // Current price
-                    float dailyChangePercent = (float) obj.getDouble("dp");  // Daily % change
+                    float currentPrice       = (float) obj.getDouble("c");
+                    float dailyChangePercent = (float) obj.getDouble("dp");
                     if (currentPrice == 0f) { callback.onError(new Exception("price=0")); return; }
                     callback.onQuoteReceived(currentPrice, dailyChangePercent);
                 } catch (Exception e) {
@@ -293,6 +306,7 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         TextView symbolText, currentPriceText, changePercentText;
         TextView changePercentDetailText, buyPriceText, targetPriceText, pnlDollarText, stockNameText, notesText;
         ImageButton btnEdit, btnDelete;
+        ImageView stockLogoBackground;
 
         public StockViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -307,6 +321,7 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
             notesText               = itemView.findViewById(R.id.stockNotes);
             btnEdit                 = itemView.findViewById(R.id.btnEditStock);
             btnDelete               = itemView.findViewById(R.id.btnDeleteStock);
+            stockLogoBackground     = itemView.findViewById(R.id.stockLogoBackground);
         }
     }
 
