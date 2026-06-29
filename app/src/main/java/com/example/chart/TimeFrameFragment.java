@@ -44,7 +44,7 @@ public class TimeFrameFragment extends DialogFragment {
             if      (checkedId == R.id.radio1min)   interval = "1min";
             else if (checkedId == R.id.radio5min)   interval = "5min";
             else if (checkedId == R.id.radio15min)  interval = "15min";
-            else if (checkedId == R.id.radio65min)  interval = "65min";
+            else if (checkedId == R.id.radio65min)  interval = "60min";  // Finnhub תומך ב-60 בלבד
             else if (checkedId == R.id.radio1day)   interval = "1day";
             else if (checkedId == R.id.radio1week)  interval = "1week";
             else if (checkedId == R.id.radio1month) interval = "1month";

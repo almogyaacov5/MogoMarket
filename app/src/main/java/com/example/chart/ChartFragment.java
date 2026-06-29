@@ -537,23 +537,65 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     // ========================= DATA FETCHING (Finnhub) =========================
 
+    /**
+     * ממיר את מחרוזת ה-interval שנשלחת מ-TimeFrameFragment
+     * לפורמט resolution שמקבל Finnhub API.
+     * Finnhub תומך ב: 1, 5, 15, 30, 60, D, W, M
+     */
     private String intervalToFinnhubResolution(String interval) {
         switch (interval) {
             case "1min":   return "1";
             case "5min":   return "5";
             case "15min":  return "15";
             case "30min":  return "30";
-            case "1h":     return "60";
+            case "60min":  return "60";   // ← תוקן: היה "1h"
             case "1week":  return "W";
             case "1month": return "M";
-            default:       return "D"; // 1day
+            default:       return "D";    // 1day ובכל ערך לא מוכר
+        }
+    }
+
+    /**
+     * מחשב fromTime לפי ה-resolution:
+     * - רזולוציות תוך-יומיות (1,5,15,30,60 דק') → 7 ימים אחורה (מספיק נקודות)
+     * - יומי → 400 ימים אחורה (כ-252 ימי מסחר)
+     * - שבועי → 5 שנים אחורה
+     * - חודשי → 10 שנים אחורה
+     */
+    private long calcFromTime(String resolution, long toTime) {
+        switch (resolution) {
+            case "1":  return toTime - (7L  * 24 * 3600);    // 7 ימים
+            case "5":  return toTime - (14L * 24 * 3600);    // 14 ימים
+            case "15": return toTime - (30L * 24 * 3600);    // 30 ימים
+            case "30": return toTime - (60L * 24 * 3600);    // 60 ימים
+            case "60": return toTime - (90L * 24 * 3600);    // 90 ימים
+            case "W":  return toTime - (5L  * 365 * 24 * 3600); // 5 שנים
+            case "M":  return toTime - (10L * 365 * 24 * 3600); // 10 שנים
+            default:   return toTime - (400L * 24 * 3600);   // D: ~252 ימי מסחר
+        }
+    }
+
+    /**
+     * פורמט תאריך לפי ה-resolution:
+     * - תוך-יומי → HH:mm
+     * - יומי/שבועי → MM-dd
+     * - חודשי → yyyy-MM
+     */
+    private SimpleDateFormat dateFormatFor(String resolution) {
+        switch (resolution) {
+            case "1": case "5": case "15": case "30": case "60":
+                return new SimpleDateFormat("MM/dd HH:mm", Locale.US);
+            case "M":
+                return new SimpleDateFormat("yyyy-MM", Locale.US);
+            default:
+                return new SimpleDateFormat("MM-dd", Locale.US);
         }
     }
 
     private void fetchStockData(String symbol, String interval) {
         String resolution = intervalToFinnhubResolution(interval);
         long toTime   = System.currentTimeMillis() / 1000L;
-        long fromTime = toTime - (400L * 24 * 60 * 60); // ~400 days back to cover 252 trading days
+        long fromTime = calcFromTime(resolution, toTime);
 
         String url = "https://finnhub.io/api/v1/stock/candle?symbol=" + symbol
                 + "&resolution=" + resolution
@@ -562,14 +604,21 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 + "&token=" + API_KEY;
 
         client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
-            @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {}
+            @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                if (getActivity() != null) getActivity().runOnUiThread(() ->
+                    Toast.makeText(requireContext(), "שגיאת רשת: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
             @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (!response.isSuccessful() || response.body() == null) return;
                 try {
                     JSONObject json = new JSONObject(response.body().string());
 
                     String status = json.optString("s", "");
-                    if (!"ok".equals(status)) return;
+                    if (!"ok".equals(status)) {
+                        if (getActivity() != null) getActivity().runOnUiThread(() ->
+                            Toast.makeText(requireContext(), "אין נתונים עבור: " + symbol, Toast.LENGTH_SHORT).show());
+                        return;
+                    }
 
                     JSONArray opens      = json.getJSONArray("o");
                     JSONArray highs      = json.getJSONArray("h");
@@ -588,7 +637,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     float prevClose = size > 1 ? (float) closes.getDouble(size - 2) : 0;
                     lastPrice = lastClose;
 
-                    SimpleDateFormat sdf = new SimpleDateFormat("MM-dd", Locale.US);
+                    SimpleDateFormat sdf = dateFormatFor(resolution);
 
                     for (int i = 0; i < size; i++) {
                         fullCloses.add((float) closes.getDouble(i));
