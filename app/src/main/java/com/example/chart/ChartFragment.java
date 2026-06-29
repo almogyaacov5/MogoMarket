@@ -23,7 +23,6 @@ import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.FrameLayout;
-import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -34,7 +33,6 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.chart.TradingMarkerView;
-import com.github.mikephil.charting.charts.BarLineChartBase;
 import com.github.mikephil.charting.charts.CandleStickChart;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.XAxis;
@@ -46,8 +44,6 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.ValueFormatter;
-import com.github.mikephil.charting.listener.ChartTouchListener;
-import com.github.mikephil.charting.listener.OnChartGestureListener;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
@@ -61,7 +57,6 @@ import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 
@@ -73,7 +68,6 @@ import okhttp3.Response;
 
 public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFrameListener {
 
-    // ==================== THEME COLORS ====================
     private static final int DARK_BG        = 0xFF0B0F14;
     private static final int DARK_CARD      = 0xFF151C2E;
     private static final int DARK_TEXT_PRI  = 0xFFE6EDF3;
@@ -82,20 +76,18 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private static final int LIGHT_CARD     = 0xFFFFFFFF;
     private static final int LIGHT_TEXT_PRI = 0xFF1A1D23;
     private static final int LIGHT_TEXT_SEC = 0xFF6B7280;
-    private static final int COLOR_PRIMARY   = 0xFF4DA3FF;
-    private static final int COLOR_GAIN      = 0xFF00C896;
-    private static final int COLOR_LOSS      = 0xFFFF4D4D;
-    private static final int COLOR_FILL      = 0xFF1C6DD0;
-    // ======================================================
+    private static final int COLOR_PRIMARY  = 0xFF4DA3FF;
+    private static final int COLOR_GAIN     = 0xFF00C896;
+    private static final int COLOR_LOSS     = 0xFFFF4D4D;
+    private static final int COLOR_FILL     = 0xFF1C6DD0;
 
-    private boolean isDarkTheme   = true;
-    private boolean isFullscreen  = false;
+    private boolean isDarkTheme = true;
+    private boolean isFullscreen = false;
 
-    // UI Views
     private CandleStickChart candleStickChart;
-    private LineChart        lineChart;
+    private LineChart lineChart;
     private AutoCompleteTextView tickerInput;
-    private Button   btnLoad, btnTimeFrame, btnToggleChart, btnAIAnalysis;
+    private Button btnLoad, btnTimeFrame, btnToggleChart, btnAIAnalysis;
     private com.google.android.material.button.MaterialButton btnChartRefresh, btnExpandChart, btnExitFullscreen, btnThemeToggle, btnSettings;
 
     private View headerSection;
@@ -107,58 +99,62 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private TextView timeFrameText, tickerText, priceText, changeText, currentPriceDisplay;
     private ProgressBar progressAI;
 
-    private final OkHttpClient client  = new OkHttpClient();
-    private final String API_KEY       = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
+    private final OkHttpClient client = new OkHttpClient();
+    private final String API_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
 
-    private String  symbol      = "SPY";
-    private String  interval    = "1day";
+    private String symbol = "SPY";
+    private String interval = "1day";
     private boolean isCandleStick = true;
     private final DecimalFormat df = new DecimalFormat("#.##");
-    private String  latestQuery = "";
+    private String latestQuery = "";
 
     private LLMService llmService;
     private final List<CandleEntry> currentEntries = new ArrayList<>();
-    private final List<Float>       fullCloses     = new ArrayList<>();
-    private final List<String>      dateLabels     = new ArrayList<>();
-    private float   lastPrice          = 0f;
-    private boolean isManualSelection  = false;
+    private final List<Float> fullCloses = new ArrayList<>();
+    private final List<String> dateLabels = new ArrayList<>();
+    private float lastPrice = 0f;
+    private boolean isManualSelection = false;
 
     private ArrayAdapter<StockSuggestion> suggestionAdapter;
-    private final Handler  searchHandler = new Handler(Looper.getMainLooper());
+    private final Handler searchHandler = new Handler(Looper.getMainLooper());
     private Runnable pendingSearch;
     private static final long SEARCH_DEBOUNCE_MS = 50;
 
     public static class StockSuggestion {
         public final String symbol, name, exchange;
         public StockSuggestion(String symbol, String name, String exchange) {
-            this.symbol = symbol; this.name = name; this.exchange = exchange;
+            this.symbol = symbol;
+            this.name = name;
+            this.exchange = exchange;
         }
-        @NonNull @Override
+        @NonNull
+        @Override
         public String toString() {
             String s = symbol == null ? "" : symbol;
-            String n = name   == null ? "" : name;
-            String ex= exchange==null ? "" : exchange;
+            String n = name == null ? "" : name;
+            String ex = exchange == null ? "" : exchange;
             if (n.isEmpty() && ex.isEmpty()) return s;
-            if (ex.isEmpty()) return s + " \u2014 " + n;
-            return s + " \u2014 " + n + " (" + ex + ")";
+            if (ex.isEmpty()) return s + " — " + n;
+            return s + " — " + n + " (" + ex + ")";
         }
     }
 
-    @Nullable @Override
+    @Nullable
+    @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_chart, container, false);
 
-        chartRootLayout    = v.findViewById(R.id.chartRootLayout);
-        candleStickChart   = v.findViewById(R.id.stock_chart);
-        lineChart          = v.findViewById(R.id.line_chart);
-        tickerInput        = v.findViewById(R.id.ticker_input);
-        btnLoad            = v.findViewById(R.id.btnLoad);
-        btnTimeFrame       = v.findViewById(R.id.btnSelectTimeFrame);
-        btnToggleChart     = v.findViewById(R.id.btnToggleChart);
-        btnChartRefresh    = v.findViewById(R.id.btnChartRefresh);
-        btnAIAnalysis      = v.findViewById(R.id.btnAIAnalysis);
-        btnThemeToggle     = v.findViewById(R.id.btnThemeToggle);
-        btnSettings        = v.findViewById(R.id.btnSettings);
+        chartRootLayout = v.findViewById(R.id.chartRootLayout);
+        candleStickChart = v.findViewById(R.id.stock_chart);
+        lineChart = v.findViewById(R.id.line_chart);
+        tickerInput = v.findViewById(R.id.ticker_input);
+        btnLoad = v.findViewById(R.id.btnLoad);
+        btnTimeFrame = v.findViewById(R.id.btnSelectTimeFrame);
+        btnToggleChart = v.findViewById(R.id.btnToggleChart);
+        btnChartRefresh = v.findViewById(R.id.btnChartRefresh);
+        btnAIAnalysis = v.findViewById(R.id.btnAIAnalysis);
+        btnThemeToggle = v.findViewById(R.id.btnThemeToggle);
+        btnSettings = v.findViewById(R.id.btnSettings);
         if (btnSettings != null) {
             btnSettings.setOnClickListener(vv -> {
                 if (getActivity() instanceof MainActivity) {
@@ -166,22 +162,22 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 }
             });
         }
-        btnExpandChart     = v.findViewById(R.id.btnExpandChart);
-        btnExitFullscreen  = v.findViewById(R.id.btnExitFullscreen);
-        progressAI         = v.findViewById(R.id.progressAI);
-        priceText          = v.findViewById(R.id.priceText);
-        changeText         = v.findViewById(R.id.changeText);
-        timeFrameText      = v.findViewById(R.id.timeFrameText);
-        tickerText         = v.findViewById(R.id.tickerText);
-        currentPriceDisplay= v.findViewById(R.id.currentPriceDisplay);
-        headerSection      = v.findViewById(R.id.headerSection);
-        searchSection      = v.findViewById(R.id.searchSection);
-        controlsSection    = v.findViewById(R.id.controlsSection);
-        bottomBar          = v.findViewById(R.id.bottomBar);
-        chartContainer     = v.findViewById(R.id.chartContainer);
+        btnExpandChart = v.findViewById(R.id.btnExpandChart);
+        btnExitFullscreen = v.findViewById(R.id.btnExitFullscreen);
+        progressAI = v.findViewById(R.id.progressAI);
+        priceText = v.findViewById(R.id.priceText);
+        changeText = v.findViewById(R.id.changeText);
+        timeFrameText = v.findViewById(R.id.timeFrameText);
+        tickerText = v.findViewById(R.id.tickerText);
+        currentPriceDisplay = v.findViewById(R.id.currentPriceDisplay);
+        headerSection = v.findViewById(R.id.headerSection);
+        searchSection = v.findViewById(R.id.searchSection);
+        controlsSection = v.findViewById(R.id.controlsSection);
+        bottomBar = v.findViewById(R.id.bottomBar);
+        chartContainer = v.findViewById(R.id.chartContainer);
 
         llmService = new LLMService();
-        if (progressAI      != null) progressAI.setVisibility(View.GONE);
+        if (progressAI != null) progressAI.setVisibility(View.GONE);
         if (currentPriceDisplay != null) currentPriceDisplay.setVisibility(View.GONE);
 
         if (getArguments() != null && getArguments().containsKey("symbol")) {
@@ -200,22 +196,20 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         return v;
     }
 
-    // ========================= THEME =========================
-
     private void applyTheme() {
-        int bgColor   = isDarkTheme ? DARK_BG       : LIGHT_BG;
-        int cardColor = isDarkTheme ? DARK_CARD      : LIGHT_CARD;
-        int textPri   = isDarkTheme ? DARK_TEXT_PRI  : LIGHT_TEXT_PRI;
-        int textSec   = isDarkTheme ? DARK_TEXT_SEC  : LIGHT_TEXT_SEC;
+        int bgColor = isDarkTheme ? DARK_BG : LIGHT_BG;
+        int cardColor = isDarkTheme ? DARK_CARD : LIGHT_CARD;
+        int textPri = isDarkTheme ? DARK_TEXT_PRI : LIGHT_TEXT_PRI;
+        int textSec = isDarkTheme ? DARK_TEXT_SEC : LIGHT_TEXT_SEC;
 
         if (chartRootLayout != null) chartRootLayout.setBackgroundColor(bgColor);
-        if (headerSection   != null) headerSection.setBackgroundColor(cardColor);
+        if (headerSection != null) headerSection.setBackgroundColor(cardColor);
         if (controlsSection != null) controlsSection.setBackgroundColor(cardColor);
-        if (bottomBar       != null) bottomBar.setBackgroundColor(cardColor);
-        if (chartContainer  != null) chartContainer.setBackgroundColor(cardColor);
-        if (tickerText      != null) tickerText.setTextColor(textPri);
-        if (timeFrameText   != null) timeFrameText.setTextColor(textSec);
-        if (tickerInput     != null) {
+        if (bottomBar != null) bottomBar.setBackgroundColor(cardColor);
+        if (chartContainer != null) chartContainer.setBackgroundColor(cardColor);
+        if (tickerText != null) tickerText.setTextColor(textPri);
+        if (timeFrameText != null) timeFrameText.setTextColor(textSec);
+        if (tickerInput != null) {
             tickerInput.setBackgroundColor(cardColor);
             tickerInput.setTextColor(textPri);
             tickerInput.setHintTextColor(textSec);
@@ -232,78 +226,17 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             lineChart.getAxisLeft().setTextColor(textSec);
             lineChart.invalidate();
         }
-        if (btnThemeToggle != null) {
-            btnThemeToggle.setIconResource(
-                    isDarkTheme ? R.drawable.ic_nav_theme_dark : R.drawable.ic_nav_theme_light);
-            btnThemeToggle.setIconTint(android.content.res.ColorStateList.valueOf(textSec));
-        }
     }
-
-    // ========================= FULLSCREEN =========================
-
-    private void toggleFullscreen() {
-        isFullscreen = !isFullscreen;
-        if (isFullscreen) {
-            animateVisibility(headerSection,   false);
-            animateVisibility(searchSection,   false);
-            animateVisibility(controlsSection, false);
-            animateVisibility(bottomBar,       false);
-            if (chartContainer != null) {
-                ViewGroup.LayoutParams p = chartContainer.getLayoutParams();
-                if (p instanceof LinearLayout.LayoutParams) {
-                    ((LinearLayout.LayoutParams) p).setMargins(0,0,0,0);
-                    ((LinearLayout.LayoutParams) p).weight = 1;
-                }
-                chartContainer.setLayoutParams(p);
-                chartContainer.setPadding(0,0,0,0);
-            }
-            if (btnExitFullscreen != null) btnExitFullscreen.setVisibility(View.VISIBLE);
-        } else {
-            animateVisibility(headerSection,   true);
-            animateVisibility(searchSection,   true);
-            animateVisibility(controlsSection, true);
-            animateVisibility(bottomBar,       true);
-            if (chartContainer != null) {
-                ViewGroup.LayoutParams p = chartContainer.getLayoutParams();
-                if (p instanceof LinearLayout.LayoutParams) {
-                    int m = dpToPx(12);
-                    ((LinearLayout.LayoutParams) p).setMargins(m, dpToPx(8), m, 0);
-                }
-                chartContainer.setLayoutParams(p);
-                chartContainer.setPadding(dpToPx(4),dpToPx(4),dpToPx(4),dpToPx(4));
-            }
-            if (btnExitFullscreen != null) btnExitFullscreen.setVisibility(View.GONE);
-        }
-    }
-
-    private void animateVisibility(View view, boolean show) {
-        if (view == null) return;
-        if (show) {
-            view.setVisibility(View.VISIBLE);
-            view.setAlpha(0f);
-            view.animate().alpha(1f).setDuration(220).start();
-        } else {
-            view.animate().alpha(0f).setDuration(180)
-                    .withEndAction(() -> view.setVisibility(View.GONE)).start();
-        }
-    }
-
-    private int dpToPx(int dp) {
-        return Math.round(dp * getResources().getDisplayMetrics().density);
-    }
-
-    // ========================= CHART STYLING =========================
 
     private void setupCandleChartStyle() {
         if (candleStickChart == null) return;
         int cardColor = isDarkTheme ? DARK_CARD : LIGHT_CARD;
-        int textSec   = isDarkTheme ? DARK_TEXT_SEC : LIGHT_TEXT_SEC;
+        int textSec = isDarkTheme ? DARK_TEXT_SEC : LIGHT_TEXT_SEC;
 
         candleStickChart.setBackgroundColor(cardColor);
         candleStickChart.setDrawGridBackground(false);
         candleStickChart.getDescription().setEnabled(false);
         candleStickChart.getLegend().setEnabled(false);
-
         candleStickChart.setTouchEnabled(true);
         candleStickChart.setDragEnabled(true);
         candleStickChart.setScaleEnabled(true);
@@ -313,7 +246,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         candleStickChart.setDoubleTapToZoomEnabled(false);
         candleStickChart.setDragDecelerationEnabled(true);
         candleStickChart.setDragDecelerationFrictionCoef(0.92f);
-
         candleStickChart.setHighlightPerTapEnabled(true);
         candleStickChart.setHighlightPerDragEnabled(true);
 
@@ -339,20 +271,18 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         leftAxis.setTextColor(textSec);
         leftAxis.setTextSize(10f);
         leftAxis.setLabelCount(5, false);
-
         candleStickChart.getAxisRight().setEnabled(false);
     }
 
     private void setupLineChartStyle() {
         if (lineChart == null) return;
         int cardColor = isDarkTheme ? DARK_CARD : LIGHT_CARD;
-        int textSec   = isDarkTheme ? DARK_TEXT_SEC : LIGHT_TEXT_SEC;
+        int textSec = isDarkTheme ? DARK_TEXT_SEC : LIGHT_TEXT_SEC;
 
         lineChart.setBackgroundColor(cardColor);
         lineChart.setDrawGridBackground(false);
         lineChart.getDescription().setEnabled(false);
         lineChart.getLegend().setEnabled(false);
-
         lineChart.setTouchEnabled(true);
         lineChart.setDragEnabled(true);
         lineChart.setScaleEnabled(true);
@@ -362,7 +292,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.setDoubleTapToZoomEnabled(false);
         lineChart.setDragDecelerationEnabled(true);
         lineChart.setDragDecelerationFrictionCoef(0.92f);
-
         lineChart.setHighlightPerTapEnabled(true);
         lineChart.setHighlightPerDragEnabled(true);
 
@@ -388,11 +317,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         leftAxis.setTextColor(textSec);
         leftAxis.setTextSize(10f);
         leftAxis.setLabelCount(5, false);
-
         lineChart.getAxisRight().setEnabled(false);
     }
-
-    // ========================= CLICK LISTENERS =========================
 
     private void setupClickListeners() {
         if (btnLoad != null) {
@@ -430,34 +356,12 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 fetchStockData(symbol, interval);
             });
         }
-        if (btnAIAnalysis != null) {
-            btnAIAnalysis.setOnClickListener(v -> analyzeWithAI());
-        }
-        if (btnThemeToggle != null) {
-            btnThemeToggle.setOnClickListener(v -> {
-                isDarkTheme = !isDarkTheme;
-                applyTheme();
-                setupCandleChartStyle();
-                setupLineChartStyle();
-                if (!currentEntries.isEmpty()) {
-                    if (isCandleStick) updateCandleChart(new ArrayList<>(currentEntries));
-                    else               updateLineChart(new ArrayList<>(currentEntries));
-                }
-                Toast.makeText(requireContext(),
-                        isDarkTheme ? "\uD83C\uDF11 \u05de\u05e6\u05d1 \u05db\u05d4\u05d4" : "\u2600\uFE0F \u05de\u05e6\u05d1 \u05d1\u05d4\u05d9\u05e8",
-                        Toast.LENGTH_SHORT).show();
-            });
-        }
-        if (btnExpandChart != null) btnExpandChart.setOnClickListener(v -> toggleFullscreen());
-        if (btnExitFullscreen != null) btnExitFullscreen.setOnClickListener(v -> toggleFullscreen());
+        if (btnAIAnalysis != null) btnAIAnalysis.setOnClickListener(v -> analyzeWithAI());
     }
-
-    // ========================= AUTO COMPLETE =========================
 
     private void setupAutoComplete() {
         if (tickerInput == null) return;
-        suggestionAdapter = new ArrayAdapter<>(requireContext(),
-                android.R.layout.simple_dropdown_item_1line, new ArrayList<>());
+        suggestionAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, new ArrayList<>());
         tickerInput.setAdapter(suggestionAdapter);
         tickerInput.setThreshold(1);
 
@@ -487,8 +391,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         });
     }
 
-    // ========================= CHART DATA =========================
-
     private void updateCandleChart(List<CandleEntry> entries) {
         CandleDataSet dataSet = new CandleDataSet(entries, "");
         dataSet.setIncreasingColor(COLOR_GAIN);
@@ -512,8 +414,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     private void updateLineChart(List<CandleEntry> candleEntries) {
         List<Entry> lineEntries = new ArrayList<>();
-        for (CandleEntry c : candleEntries)
-            lineEntries.add(new Entry(c.getX(), c.getClose()));
+        for (CandleEntry c : candleEntries) lineEntries.add(new Entry(c.getX(), c.getClose()));
         LineDataSet ds = new LineDataSet(lineEntries, "");
         ds.setColor(COLOR_PRIMARY);
         ds.setLineWidth(2.5f);
@@ -535,55 +436,41 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.invalidate();
     }
 
-    // ========================= DATA FETCHING (Finnhub) =========================
-
-    /**
-     * ממיר את מחרוזת ה-interval שנשלחת מ-TimeFrameFragment
-     * לפורמט resolution שמקבל Finnhub API.
-     * Finnhub תומך ב: 1, 5, 15, 30, 60, D, W, M
-     */
     private String intervalToFinnhubResolution(String interval) {
         switch (interval) {
-            case "1min":   return "1";
-            case "5min":   return "5";
-            case "15min":  return "15";
-            case "30min":  return "30";
-            case "60min":  return "60";   // ← תוקן: היה "1h"
-            case "1week":  return "W";
+            case "1min": return "1";
+            case "5min": return "5";
+            case "15min": return "15";
+            case "30min": return "30";
+            case "60min":
+            case "1h": return "60";
+            case "1day": return "D";
+            case "1week": return "W";
             case "1month": return "M";
-            default:       return "D";    // 1day ובכל ערך לא מוכר
+            default: return "D";
         }
     }
 
-    /**
-     * מחשב fromTime לפי ה-resolution:
-     * - רזולוציות תוך-יומיות (1,5,15,30,60 דק') → 7 ימים אחורה (מספיק נקודות)
-     * - יומי → 400 ימים אחורה (כ-252 ימי מסחר)
-     * - שבועי → 5 שנים אחורה
-     * - חודשי → 10 שנים אחורה
-     */
     private long calcFromTime(String resolution, long toTime) {
         switch (resolution) {
-            case "1":  return toTime - (7L  * 24 * 3600);    // 7 ימים
-            case "5":  return toTime - (14L * 24 * 3600);    // 14 ימים
-            case "15": return toTime - (30L * 24 * 3600);    // 30 ימים
-            case "30": return toTime - (60L * 24 * 3600);    // 60 ימים
-            case "60": return toTime - (90L * 24 * 3600);    // 90 ימים
-            case "W":  return toTime - (5L  * 365 * 24 * 3600); // 5 שנים
-            case "M":  return toTime - (10L * 365 * 24 * 3600); // 10 שנים
-            default:   return toTime - (400L * 24 * 3600);   // D: ~252 ימי מסחר
+            case "1": return toTime - (7L * 24L * 3600L);
+            case "5": return toTime - (14L * 24L * 3600L);
+            case "15": return toTime - (30L * 24L * 3600L);
+            case "30": return toTime - (60L * 24L * 3600L);
+            case "60": return toTime - (90L * 24L * 3600L);
+            case "W": return toTime - (5L * 365L * 24L * 3600L);
+            case "M": return toTime - (10L * 365L * 24L * 3600L);
+            default: return toTime - (400L * 24L * 3600L);
         }
     }
 
-    /**
-     * פורמט תאריך לפי ה-resolution:
-     * - תוך-יומי → HH:mm
-     * - יומי/שבועי → MM-dd
-     * - חודשי → yyyy-MM
-     */
     private SimpleDateFormat dateFormatFor(String resolution) {
         switch (resolution) {
-            case "1": case "5": case "15": case "30": case "60":
+            case "1":
+            case "5":
+            case "15":
+            case "30":
+            case "60":
                 return new SimpleDateFormat("MM/dd HH:mm", Locale.US);
             case "M":
                 return new SimpleDateFormat("yyyy-MM", Locale.US);
@@ -594,7 +481,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     private void fetchStockData(String symbol, String interval) {
         String resolution = intervalToFinnhubResolution(interval);
-        long toTime   = System.currentTimeMillis() / 1000L;
+        long toTime = System.currentTimeMillis() / 1000L;
         long fromTime = calcFromTime(resolution, toTime);
 
         String url = "https://finnhub.io/api/v1/stock/candle?symbol=" + symbol
@@ -603,27 +490,34 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 + "&to=" + toTime
                 + "&token=" + API_KEY;
 
+        Log.d("ChartFragment", "Finnhub URL: " + url);
+
         client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
-            @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 if (getActivity() != null) getActivity().runOnUiThread(() ->
-                    Toast.makeText(requireContext(), "שגיאת רשת: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                        Toast.makeText(requireContext(), "שגיאת רשת: " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
-            @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (!response.isSuccessful() || response.body() == null) return;
                 try {
-                    JSONObject json = new JSONObject(response.body().string());
+                    String body = response.body().string();
+                    Log.d("ChartFragment", "Finnhub response: " + body);
+                    JSONObject json = new JSONObject(body);
 
                     String status = json.optString("s", "");
                     if (!"ok".equals(status)) {
                         if (getActivity() != null) getActivity().runOnUiThread(() ->
-                            Toast.makeText(requireContext(), "אין נתונים עבור: " + symbol, Toast.LENGTH_SHORT).show());
+                                Toast.makeText(requireContext(), "אין נתונים עבור: " + symbol + " (" + resolution + ")", Toast.LENGTH_SHORT).show());
                         return;
                     }
 
-                    JSONArray opens      = json.getJSONArray("o");
-                    JSONArray highs      = json.getJSONArray("h");
-                    JSONArray lows       = json.getJSONArray("l");
-                    JSONArray closes     = json.getJSONArray("c");
+                    JSONArray opens = json.getJSONArray("o");
+                    JSONArray highs = json.getJSONArray("h");
+                    JSONArray lows = json.getJSONArray("l");
+                    JSONArray closes = json.getJSONArray("c");
                     JSONArray timestamps = json.getJSONArray("t");
 
                     int size = closes.length();
@@ -634,11 +528,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     List<CandleEntry> candleEntries = new ArrayList<>();
 
                     float lastClose = (float) closes.getDouble(size - 1);
-                    float prevClose = size > 1 ? (float) closes.getDouble(size - 2) : 0;
+                    float prevClose = size > 1 ? (float) closes.getDouble(size - 2) : lastClose;
                     lastPrice = lastClose;
 
                     SimpleDateFormat sdf = dateFormatFor(resolution);
-
                     for (int i = 0; i < size; i++) {
                         fullCloses.add((float) closes.getDouble(i));
                         long ts = timestamps.getLong(i);
@@ -654,8 +547,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     currentEntries.clear();
                     currentEntries.addAll(candleEntries);
 
-                    float change    = lastClose - prevClose;
-                    float changePct = (prevClose != 0) ? (change / prevClose) * 100 : 0;
+                    float change = lastClose - prevClose;
+                    float changePct = (prevClose != 0f) ? (change / prevClose) * 100f : 0f;
                     final float fClose = lastClose, fChng = change, fPct = changePct;
                     final String sym = symbol;
                     final List<CandleEntry> fin = new ArrayList<>(candleEntries);
@@ -663,8 +556,11 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     if (getActivity() != null) {
                         getActivity().runOnUiThread(() -> {
                             if (isCandleStick) updateCandleChart(fin);
-                            else               updateLineChart(fin);
-                            if (priceText != null) { priceText.setText("$" + df.format(fClose)); priceText.setTextColor(COLOR_PRIMARY); }
+                            else updateLineChart(fin);
+                            if (priceText != null) {
+                                priceText.setText("$" + df.format(fClose));
+                                priceText.setTextColor(COLOR_PRIMARY);
+                            }
                             if (changeText != null) {
                                 String sign = fChng >= 0 ? "+" : "";
                                 changeText.setText(sign + String.format(Locale.US, "%.2f", fChng)
@@ -672,19 +568,20 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                                 changeText.setTextColor(fChng >= 0 ? COLOR_GAIN : COLOR_LOSS);
                             }
                             if (timeFrameText != null) timeFrameText.setText("Timeframe: " + interval);
-                            if (tickerText    != null) tickerText.setText(sym + " / USD");
+                            if (tickerText != null) tickerText.setText(sym + " / USD");
                         });
                     }
-                } catch (Exception e) { e.printStackTrace(); }
+                } catch (Exception e) {
+                    Log.e("ChartFragment", "parse error", e);
+                }
             }
         });
     }
 
-    // ========================= AI =========================
-
     private void analyzeWithAI() {
         if (fullCloses.isEmpty() || fullCloses.size() < 2) {
-            Toast.makeText(requireContext(), "\u05d8\u05e2\u05df \u05e0\u05ea\u05d5\u05e0\u05d9 \u05d2\u05e8\u05e3 \u05e7\u05d5\u05d3\u05dd", Toast.LENGTH_SHORT).show(); return;
+            Toast.makeText(requireContext(), "טען נתוני גרף קודם", Toast.LENGTH_SHORT).show();
+            return;
         }
         showCustomAIDialog();
     }
@@ -692,57 +589,63 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private void showCustomAIDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_ai_chat, null);
-        TextView    tvHint     = dialogView.findViewById(R.id.tv_hint);
-        ProgressBar progress   = dialogView.findViewById(R.id.progress_ai);
-        TextView    tvResponse = dialogView.findViewById(R.id.tv_response);
-        Button      btnSend    = dialogView.findViewById(R.id.btn_send);
+        TextView tvHint = dialogView.findViewById(R.id.tv_hint);
+        ProgressBar progress = dialogView.findViewById(R.id.progress_ai);
+        TextView tvResponse = dialogView.findViewById(R.id.tv_response);
+        Button btnSend = dialogView.findViewById(R.id.btn_send);
         android.widget.EditText etQuestion = dialogView.findViewById(R.id.et_question);
-        tvHint.setText("\u05d3\u05d5\u05d2\u05de\u05d0\u05d5\u05ea: '\u05de\u05d4 \u05d3\u05e2\u05ea\u05da \u05e2\u05dc \u05d4\u05e9\u05e7\u05e2\u05d4 \u05e7\u05e6\u05e8\u05ea \u05d8\u05d5\u05d5\u05d7?' \u05d0\u05d5 '\u05d4\u05d0\u05dd \u05dc\u05e7\u05e0\u05d5\u05ea \u05e2\u05db\u05e9\u05d9\u05d5?'");
-        AlertDialog dialog = builder.setView(dialogView).setNegativeButton("\u05d1\u05d9\u05d8\u05d5\u05dc", null).create();
+        tvHint.setText("דוגמאות: 'מה דעתך על השקעה קצרת טווח?' או 'האם לקנות עכשיו?'");
+        AlertDialog dialog = builder.setView(dialogView).setNegativeButton("ביטול", null).create();
         btnSend.setOnClickListener(vv -> {
             String question = etQuestion.getText().toString().trim();
-            if (question.isEmpty()) { Toast.makeText(requireContext(), "\u05d4\u05e7\u05dc\u05d3 \u05e9\u05d0\u05dc\u05d4", Toast.LENGTH_SHORT).show(); return; }
+            if (question.isEmpty()) {
+                Toast.makeText(requireContext(), "הקלד שאלה", Toast.LENGTH_SHORT).show();
+                return;
+            }
             sendQuestionToAI(question, tvResponse, progress, etQuestion, dialog);
         });
         dialog.show();
-        etQuestion.requestFocus();
-        if (dialog.getWindow() != null)
-            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
     }
 
     private void sendQuestionToAI(String question, TextView tvResponse, ProgressBar progressBar,
                                   android.widget.EditText etQuestion, AlertDialog dialog) {
         progressBar.setVisibility(View.VISIBLE);
         etQuestion.setEnabled(false);
-        String context = String.format(Locale.US, "\u05de\u05e0\u05d9\u05d4: %s | \u05de\u05d7\u05d9\u05e8: $%.2f | \u05d8\u05d5\u05d5\u05d7: %s | %d \u05e0\u05e7\u05d5\u05d3\u05d5\u05ea",
+        String context = String.format(Locale.US, "מניה: %s | מחיר: $%.2f | טווח: %s | %d נקודות",
                 symbol, lastPrice, interval, fullCloses.size());
         llmService.askQuestion(symbol, question, context, fullCloses, new LLMService.AnalysisCallback() {
-            @Override public void onAnalysisReceived(String analysis) {
-                if (getActivity() == null) return;
-                getActivity().runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    etQuestion.setEnabled(true); etQuestion.setText("");
-                    tvResponse.setText(analysis); tvResponse.setVisibility(View.VISIBLE);
-                });
-            }
-            @Override public void onError(String error) {
+            @Override
+            public void onAnalysisReceived(String analysis) {
                 if (getActivity() == null) return;
                 getActivity().runOnUiThread(() -> {
                     progressBar.setVisibility(View.GONE);
                     etQuestion.setEnabled(true);
-                    tvResponse.setText("\u274c \u05e9\u05d2\u05d9\u05d0\u05d4: " + error);
+                    etQuestion.setText("");
+                    tvResponse.setText(analysis);
+                    tvResponse.setVisibility(View.VISIBLE);
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                if (getActivity() == null) return;
+                getActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    etQuestion.setEnabled(true);
+                    tvResponse.setText("❌ שגיאה: " + error);
                     tvResponse.setVisibility(View.VISIBLE);
                 });
             }
         });
     }
 
-    // ========================= SYMBOL SEARCH (Finnhub) =========================
-
     private void openChartFromInput(String userInput) {
         String q = userInput.trim();
         if (q.isEmpty()) return;
-        if (q.matches("^[A-Za-z0-9./-]{1,20}$") && !q.contains(" ")) { setSymbolAndLoad(q.toUpperCase(Locale.US)); return; }
+        if (q.matches("^[A-Za-z0-9./-]{1,20}$") && !q.contains(" ")) {
+            setSymbolAndLoad(q.toUpperCase(Locale.US));
+            return;
+        }
         resolveFirstMatchAndOpen(q);
     }
 
@@ -763,15 +666,18 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                     if (!response.isSuccessful() || response.body() == null) return;
                     try {
-                        JSONObject json   = new JSONObject(response.body().string());
-                        JSONArray  result = json.optJSONArray("result");
+                        JSONObject json = new JSONObject(response.body().string());
+                        JSONArray result = json.optJSONArray("result");
                         if (result == null || result.length() == 0) return;
                         String sym = result.optJSONObject(0).optString("symbol", "").trim();
                         if (sym.isEmpty()) return;
                         String finalSym = sym.toUpperCase(Locale.US);
                         if (getActivity() == null) return;
                         getActivity().runOnUiThread(() -> {
-                            if (tickerInput != null) { tickerInput.setText(finalSym); tickerInput.setSelection(finalSym.length()); }
+                            if (tickerInput != null) {
+                                tickerInput.setText(finalSym);
+                                tickerInput.setSelection(finalSym.length());
+                            }
                             setSymbolAndLoad(finalSym);
                         });
                     } catch (Exception ignored) {}
@@ -781,24 +687,33 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     }
 
     private void scheduleSymbolSearch(String q) {
-        if (q.length() == 1 && !Character.isLetterOrDigit(q.charAt(0))) { clearSuggestions(); return; }
         if (pendingSearch != null) searchHandler.removeCallbacks(pendingSearch);
-        q = q.trim(); latestQuery = q;
-        if (q.length() < 1 || q.length() > 50) { clearSuggestions(); return; }
+        q = q.trim();
+        latestQuery = q;
+        if (q.length() < 1 || q.length() > 50) {
+            clearSuggestions();
+            return;
+        }
         final String finalQ = q;
         pendingSearch = () -> fetchSymbolSuggestions(finalQ);
         searchHandler.postDelayed(pendingSearch, SEARCH_DEBOUNCE_MS);
     }
 
     private void clearSuggestions() {
-        if (suggestionAdapter != null) { suggestionAdapter.clear(); suggestionAdapter.notifyDataSetChanged(); }
+        if (suggestionAdapter != null) {
+            suggestionAdapter.clear();
+            suggestionAdapter.notifyDataSetChanged();
+        }
         if (tickerInput != null) tickerInput.dismissDropDown();
     }
 
     private void fetchSymbolSuggestions(String query) {
         try {
             String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name());
-            if (suggestionAdapter != null) { suggestionAdapter.clear(); suggestionAdapter.notifyDataSetChanged(); }
+            if (suggestionAdapter != null) {
+                suggestionAdapter.clear();
+                suggestionAdapter.notifyDataSetChanged();
+            }
 
             String url = "https://finnhub.io/api/v1/search?q=" + encoded + "&token=" + API_KEY;
             client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
@@ -807,17 +722,17 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     if (!response.isSuccessful() || response.body() == null) return;
                     ArrayList<StockSuggestion> list = new ArrayList<>();
                     try {
-                        JSONObject json   = new JSONObject(response.body().string());
-                        JSONArray  result = json.optJSONArray("result");
+                        JSONObject json = new JSONObject(response.body().string());
+                        JSONArray result = json.optJSONArray("result");
                         if (result == null) return;
                         for (int i = 0; i < result.length() && i < 20; i++) {
                             JSONObject o = result.optJSONObject(i);
                             if (o == null) continue;
-                            String sym      = o.optString("symbol",      "").trim();
-                            String name     = o.optString("description", "");
-                            String type     = o.optString("type",        "");
+                            String sym = o.optString("symbol", "").trim();
+                            String name = o.optString("description", "");
+                            String type = o.optString("type", "");
                             if (sym.isEmpty()) continue;
-                            if (!"Common Stock".equals(type)) continue;
+                            if (!"Common Stock".equals(type) && !"ETF".equals(type)) continue;
                             list.add(new StockSuggestion(sym, name, "US"));
                         }
                     } catch (Exception ignored) {}
@@ -827,17 +742,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                         suggestionAdapter.clear();
                         suggestionAdapter.addAll(list);
                         suggestionAdapter.notifyDataSetChanged();
-                        if (tickerInput == null) return;
-                        CharSequence cs = tickerInput.getText();
-                        if (cs == null) return;
-                        if (tickerInput.enoughToFilter()) {
-                            suggestionAdapter.getFilter().filter(cs, count -> {
-                                if (count > 0) tickerInput.showDropDown();
-                                else           tickerInput.dismissDropDown();
-                            });
-                        }
-                        if (tickerInput.hasFocus() && suggestionAdapter.getCount() > 0)
-                            tickerInput.post(tickerInput::showDropDown);
+                        if (tickerInput != null && tickerInput.hasFocus() && suggestionAdapter.getCount() > 0)
+                            tickerInput.showDropDown();
                     });
                 }
             });
@@ -856,8 +762,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         View view = getActivity().getCurrentFocus();
         if (view == null) view = getView();
         if (view != null) {
-            InputMethodManager imm = (InputMethodManager)
-                    getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
+            InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm != null) imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
         }
     }
