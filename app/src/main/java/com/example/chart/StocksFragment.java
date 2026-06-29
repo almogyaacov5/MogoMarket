@@ -49,7 +49,7 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
     private List<StockData> stocksList = new ArrayList<>();
     private DatabaseReference stocksRef;
     private final OkHttpClient client = new OkHttpClient();
-    private static final String API_KEY = "YOUR_FINNHUB_API_KEY_HERE";
+    private static final String API_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
 
     @Nullable
     @Override

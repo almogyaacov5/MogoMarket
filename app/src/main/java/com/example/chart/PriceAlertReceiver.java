@@ -37,7 +37,7 @@ import okhttp3.Response;
 public class PriceAlertReceiver extends BroadcastReceiver {
 
     public static final String CHANNEL_ID = "stock_price_alerts";
-    private static final String API_KEY   = "YOUR_FINNHUB_API_KEY_HERE";
+    private static final String API_KEY   = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
 
     @Override
     public void onReceive(Context context, Intent intent) {

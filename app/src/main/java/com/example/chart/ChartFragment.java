@@ -108,7 +108,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private ProgressBar progressAI;
 
     private final OkHttpClient client  = new OkHttpClient();
-    private final String API_KEY       = "YOUR_FINNHUB_API_KEY_HERE";
+    private final String API_KEY       = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
 
     private String  symbol      = "SPY";
     private String  interval    = "1day";

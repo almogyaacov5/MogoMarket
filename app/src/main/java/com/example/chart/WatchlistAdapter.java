@@ -43,7 +43,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
     private final List<StockWatchData> displayList  = new ArrayList<>();
     private final OnWatchStockClickListener listener;
     private final OkHttpClient httpClient = new OkHttpClient();
-    private static final String API_KEY = "YOUR_FINNHUB_API_KEY_HERE";
+    private static final String API_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
 
     private String currentFilter = "default";
     private String currentSearch = "";
