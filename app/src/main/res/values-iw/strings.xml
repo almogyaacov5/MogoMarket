@@ -1,0 +1,33 @@
+<resources>
+    <string name="app_name">מוגו מרקט</string>
+    <string name="hello_blank_fragment">שלום</string>
+    <string name="navigation_drawer_open">פתח תפריט</string>
+    <string name="navigation_drawer_close">סגור תפריט</string>
+
+    <!-- Settings -->
+    <string name="settings_title">הגדרות</string>
+    <string name="settings_subtitle">הגדרות האפליקציה</string>
+    <string name="settings_about">אודות MogoMarket</string>
+    <string name="settings_appearance">&#127912;  מראה</string>
+    <string name="settings_dark_mode">מצב כהה</string>
+    <string name="settings_dark_active">&#127769; מצב כהה פעיל</string>
+    <string name="settings_light_active">&#9728;&#65039; מצב בהיר פעיל</string>
+    <string name="settings_language">&#127760;  שפה</string>
+    <string name="settings_lang_hebrew">&#127470;&#127473;  עברית</string>
+    <string name="settings_lang_english">&#127482;&#127480;  אנגלית</string>
+    <string name="settings_account">&#128100;  חשבון</string>
+    <string name="settings_logged_in">מחובר כ:</string>
+    <string name="settings_logout">התנתקות</string>
+    <string name="settings_app_info">&#8505;&#65039;  מידע</string>
+    <string name="settings_version">גרסה</string>
+    <string name="settings_developer">מפתח</string>
+    <string name="settings_built_with">נבנה עם</string>
+
+    <!-- Nav -->
+    <string name="nav_chart">גרף</string>
+    <string name="nav_watchlist">מעקב</string>
+    <string name="nav_portfolio">תיק השקעות</string>
+    <string name="nav_closed_trades">עסקאות סגורות</string>
+    <string name="nav_simulator">סימולטור</string>
+    <string name="nav_settings">הגדרות</string>
+</resources>

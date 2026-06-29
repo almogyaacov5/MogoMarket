@@ -1,7 +1,33 @@
 <resources>
     <string name="app_name">Mogo Market</string>
-    <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_subtitle">App Settings</string>
+    <string name="settings_about">About MogoMarket</string>
+    <string name="settings_appearance">&#127912;  Appearance</string>
+    <string name="settings_dark_mode">Dark Mode</string>
+    <string name="settings_dark_active">&#127769; Dark mode active</string>
+    <string name="settings_light_active">&#9728;&#65039; Light mode active</string>
+    <string name="settings_language">&#127760;  Language</string>
+    <string name="settings_lang_hebrew">&#127470;&#127473;  Hebrew</string>
+    <string name="settings_lang_english">&#127482;&#127480;  English</string>
+    <string name="settings_account">&#128100;  Account</string>
+    <string name="settings_logged_in">Logged in as:</string>
+    <string name="settings_logout">Log Out</string>
+    <string name="settings_app_info">&#8505;&#65039;  App Info</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_developer">Developer</string>
+    <string name="settings_built_with">Built with</string>
+
+    <!-- Nav -->
+    <string name="nav_chart">Chart</string>
+    <string name="nav_watchlist">Watchlist</string>
+    <string name="nav_portfolio">Portfolio</string>
+    <string name="nav_closed_trades">Closed Trades</string>
+    <string name="nav_simulator">Simulator</string>
+    <string name="nav_settings">Settings</string>
 </resources>

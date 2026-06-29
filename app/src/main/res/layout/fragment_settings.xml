@@ -16,7 +16,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Settings"
+            android:text="@string/settings_title"
             android:textColor="?attr/colorOnBackground"
             android:textSize="28sp"
             android:textStyle="bold" />
@@ -25,7 +25,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="הגדרות האפליקציה"
+            android:text="@string/settings_subtitle"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="14sp" />
 
@@ -62,7 +62,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="About MogoMarket"
+                        android:text="@string/settings_about"
                         android:textColor="?attr/colorOnSurface"
                         android:textSize="18sp"
                         android:textStyle="bold" />
@@ -87,7 +87,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="MogoMarket is a smart stock market trading app that lets you track real-time prices, manage your portfolio, simulate trades, and analyze your performance using AI. It supports a watchlist with price alerts, closed trades history, and a built-in trading simulator."
+                    android:text="MogoMarket is a smart stock market trading app that lets you track real-time prices, manage your portfolio, simulate trades, and analyze your performance using AI."
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="14sp"
                     android:lineSpacingExtra="4dp"
@@ -106,7 +106,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="MogoMarket היא אפליקציה חכמה למסחר בשוק ההון המאפשרת לכם לעקוב אחר מחירים בזמן אמת, לנהל את תיק ההשקעות שלכם, לבצע סימולציות מסחר ולנתח את הביצועים שלכם בעזרת בינה מלאכותית. תומכת ברשימת מעקב עם התראות מחיר, היסטוריית עסקאות סגורות וסימולטור מסחר מובנה."
+                    android:text="MogoMarket היא אפליקציה חכמה למסחר בשוק ההון המאפשרת לכם לעקוב אחר מחירים בזמן אמת, לנהל את תיק ההשקעות שלכם ולנתח את הביצועים בעזרת בינה מלאכותית."
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="14sp"
                     android:lineSpacingExtra="4dp"
@@ -135,7 +135,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="&#127912;  Appearance / מראה"
+                    android:text="@string/settings_appearance"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="16sp"
                     android:textStyle="bold"
@@ -148,7 +148,6 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
-                    <!-- Label + current state text -->
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -158,24 +157,23 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Dark Mode"
+                            android:text="@string/settings_dark_mode"
                             android:textColor="?attr/colorOnSurface"
                             android:textSize="15sp"
                             android:textStyle="bold" />
 
-                        <!-- מציג את המצב הנוכחי -->
                         <TextView
                             android:id="@+id/tvThemeStatus"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="מצב כהה פעיל"
+                            android:text="@string/settings_dark_active"
                             android:textSize="12sp"
                             android:textStyle="bold"
                             android:layout_marginTop="2dp" />
 
                     </LinearLayout>
 
-                    <!-- כפתור Toggle ויזואלי -->
+                    <!-- Toggle כהה/בהיר -->
                     <LinearLayout
                         android:id="@+id/layoutThemeToggle"
                         android:layout_width="120dp"
@@ -186,7 +184,6 @@
                         android:gravity="center_vertical"
                         android:padding="3dp">
 
-                        <!-- כפתור שמש (בהיר) -->
                         <LinearLayout
                             android:id="@+id/btnLightMode"
                             android:layout_width="0dp"
@@ -212,7 +209,6 @@
 
                         </LinearLayout>
 
-                        <!-- כפתור ירח (כהה) -->
                         <LinearLayout
                             android:id="@+id/btnDarkMode"
                             android:layout_width="0dp"
@@ -245,6 +241,133 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
+        <!-- Language Card -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="4dp"
+            app:cardUseCompatPadding="true"
+            app:cardBackgroundColor="?attr/colorSurface">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_language"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="14dp" />
+
+                <!-- Language Toggle Row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_language"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvLangStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_lang_hebrew"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:layout_marginTop="2dp" />
+
+                    </LinearLayout>
+
+                    <!-- Toggle עברית/אנגלית -->
+                    <LinearLayout
+                        android:id="@+id/layoutLangToggle"
+                        android:layout_width="120dp"
+                        android:layout_height="44dp"
+                        android:orientation="horizontal"
+                        android:background="@drawable/bg_theme_toggle"
+                        android:clipToOutline="true"
+                        android:gravity="center_vertical"
+                        android:padding="3dp">
+
+                        <!-- Hebrew Button -->
+                        <LinearLayout
+                            android:id="@+id/btnHebrew"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:orientation="vertical"
+                            android:background="@drawable/bg_theme_btn_selected"
+                            android:layout_marginEnd="2dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="&#127470;&#127473;"
+                                android:textSize="14sp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="עב"
+                                android:textSize="9sp"
+                                android:textStyle="bold" />
+
+                        </LinearLayout>
+
+                        <!-- English Button -->
+                        <LinearLayout
+                            android:id="@+id/btnEnglish"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:orientation="vertical"
+                            android:background="@drawable/bg_theme_btn_unselected"
+                            android:layout_marginStart="2dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="&#127482;&#127480;"
+                                android:textSize="14sp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="EN"
+                                android:textSize="9sp"
+                                android:textStyle="bold" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
         <!-- Account Card -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
@@ -264,13 +387,12 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="&#128100;  Account / חשבון"
+                    android:text="@string/settings_account"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="16sp"
                     android:textStyle="bold"
                     android:layout_marginBottom="14dp" />
 
-                <!-- Email Row -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -282,7 +404,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Logged in as:"
+                        android:text="@string/settings_logged_in"
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:textSize="13sp" />
 
@@ -302,12 +424,11 @@
                     android:layout_marginBottom="12dp"
                     android:background="@color/colorDivider" />
 
-                <!-- Logout Button -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnSettingsLogout"
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
-                    android:text="Log Out / התנתקות"
+                    android:text="@string/settings_logout"
                     android:textAllCaps="false"
                     android:textColor="@color/white"
                     app:backgroundTint="@color/colorLoss" />
@@ -335,13 +456,12 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="&#8505;&#65039;  App Info / מידע"
+                    android:text="@string/settings_app_info"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="16sp"
                     android:textStyle="bold"
                     android:layout_marginBottom="14dp" />
 
-                <!-- Version -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -351,7 +471,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Version"
+                        android:text="@string/settings_version"
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:textSize="14sp" />
                     <TextView
@@ -364,7 +484,6 @@
                         android:textStyle="bold" />
                 </LinearLayout>
 
-                <!-- Developer -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -374,7 +493,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Developer"
+                        android:text="@string/settings_developer"
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:textSize="14sp" />
                     <TextView
@@ -386,7 +505,6 @@
                         android:textStyle="bold" />
                 </LinearLayout>
 
-                <!-- Tech Stack -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -395,7 +513,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Built with"
+                        android:text="@string/settings_built_with"
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:textSize="14sp" />
                     <TextView

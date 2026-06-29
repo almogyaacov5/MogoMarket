@@ -1,8 +1,9 @@
 package com.example.chart;
 
-import android.Manifest;
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.Manifest;
 import android.os.Build;
 import android.os.Bundle;
 
@@ -22,6 +23,12 @@ public class MainActivity extends AppCompatActivity {
     private static final String KEY_THEME  = "dark_mode";
 
     private int currentNavId = -1;
+
+    /** החל את ה-Locale לפני יצירת ה-Activity **/
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(LocaleHelper.applyLocale(newBase));
+    }
 
     private final ActivityResultLauncher<String> notificationPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(),
@@ -65,12 +72,12 @@ public class MainActivity extends AppCompatActivity {
         Fragment fragment = null;
         String title = "";
 
-        if      (id == R.id.nav_chart)         { fragment = new ChartFragment();        title = "Chart"; }
-        else if (id == R.id.nav_stocks)        { fragment = new WatchlistFragment();    title = "Watchlist"; }
-        else if (id == R.id.nav_portfolio)     { fragment = new PortfolioFragment();    title = "Portfolio"; }
-        else if (id == R.id.nav_closed_trades) { fragment = new ClosedTradesFragment(); title = "Closed Trades"; }
-        else if (id == R.id.nav_simulator)     { fragment = new SimulatorFragment();    title = "Simulator"; }
-        else if (id == R.id.nav_settings)      { fragment = new SettingsFragment();     title = "Settings"; }
+        if      (id == R.id.nav_chart)         { fragment = new ChartFragment();        title = getString(R.string.nav_chart); }
+        else if (id == R.id.nav_stocks)        { fragment = new WatchlistFragment();    title = getString(R.string.nav_watchlist); }
+        else if (id == R.id.nav_portfolio)     { fragment = new PortfolioFragment();    title = getString(R.string.nav_portfolio); }
+        else if (id == R.id.nav_closed_trades) { fragment = new ClosedTradesFragment(); title = getString(R.string.nav_closed_trades); }
+        else if (id == R.id.nav_simulator)     { fragment = new SimulatorFragment();    title = getString(R.string.nav_simulator); }
+        else if (id == R.id.nav_settings)      { fragment = new SettingsFragment();     title = getString(R.string.nav_settings); }
 
         if (fragment != null) {
             FragmentTransaction tx = getSupportFragmentManager()
@@ -83,7 +90,6 @@ public class MainActivity extends AppCompatActivity {
             tx.commit();
             setTitle(title);
 
-            // sync bottom nav selected item
             BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
             if (bottomNav != null && bottomNav.getSelectedItemId() != id) {
                 bottomNav.setSelectedItemId(id);
@@ -103,14 +109,13 @@ public class MainActivity extends AppCompatActivity {
                 .replace(R.id.fragment_container, chartFragment);
         tx.commit();
 
-        setTitle("Chart");
+        setTitle(getString(R.string.nav_chart));
         currentNavId = R.id.nav_chart;
 
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
         if (bottomNav != null) bottomNav.setSelectedItemId(R.id.nav_chart);
     }
 
-    // ── Public helper so any fragment can open P&L Calculator ────────────────
     public void openPnlCalculator() {
         getSupportFragmentManager()
                 .beginTransaction()
@@ -130,8 +135,7 @@ public class MainActivity extends AppCompatActivity {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
         }
     }
-    
-    // — Public helper so any fragment can open Settings ——————————
+
     public void openSettings() {
         getSupportFragmentManager()
                 .beginTransaction()
