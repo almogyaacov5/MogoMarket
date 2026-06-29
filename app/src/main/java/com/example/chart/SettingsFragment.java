@@ -35,10 +35,8 @@ public class SettingsFragment extends Fragment {
 
         View v = inflater.inflate(R.layout.fragment_settings, container, false);
 
-        // רקע דינמי מה-Theme
         v.setBackgroundColor(requireContext().getColor(R.color.bg_primary));
 
-        // ====== Toggle מצב כהה/בהיר ======
         btnLightMode  = v.findViewById(R.id.btnLightMode);
         btnDarkMode   = v.findViewById(R.id.btnDarkMode);
         tvThemeStatus = v.findViewById(R.id.tvThemeStatus);
@@ -46,10 +44,8 @@ public class SettingsFragment extends Fragment {
         SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, 0);
         isDark = prefs.getBoolean(KEY_THEME, true);
 
-        // עדכן מצב ויזואלי ראשוני
         updateThemeUI(isDark);
 
-        // לחיצה על כפתור "Light"
         btnLightMode.setOnClickListener(view -> {
             if (isDark) {
                 isDark = false;
@@ -59,7 +55,6 @@ public class SettingsFragment extends Fragment {
             }
         });
 
-        // לחיצה על כפתור "Dark"
         btnDarkMode.setOnClickListener(view -> {
             if (!isDark) {
                 isDark = true;
@@ -69,7 +64,6 @@ public class SettingsFragment extends Fragment {
             }
         });
 
-        // אימייל משתמש
         TextView tvEmail = v.findViewById(R.id.tvUserEmail);
         if (tvEmail != null) {
             tvEmail.setTextColor(requireContext().getColor(R.color.primary));
@@ -78,7 +72,6 @@ public class SettingsFragment extends Fragment {
                     ? user.getEmail() : "Guest");
         }
 
-        // גרסת אפליקציה
         TextView tvVersion = v.findViewById(R.id.tvAppVersion);
         if (tvVersion != null) {
             tvVersion.setTextColor(requireContext().getColor(R.color.text_secondary));
@@ -91,7 +84,6 @@ public class SettingsFragment extends Fragment {
             }
         }
 
-        // כפתור Logout
         MaterialButton btnLogout = v.findViewById(R.id.btnSettingsLogout);
         if (btnLogout != null) {
             btnLogout.setBackgroundTintList(
@@ -109,42 +101,30 @@ public class SettingsFragment extends Fragment {
         return v;
     }
 
-    /**
-     * מעדכן את הצבע/רקע של שני הכפתורים ואת טקסט המצב
-     * לפי המצב הנוכחי (כהה / בהיר)
-     */
     private void updateThemeUI(boolean dark) {
         if (btnLightMode == null || btnDarkMode == null || tvThemeStatus == null) return;
 
-        int selectedColor   = requireContext().getColor(R.color.primary);
-        int unselectedColor = android.graphics.Color.TRANSPARENT;
-        int selectedText    = requireContext().getColor(R.color.white);
-        int unselectedText  = requireContext().getColor(R.color.text_secondary);
+        int selectedText   = requireContext().getColor(R.color.white);
+        int unselectedText = requireContext().getColor(R.color.text_secondary);
 
         if (dark) {
-            // כהה פעיל - הדגש Dark
             btnDarkMode.setBackgroundResource(R.drawable.bg_theme_btn_selected);
             btnLightMode.setBackgroundResource(R.drawable.bg_theme_btn_unselected);
-
-            setChildTextColors(btnDarkMode,   selectedText);
-            setChildTextColors(btnLightMode,  unselectedText);
-
-            tvThemeStatus.setText("🌙 מצב כהה פעיל");
+            setChildTextColors(btnDarkMode,  selectedText);
+            setChildTextColors(btnLightMode, unselectedText);
+            tvThemeStatus.setText("\uD83C\uDF19 \u05DE\u05E6\u05D1 \u05DB\u05D4\u05D4 \u05E4\u05E2\u05D9\u05DC");
             tvThemeStatus.setTextColor(requireContext().getColor(R.color.primary));
         } else {
-            // בהיר פעיל - הדגש Light
             btnLightMode.setBackgroundResource(R.drawable.bg_theme_btn_selected);
             btnDarkMode.setBackgroundResource(R.drawable.bg_theme_btn_unselected);
-
-            setChildTextColors(btnLightMode,  selectedText);
-            setChildTextColors(btnDarkMode,   unselectedText);
-
-            tvThemeStatus.setText("\u2600\uFE0F מצב בהיר פעיל");
-            tvThemeStatus.setTextColor(requireContext().getColor(R.color.colorGain));
+            setChildTextColors(btnLightMode, selectedText);
+            setChildTextColors(btnDarkMode,  unselectedText);
+            tvThemeStatus.setText("\u2600\uFE0F \u05DE\u05E6\u05D1 \u05D1\u05D4\u05D9\u05E8 \u05E4\u05E2\u05D9\u05DC");
+            // ✅ תוקן: R.color.gain במקום R.color.colorGain
+            tvThemeStatus.setTextColor(requireContext().getColor(R.color.gain));
         }
     }
 
-    /** מעדכן את צבע הטקסט של כל ה-TextView בתוך LinearLayout נתון **/
     private void setChildTextColors(LinearLayout layout, int color) {
         for (int i = 0; i < layout.getChildCount(); i++) {
             View child = layout.getChildAt(i);
