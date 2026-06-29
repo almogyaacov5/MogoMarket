@@ -50,7 +50,7 @@ public class PortfolioFragment extends Fragment {
     private DatabaseReference closedTradesRef;
 
     private final OkHttpClient httpClient = new OkHttpClient();
-    private static final String API_KEY = "YOUR_FINNHUB_API_KEY_HERE";
+    private static final String API_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
 
     @Nullable
     @Override

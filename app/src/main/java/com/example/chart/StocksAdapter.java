@@ -38,7 +38,7 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
     private final List<StockData> stocks;
     private final OnStockClickListener listener;
     private final OkHttpClient client = new OkHttpClient();
-    private static final String API_KEY = "YOUR_FINNHUB_API_KEY_HERE";
+    private static final String API_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
 
     public StocksAdapter(List<StockData> stocks, OnStockClickListener listener) {
         this.stocks = stocks;
