@@ -129,7 +129,6 @@ public class SettingsFragment extends Fragment {
     private void applyLanguage(String langCode) {
         LocaleHelper.saveLanguage(requireContext(), langCode);
         currentLang = langCode;
-        // אתחל את ה-Activity כדי שהשינוי ייכנס לתוקף בכל האפליקציה
         Intent intent = requireActivity().getIntent();
         requireActivity().finish();
         startActivity(intent);
@@ -147,7 +146,7 @@ public class SettingsFragment extends Fragment {
             btnEnglish.setBackgroundResource(R.drawable.bg_theme_btn_unselected);
             setChildTextColors(btnHebrew,  selectedText);
             setChildTextColors(btnEnglish, unselectedText);
-            tvLangStatus.setText("\u05E2\u05D1\u05E8\u05D9\u05EA \u05E4\u05E2\u05D9\u05DC\u05D4"); // עברית פעילה
+            tvLangStatus.setText("\u05E2\u05D1\u05E8\u05D9\u05EA \u05E4\u05E2\u05D9\u05DC\u05D4");
             tvLangStatus.setTextColor(requireContext().getColor(R.color.primary));
         } else {
             btnEnglish.setBackgroundResource(R.drawable.bg_theme_btn_selected);
@@ -155,7 +154,7 @@ public class SettingsFragment extends Fragment {
             setChildTextColors(btnEnglish, selectedText);
             setChildTextColors(btnHebrew,  unselectedText);
             tvLangStatus.setText("English active");
-            tvLangStatus.setTextColor(requireContext().getColor(R.color.colorGain));
+            tvLangStatus.setTextColor(requireContext().getColor(R.color.gain));
         }
     }
 
@@ -179,7 +178,7 @@ public class SettingsFragment extends Fragment {
             setChildTextColors(btnLightMode, selectedText);
             setChildTextColors(btnDarkMode,  unselectedText);
             tvThemeStatus.setText("\u2600\uFE0F \u05DE\u05E6\u05D1 \u05D1\u05D4\u05D9\u05E8 \u05E4\u05E2\u05D9\u05DC");
-            tvThemeStatus.setTextColor(requireContext().getColor(R.color.colorGain));
+            tvThemeStatus.setTextColor(requireContext().getColor(R.color.gain));
         }
     }
 
