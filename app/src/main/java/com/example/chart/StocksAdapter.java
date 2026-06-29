@@ -103,34 +103,36 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
                 int gainLossColor      = totalChangePercent >= 0 ? colorGain : colorLoss;
                 int dailyGainLossColor = dailyChangePercent >= 0 ? colorGain : colorLoss;
 
-                // +2.35% or -1.20% — sign is part of the number, both color AND sign show direction
-                String dailySign = dailyChangePercent >= 0 ? "+" : "";
-                String totalSign = totalChangePercent  >= 0 ? "+" : "";
+                // explicit +/- sign — both color AND sign show direction
+                String dailySign = dailyChangePercent >= 0 ? "+" : "-";
+                String totalSign = totalChangePercent  >= 0 ? "+" : "-";
 
                 holder.currentPriceText.post(() -> {
                     holder.currentPriceText.setText(String.format(Locale.US, "$%.2f", currentPrice));
                     holder.currentPriceText.setTextColor(textPrimary);
                 });
 
-                // Top row: ticker (left) — daily % with explicit +/- sign (right)
+                // top-right: +2.35% Today  /  -1.80% Today
                 holder.changePercentText.post(() -> {
                     holder.changePercentText.setText(
-                            String.format(Locale.US, "%s%.2f%%", dailySign, dailyChangePercent));
+                            String.format(Locale.US, "%s%.2f%% Today",
+                                    dailySign, Math.abs(dailyChangePercent)));
                     holder.changePercentText.setTextColor(dailyGainLossColor);
                 });
 
-                // P&L % vs Entry with explicit +/- sign
+                // P&L %: +5.67% vs Entry  /  -3.12% vs Entry
                 holder.changePercentDetailText.post(() -> {
                     holder.changePercentDetailText.setText(
-                            String.format(Locale.US, "%s%.2f%%", totalSign, totalChangePercent));
+                            String.format(Locale.US, "%s%.2f%% vs Entry",
+                                    totalSign, Math.abs(totalChangePercent)));
                     holder.changePercentDetailText.setTextColor(gainLossColor);
                 });
 
                 if (stock.tradeAmount > 0) {
                     holder.pnlDollarText.post(() -> {
-                        String sign = pnlDollar >= 0 ? "+" : "";
+                        String sign = pnlDollar >= 0 ? "+" : "-";
                         holder.pnlDollarText.setText(
-                                String.format(Locale.US, "%s$%.2f", sign, pnlDollar));
+                                String.format(Locale.US, "%s$%.2f", sign, Math.abs(pnlDollar)));
                         holder.pnlDollarText.setTextColor(pnlDollar >= 0 ? colorGain : colorLoss);
                     });
                 } else {
