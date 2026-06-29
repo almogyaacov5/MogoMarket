@@ -21,12 +21,14 @@
         <!-- לוגו החברה ברקע כ-watermark -->
         <ImageView
             android:id="@+id/stockLogoBackground"
-            android:layout_width="110dp"
-            android:layout_height="110dp"
+            android:layout_width="160dp"
+            android:layout_height="160dp"
             android:layout_gravity="end|center_vertical"
-            android:layout_marginEnd="16dp"
-            android:alpha="0.07"
-            android:scaleType="centerInside" />
+            android:layout_marginEnd="12dp"
+            android:alpha="0.08"
+            android:scaleType="centerCrop"
+            android:clipToOutline="true"
+            android:background="@drawable/circle_logo_bg" />
 
         <LinearLayout
             android:layout_width="match_parent"
