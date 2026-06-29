@@ -34,18 +34,14 @@ public class SettingsFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
 
         View v = inflater.inflate(R.layout.fragment_settings, container, false);
-
-        // רקע דינמי מה-Theme
         v.setBackgroundColor(requireContext().getColor(R.color.bg_primary));
 
-        // ====== Toggle מצב כהה/בהיר ======
         btnLightMode  = v.findViewById(R.id.btnLightMode);
         btnDarkMode   = v.findViewById(R.id.btnDarkMode);
         tvThemeStatus = v.findViewById(R.id.tvThemeStatus);
 
         SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, 0);
         isDark = prefs.getBoolean(KEY_THEME, true);
-
         updateThemeUI(isDark);
 
         btnLightMode.setOnClickListener(view -> {
@@ -66,16 +62,13 @@ public class SettingsFragment extends Fragment {
             }
         });
 
-        // אימייל משתמש
         TextView tvEmail = v.findViewById(R.id.tvUserEmail);
         if (tvEmail != null) {
             tvEmail.setTextColor(requireContext().getColor(R.color.primary));
             FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-            tvEmail.setText(user != null && user.getEmail() != null
-                    ? user.getEmail() : "Guest");
+            tvEmail.setText(user != null && user.getEmail() != null ? user.getEmail() : "Guest");
         }
 
-        // גרסת אפליקציה
         TextView tvVersion = v.findViewById(R.id.tvAppVersion);
         if (tvVersion != null) {
             tvVersion.setTextColor(requireContext().getColor(R.color.text_secondary));
@@ -88,7 +81,6 @@ public class SettingsFragment extends Fragment {
             }
         }
 
-        // כפתור Logout
         MaterialButton btnLogout = v.findViewById(R.id.btnSettingsLogout);
         if (btnLogout != null) {
             btnLogout.setBackgroundTintList(
