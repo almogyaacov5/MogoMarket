@@ -100,7 +100,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private ProgressBar progressAI;
 
     private final OkHttpClient client = new OkHttpClient();
-    private final String API_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
+    // Finnhub key - used for search/quote only (candle is premium)
+    private final String FINNHUB_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
 
     private String symbol = "SPY";
     private String interval = "1day";
@@ -436,63 +437,65 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.invalidate();
     }
 
-    private String intervalToFinnhubResolution(String interval) {
+    // ─────────────────────────────────────────────────────────────────
+    // Yahoo Finance helpers
+    // ─────────────────────────────────────────────────────────────────
+
+    /**
+     * Maps the app's interval string to a Yahoo Finance (v8) range + interval pair.
+     * Returns String[]{yahooInterval, yahooRange}
+     */
+    private String[] intervalToYahoo(String interval) {
         switch (interval) {
-            case "1min": return "1";
-            case "5min": return "5";
-            case "15min": return "15";
-            case "30min": return "30";
+            case "1min":   return new String[]{"1m",  "1d"};
+            case "5min":   return new String[]{"5m",  "5d"};
+            case "15min":  return new String[]{"15m", "1mo"};
+            case "30min":  return new String[]{"30m", "1mo"};
             case "60min":
-            case "1h": return "60";
-            case "1day": return "D";
-            case "1week": return "W";
-            case "1month": return "M";
-            default: return "D";
+            case "1h":     return new String[]{"1h",  "3mo"};
+            case "1week":  return new String[]{"1wk", "5y"};
+            case "1month": return new String[]{"1mo", "10y"};
+            default:       return new String[]{"1d",  "1y"};   // 1day
         }
     }
 
-    private long calcFromTime(String resolution, long toTime) {
-        switch (resolution) {
-            case "1": return toTime - (7L * 24L * 3600L);
-            case "5": return toTime - (14L * 24L * 3600L);
-            case "15": return toTime - (30L * 24L * 3600L);
-            case "30": return toTime - (60L * 24L * 3600L);
-            case "60": return toTime - (90L * 24L * 3600L);
-            case "W": return toTime - (5L * 365L * 24L * 3600L);
-            case "M": return toTime - (10L * 365L * 24L * 3600L);
-            default: return toTime - (400L * 24L * 3600L);
-        }
-    }
-
-    private SimpleDateFormat dateFormatFor(String resolution) {
-        switch (resolution) {
-            case "1":
-            case "5":
-            case "15":
-            case "30":
-            case "60":
+    private SimpleDateFormat dateFormatFor(String yahooInterval) {
+        switch (yahooInterval) {
+            case "1m":
+            case "5m":
+            case "15m":
+            case "30m":
+            case "1h":
                 return new SimpleDateFormat("MM/dd HH:mm", Locale.US);
-            case "M":
+            case "1mo":
                 return new SimpleDateFormat("yyyy-MM", Locale.US);
             default:
                 return new SimpleDateFormat("MM-dd", Locale.US);
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────
+    // Main data fetch — uses Yahoo Finance v8 (free, no key needed)
+    // ─────────────────────────────────────────────────────────────────
     private void fetchStockData(String symbol, String interval) {
-        String resolution = intervalToFinnhubResolution(interval);
-        long toTime = System.currentTimeMillis() / 1000L;
-        long fromTime = calcFromTime(resolution, toTime);
+        String[] yahooParams = intervalToYahoo(interval);
+        String yahooInterval = yahooParams[0];
+        String yahooRange    = yahooParams[1];
 
-        String url = "https://finnhub.io/api/v1/stock/candle?symbol=" + symbol
-                + "&resolution=" + resolution
-                + "&from=" + fromTime
-                + "&to=" + toTime
-                + "&token=" + API_KEY;
+        // Yahoo Finance chart API — free, no API key required
+        String url = "https://query1.finance.yahoo.com/v8/finance/chart/" + symbol
+                + "?interval=" + yahooInterval
+                + "&range="    + yahooRange
+                + "&includePrePost=false";
 
-        Log.d("ChartFragment", "Finnhub URL: " + url);
+        Log.d("ChartFragment", "Yahoo URL: " + url);
 
-        client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
+        Request req = new Request.Builder()
+                .url(url)
+                .header("User-Agent", "Mozilla/5.0")
+                .build();
+
+        client.newCall(req).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 if (getActivity() != null) getActivity().runOnUiThread(() ->
@@ -504,50 +507,68 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 if (!response.isSuccessful() || response.body() == null) return;
                 try {
                     String body = response.body().string();
-                    Log.d("ChartFragment", "Finnhub response: " + body);
-                    JSONObject json = new JSONObject(body);
+                    Log.d("ChartFragment", "Yahoo response (first 300): " + body.substring(0, Math.min(300, body.length())));
 
-                    String status = json.optString("s", "");
-                    if (!"ok".equals(status)) {
+                    JSONObject root   = new JSONObject(body);
+                    JSONObject chart  = root.getJSONObject("chart");
+                    JSONArray  result = chart.optJSONArray("result");
+                    if (result == null || result.length() == 0) {
                         if (getActivity() != null) getActivity().runOnUiThread(() ->
-                                Toast.makeText(requireContext(), "אין נתונים עבור: " + symbol + " (" + resolution + ")", Toast.LENGTH_SHORT).show());
+                                Toast.makeText(requireContext(), "אין נתונים עבור: " + symbol, Toast.LENGTH_SHORT).show());
                         return;
                     }
 
-                    JSONArray opens = json.getJSONArray("o");
-                    JSONArray highs = json.getJSONArray("h");
-                    JSONArray lows = json.getJSONArray("l");
-                    JSONArray closes = json.getJSONArray("c");
-                    JSONArray timestamps = json.getJSONArray("t");
+                    JSONObject item       = result.getJSONObject(0);
+                    JSONArray  timestamps = item.getJSONArray("timestamp");
+                    JSONObject indicators = item.getJSONObject("indicators");
+                    JSONArray  quoteArr   = indicators.getJSONArray("quote");
+                    JSONObject quote      = quoteArr.getJSONObject(0);
 
-                    int size = closes.length();
+                    JSONArray opens  = quote.getJSONArray("open");
+                    JSONArray highs  = quote.getJSONArray("high");
+                    JSONArray lows   = quote.getJSONArray("low");
+                    JSONArray closes = quote.getJSONArray("close");
+
+                    int size = timestamps.length();
                     if (size == 0) return;
 
                     fullCloses.clear();
                     dateLabels.clear();
                     List<CandleEntry> candleEntries = new ArrayList<>();
 
-                    float lastClose = (float) closes.getDouble(size - 1);
-                    float prevClose = size > 1 ? (float) closes.getDouble(size - 2) : lastClose;
-                    lastPrice = lastClose;
+                    SimpleDateFormat sdf = dateFormatFor(yahooInterval);
 
-                    SimpleDateFormat sdf = dateFormatFor(resolution);
+                    float lastClose = 0f, prevClose = 0f;
+                    int validCount = 0;
+
                     for (int i = 0; i < size; i++) {
-                        fullCloses.add((float) closes.getDouble(i));
-                        long ts = timestamps.getLong(i);
+                        // Yahoo may return null for missing bars — skip them
+                        if (closes.isNull(i) || opens.isNull(i) || highs.isNull(i) || lows.isNull(i)) continue;
+
+                        float o = (float) opens.getDouble(i);
+                        float h = (float) highs.getDouble(i);
+                        float l = (float) lows.getDouble(i);
+                        float c = (float) closes.getDouble(i);
+
+                        long ts   = timestamps.getLong(i);
                         Date date = new Date(ts * 1000L);
                         dateLabels.add(sdf.format(date));
-                        candleEntries.add(new CandleEntry(i,
-                                (float) highs.getDouble(i),
-                                (float) lows.getDouble(i),
-                                (float) opens.getDouble(i),
-                                (float) closes.getDouble(i)));
+                        fullCloses.add(c);
+                        candleEntries.add(new CandleEntry(validCount, h, l, o, c));
+
+                        prevClose = lastClose;
+                        lastClose = c;
+                        validCount++;
                     }
+
+                    if (validCount == 0) return;
+                    if (prevClose == 0f) prevClose = lastClose;
 
                     currentEntries.clear();
                     currentEntries.addAll(candleEntries);
+                    lastPrice = lastClose;
 
-                    float change = lastClose - prevClose;
+                    float change    = lastClose - prevClose;
                     float changePct = (prevClose != 0f) ? (change / prevClose) * 100f : 0f;
                     final float fClose = lastClose, fChng = change, fPct = changePct;
                     final String sym = symbol;
@@ -556,7 +577,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     if (getActivity() != null) {
                         getActivity().runOnUiThread(() -> {
                             if (isCandleStick) updateCandleChart(fin);
-                            else updateLineChart(fin);
+                            else               updateLineChart(fin);
                             if (priceText != null) {
                                 priceText.setText("$" + df.format(fClose));
                                 priceText.setTextColor(COLOR_PRIMARY);
@@ -568,11 +589,11 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                                 changeText.setTextColor(fChng >= 0 ? COLOR_GAIN : COLOR_LOSS);
                             }
                             if (timeFrameText != null) timeFrameText.setText("Timeframe: " + interval);
-                            if (tickerText != null) tickerText.setText(sym + " / USD");
+                            if (tickerText    != null) tickerText.setText(sym + " / USD");
                         });
                     }
                 } catch (Exception e) {
-                    Log.e("ChartFragment", "parse error", e);
+                    Log.e("ChartFragment", "Yahoo parse error", e);
                 }
             }
         });
@@ -660,7 +681,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private void resolveFirstMatchAndOpen(String query) {
         try {
             String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name());
-            String url = "https://finnhub.io/api/v1/search?q=" + encoded + "&token=" + API_KEY;
+            String url = "https://finnhub.io/api/v1/search?q=" + encoded + "&token=" + FINNHUB_KEY;
             client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
                 @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {}
                 @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
@@ -715,7 +736,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 suggestionAdapter.notifyDataSetChanged();
             }
 
-            String url = "https://finnhub.io/api/v1/search?q=" + encoded + "&token=" + API_KEY;
+            String url = "https://finnhub.io/api/v1/search?q=" + encoded + "&token=" + FINNHUB_KEY;
             client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
                 @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {}
                 @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
@@ -728,11 +749,11 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                         for (int i = 0; i < result.length() && i < 20; i++) {
                             JSONObject o = result.optJSONObject(i);
                             if (o == null) continue;
-                            String sym = o.optString("symbol", "").trim();
+                            String sym  = o.optString("symbol", "").trim();
                             String name = o.optString("description", "");
                             String type = o.optString("type", "");
                             if (sym.isEmpty()) continue;
-                            if (!"Common Stock".equals(type) && !"ETF".equals(type)) continue;
+                            if (!"Common Stock".equals(type) && !"ETF".equals(type) && !"ETP".equals(type)) continue;
                             list.add(new StockSuggestion(sym, name, "US"));
                         }
                     } catch (Exception ignored) {}
