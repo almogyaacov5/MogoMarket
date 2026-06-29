@@ -24,8 +24,10 @@ public class SettingsFragment extends Fragment {
     private static final String KEY_THEME  = "dark_mode";
 
     private LinearLayout btnLightMode, btnDarkMode;
-    private TextView tvThemeStatus;
+    private LinearLayout btnHebrew, btnEnglish;
+    private TextView tvThemeStatus, tvLangStatus;
     private boolean isDark;
+    private String currentLang;
 
     @Nullable
     @Override
@@ -34,8 +36,6 @@ public class SettingsFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
 
         View v = inflater.inflate(R.layout.fragment_settings, container, false);
-
-        // רקע דינמי מה-Theme
         v.setBackgroundColor(requireContext().getColor(R.color.bg_primary));
 
         // ====== Toggle מצב כהה/בהיר ======
@@ -45,11 +45,8 @@ public class SettingsFragment extends Fragment {
 
         SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, 0);
         isDark = prefs.getBoolean(KEY_THEME, true);
-
-        // עדכן מצב ויזואלי ראשוני
         updateThemeUI(isDark);
 
-        // לחיצה על כפתור "Light"
         btnLightMode.setOnClickListener(view -> {
             if (isDark) {
                 isDark = false;
@@ -59,7 +56,6 @@ public class SettingsFragment extends Fragment {
             }
         });
 
-        // לחיצה על כפתור "Dark"
         btnDarkMode.setOnClickListener(view -> {
             if (!isDark) {
                 isDark = true;
@@ -69,7 +65,27 @@ public class SettingsFragment extends Fragment {
             }
         });
 
-        // אימייל משתמש
+        // ====== Toggle שפה ======
+        btnHebrew    = v.findViewById(R.id.btnHebrew);
+        btnEnglish   = v.findViewById(R.id.btnEnglish);
+        tvLangStatus = v.findViewById(R.id.tvLangStatus);
+
+        currentLang = LocaleHelper.getSavedLanguage(requireContext());
+        updateLangUI(currentLang);
+
+        btnHebrew.setOnClickListener(view -> {
+            if (!"iw".equals(currentLang)) {
+                applyLanguage("iw");
+            }
+        });
+
+        btnEnglish.setOnClickListener(view -> {
+            if (!"en".equals(currentLang)) {
+                applyLanguage("en");
+            }
+        });
+
+        // ====== אימייל משתמש ======
         TextView tvEmail = v.findViewById(R.id.tvUserEmail);
         if (tvEmail != null) {
             tvEmail.setTextColor(requireContext().getColor(R.color.primary));
@@ -78,7 +94,7 @@ public class SettingsFragment extends Fragment {
                     ? user.getEmail() : "Guest");
         }
 
-        // גרסת אפליקציה
+        // ====== גרסת אפליקציה ======
         TextView tvVersion = v.findViewById(R.id.tvAppVersion);
         if (tvVersion != null) {
             tvVersion.setTextColor(requireContext().getColor(R.color.text_secondary));
@@ -91,7 +107,7 @@ public class SettingsFragment extends Fragment {
             }
         }
 
-        // כפתור Logout
+        // ====== כפתור Logout ======
         MaterialButton btnLogout = v.findViewById(R.id.btnSettingsLogout);
         if (btnLogout != null) {
             btnLogout.setBackgroundTintList(
@@ -109,6 +125,40 @@ public class SettingsFragment extends Fragment {
         return v;
     }
 
+    /** החל שפה חדשה ואתחל את ה-Activity **/
+    private void applyLanguage(String langCode) {
+        LocaleHelper.saveLanguage(requireContext(), langCode);
+        currentLang = langCode;
+        Intent intent = requireActivity().getIntent();
+        requireActivity().finish();
+        startActivity(intent);
+    }
+
+    /** עדכן UI של toggle שפה **/
+    private void updateLangUI(String lang) {
+        if (btnHebrew == null || btnEnglish == null || tvLangStatus == null) return;
+
+        int selectedText   = requireContext().getColor(R.color.white);
+        int unselectedText = requireContext().getColor(R.color.text_secondary);
+
+        if ("iw".equals(lang)) {
+            btnHebrew.setBackgroundResource(R.drawable.bg_theme_btn_selected);
+            btnEnglish.setBackgroundResource(R.drawable.bg_theme_btn_unselected);
+            setChildTextColors(btnHebrew,  selectedText);
+            setChildTextColors(btnEnglish, unselectedText);
+            tvLangStatus.setText("עברית פעילה");
+            tvLangStatus.setTextColor(requireContext().getColor(R.color.primary));
+        } else {
+            btnEnglish.setBackgroundResource(R.drawable.bg_theme_btn_selected);
+            btnHebrew.setBackgroundResource(R.drawable.bg_theme_btn_unselected);
+            setChildTextColors(btnEnglish, selectedText);
+            setChildTextColors(btnHebrew,  unselectedText);
+            tvLangStatus.setText("English active");
+            tvLangStatus.setTextColor(requireContext().getColor(R.color.gain));
+        }
+    }
+
+    /** עדכן UI של toggle מצב כהה/בהיר **/
     private void updateThemeUI(boolean dark) {
         if (btnLightMode == null || btnDarkMode == null || tvThemeStatus == null) return;
 
