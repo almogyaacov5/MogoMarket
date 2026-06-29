@@ -50,7 +50,7 @@ public class PortfolioFragment extends Fragment {
     private DatabaseReference closedTradesRef;
 
     private final OkHttpClient httpClient = new OkHttpClient();
-    private static final String API_KEY = "0518811f0d394fa39842a8024a25c049";
+    private static final String API_KEY = "YOUR_FINNHUB_API_KEY_HERE";
 
     @Nullable
     @Override
@@ -157,7 +157,6 @@ public class PortfolioFragment extends Fragment {
             return;
         }
 
-        // סופרים כמה מניות יש עם tradeAmount > 0 (אחרת לא ניתן לחשב P&L)
         List<StockData> withAmount = new ArrayList<>();
         for (StockData s : stocksList) {
             if (s.tradeAmount > 0) withAmount.add(s);
@@ -168,12 +167,12 @@ public class PortfolioFragment extends Fragment {
             return;
         }
 
-        // מביאים מחיר עדכני לכל מניה עם סכום ומסכמים
         final double[] totalPnl = {0.0};
         final AtomicInteger remaining = new AtomicInteger(withAmount.size());
 
         for (StockData stock : withAmount) {
-            String url = "https://api.twelvedata.com/price?symbol=" + stock.symbol + "&apikey=" + API_KEY;
+            // Finnhub quote endpoint: מחזיר "c" = מחיר נוכחי
+            String url = "https://finnhub.io/api/v1/quote?symbol=" + stock.symbol + "&token=" + API_KEY;
             httpClient.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
                 @Override
                 public void onFailure(@NonNull Call call, @NonNull IOException e) {
@@ -185,11 +184,12 @@ public class PortfolioFragment extends Fragment {
                     try {
                         String body = response.body().string();
                         JSONObject obj = new JSONObject(body);
-                        float price = Float.parseFloat(obj.getString("price"));
-                        float pct = (stock.buyPrice != 0f)
-                                ? ((price - stock.buyPrice) / stock.buyPrice * 100f) : 0f;
-                        double pnl = stock.tradeAmount * (pct / 100.0);
-                        synchronized (totalPnl) { totalPnl[0] += pnl; }
+                        float price = (float) obj.getDouble("c"); // current price
+                        if (price > 0 && stock.buyPrice != 0f) {
+                            float pct = (price - stock.buyPrice) / stock.buyPrice * 100f;
+                            double pnl = stock.tradeAmount * (pct / 100.0);
+                            synchronized (totalPnl) { totalPnl[0] += pnl; }
+                        }
                     } catch (Exception ignored) {}
                     if (remaining.decrementAndGet() == 0) showTotalPnl(totalPnl[0]);
                 }
