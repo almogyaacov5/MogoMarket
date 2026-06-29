@@ -38,6 +38,7 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
     private final List<StockData> stocks;
     private final OnStockClickListener listener;
     private final OkHttpClient client = new OkHttpClient();
+    private static final String API_KEY = "YOUR_FINNHUB_API_KEY_HERE";
 
     public StocksAdapter(List<StockData> stocks, OnStockClickListener listener) {
         this.stocks = stocks;
@@ -87,31 +88,42 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
             holder.notesText.setVisibility(View.GONE);
         }
 
-        fetchCurrentPrice(stock.symbol, new PriceCallback() {
+        // איפוס תצוגה לפני טעינה
+        holder.currentPriceText.setText("...");
+        holder.changePercentText.setText("...");
+        holder.changePercentDetailText.setText("...");
+        holder.pnlDollarText.setText("-");
+
+        fetchQuote(stock.symbol, new QuoteCallback() {
             @Override
-            public void onPriceReceived(float price) {
+            public void onQuoteReceived(float currentPrice, float dailyChangePercent) {
+                // אחוז שינוי מהמחיר שקנית
+                float totalChangePercent = (stock.buyPrice != 0f)
+                        ? ((currentPrice - stock.buyPrice) / stock.buyPrice * 100f) : 0f;
+                double pnlDollar = (stock.tradeAmount > 0)
+                        ? stock.tradeAmount * (totalChangePercent / 100.0) : 0;
+
+                int gainLossColor      = totalChangePercent >= 0 ? colorGain : colorLoss;
+                int dailyGainLossColor = dailyChangePercent >= 0 ? colorGain : colorLoss;
+                String arrowTotal = totalChangePercent >= 0 ? "▲" : "▼";
+                String arrowDaily = dailyChangePercent >= 0 ? "▲" : "▼";
+
                 holder.currentPriceText.post(() -> {
-                    holder.currentPriceText.setText(String.format(Locale.US, "$%.2f", price));
+                    holder.currentPriceText.setText(String.format(Locale.US, "$%.2f", currentPrice));
                     holder.currentPriceText.setTextColor(textPrimary);
                 });
 
-                float percentChange = (stock.buyPrice != 0f)
-                        ? ((price - stock.buyPrice) / stock.buyPrice * 100f) : 0f;
-                double pnlDollar = (stock.tradeAmount > 0)
-                        ? stock.tradeAmount * (percentChange / 100.0) : 0;
-
-                int gainLossColor = percentChange >= 0 ? colorGain : colorLoss;
-                String arrow      = percentChange >= 0 ? "▲" : "▼";
-
+                // changePercentText = שינוי יומי של המניה (היום בשוק)
                 holder.changePercentText.post(() -> {
                     holder.changePercentText.setText(
-                            String.format(Locale.US, "%s %.2f%%", arrow, Math.abs(percentChange)));
-                    holder.changePercentText.setTextColor(gainLossColor);
+                            String.format(Locale.US, "%s %.2f%% היום", arrowDaily, Math.abs(dailyChangePercent)));
+                    holder.changePercentText.setTextColor(dailyGainLossColor);
                 });
 
+                // changePercentDetailText = שינוי מול מחיר הקנייה שלך
                 holder.changePercentDetailText.post(() -> {
                     holder.changePercentDetailText.setText(
-                            String.format(Locale.US, "%s %.2f%%", arrow, Math.abs(percentChange)));
+                            String.format(Locale.US, "%s %.2f%% מהקנייה", arrowTotal, Math.abs(totalChangePercent)));
                     holder.changePercentDetailText.setTextColor(gainLossColor);
                 });
 
@@ -137,6 +149,7 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
                     holder.currentPriceText.setTextColor(colorNeutral);
                 });
                 holder.changePercentText.post(() -> holder.changePercentText.setText("?"));
+                holder.changePercentDetailText.post(() -> holder.changePercentDetailText.setText("?"));
             }
         });
 
@@ -243,24 +256,40 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         return et;
     }
 
-    // ========================= FETCH PRICE =========================
+    // ========================= FETCH QUOTE (Finnhub) =========================
 
-    private void fetchCurrentPrice(String symbol, PriceCallback callback) {
-        String apiKey = "0518811f0d394fa39842a8024a25c049";
-        String url = "https://api.twelvedata.com/price?symbol=" + symbol + "&apikey=" + apiKey;
+    /**
+     * מביא מ-Finnhub quote עם:
+     *   c  = מחיר נוכחי
+     *   dp = אחוז שינוי יומי (daily percent change)
+     */
+    private void fetchQuote(String symbol, QuoteCallback callback) {
+        String url = "https://finnhub.io/api/v1/quote?symbol=" + symbol + "&token=" + API_KEY;
         client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
-            @Override public void onFailure(@NonNull Call call, @NonNull IOException e) { callback.onError(e); }
+            @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                callback.onError(e);
+            }
             @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 try {
                     String body = response.body().string();
                     JSONObject obj = new JSONObject(body);
-                    float price = Float.parseFloat(obj.getString("price"));
-                    callback.onPriceReceived(price);
-                } catch (Exception e) { callback.onError(e); }
+                    float currentPrice       = (float) obj.getDouble("c");   // Current price
+                    float dailyChangePercent = (float) obj.getDouble("dp");  // Daily % change
+                    if (currentPrice == 0f) { callback.onError(new Exception("price=0")); return; }
+                    callback.onQuoteReceived(currentPrice, dailyChangePercent);
+                } catch (Exception e) {
+                    callback.onError(e);
+                }
             }
         });
     }
 
+    public interface QuoteCallback {
+        void onQuoteReceived(float currentPrice, float dailyChangePercent);
+        void onError(Exception e);
+    }
+
+    // נשמר לתאימות אחורה
     public interface PriceCallback {
         void onPriceReceived(float price);
         void onError(Exception e);
