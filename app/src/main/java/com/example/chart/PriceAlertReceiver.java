@@ -37,31 +37,27 @@ import okhttp3.Response;
 public class PriceAlertReceiver extends BroadcastReceiver {
 
     public static final String CHANNEL_ID = "stock_price_alerts";
-    private static final String API_KEY = "0518811f0d394fa39842a8024a25c049";
+    private static final String API_KEY   = "YOUR_FINNHUB_API_KEY_HERE";
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        createNotificationChannel(context); // יצירת Channel אם לא קיים
+        createNotificationChannel(context);
 
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) return; // אם אין משתמש מחובר - עוצרים
+        if (user == null) return;
 
         DatabaseReference watchlistRef = FirebaseDatabase.getInstance()
                 .getReference("users")
                 .child(user.getUid())
                 .child("watchlist-stocks");
 
-        // קריאה חד-פעמית לכל הרשימה (לא מאזינים כל הזמן)
         watchlistRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot snapshot) {
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     StockWatchData stock = ds.getValue(StockWatchData.class);
                     if (stock == null) continue;
-
-                    // מדלגים על מניות ללא התראה פעילה, ללא יעד, או שההתראה כבר נשלחה
                     if (!stock.alertEnabled || stock.alertTargetPrice <= 0f || stock.alertTriggered) continue;
-
                     checkPriceAndNotify(context, stock, watchlistRef);
                 }
             }
@@ -71,13 +67,17 @@ public class PriceAlertReceiver extends BroadcastReceiver {
         });
     }
 
-    // בודק את המחיר הנוכחי ב-API ושולח התראה אם חצה את היעד
     private void checkPriceAndNotify(Context context, StockWatchData stock, DatabaseReference watchlistRef) {
-        String url = "https://api.twelvedata.com/time_series?symbol=" + stock.symbol
-                + "&interval=1day&apikey=" + API_KEY + "&outputsize=1";
+        long toTime   = System.currentTimeMillis() / 1000L;
+        long fromTime = toTime - (2L * 24 * 60 * 60); // 2 days back
 
-        OkHttpClient client = new OkHttpClient();
-        Request request = new Request.Builder().url(url).build();
+        String url = "https://finnhub.io/api/v1/stock/candle?symbol=" + stock.symbol
+                + "&resolution=D&from=" + fromTime
+                + "&to=" + toTime
+                + "&token=" + API_KEY;
+
+        OkHttpClient client  = new OkHttpClient();
+        Request      request = new Request.Builder().url(url).build();
 
         client.newCall(request).enqueue(new Callback() {
             @Override
@@ -87,16 +87,17 @@ public class PriceAlertReceiver extends BroadcastReceiver {
             public void onResponse(Call call, Response response) throws IOException {
                 if (!response.isSuccessful() || response.body() == null) return;
                 try {
-                    JSONObject json = new JSONObject(response.body().string());
-                    JSONArray values = json.optJSONArray("values");
-                    if (values == null || values.length() == 0) return;
+                    JSONObject json   = new JSONObject(response.body().string());
+                    String     status = json.optString("s", "");
+                    if (!"ok".equals(status)) return;
 
-                    float currentPrice = Float.parseFloat(values.getJSONObject(0).getString("close"));
+                    JSONArray closes = json.optJSONArray("c");
+                    if (closes == null || closes.length() == 0) return;
+
+                    float currentPrice = (float) closes.getDouble(closes.length() - 1);
 
                     if (currentPrice >= stock.alertTargetPrice) {
                         sendNotification(context, stock.symbol, stock.alertTargetPrice, currentPrice);
-
-                        // מסמן שההתראה נשלחה - למניעת שליחה כפולה
                         watchlistRef.child(stock.symbol).child("alertTriggered").setValue(true);
                     }
                 } catch (Exception ignored) { }
@@ -104,7 +105,6 @@ public class PriceAlertReceiver extends BroadcastReceiver {
         });
     }
 
-    // שליחת Notification למשתמש
     private void sendNotification(Context context, String symbol, float target, float current) {
         Intent openIntent = new Intent(context, AuthLogin.class);
         openIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -115,18 +115,17 @@ public class PriceAlertReceiver extends BroadcastReceiver {
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
-                .setContentTitle("📈 Stock Alert: " + symbol)
-                .setContentText(String.format("המחיר הגיע ל-$%.2f (יעד: $%.2f)", current, target))
+                .setContentTitle("\uD83D\uDCC8 Stock Alert: " + symbol)
+                .setContentText(String.format("\u05d4\u05de\u05d7\u05d9\u05e8 \u05d4\u05d2\u05d9\u05e2 \u05dc-$%.2f (\u05d9\u05e2\u05d3: $%.2f)", current, target))
                 .setStyle(new NotificationCompat.BigTextStyle()
                         .bigText(String.format(
-                                "המניה %s חצתה את מחיר היעד שלך!\nמחיר נוכחי: $%.2f\nמחיר יעד: $%.2f",
+                                "\u05d4\u05de\u05e0\u05d9\u05d4 %s \u05d7\u05e6\u05ea\u05d4 \u05d0\u05ea \u05de\u05d7\u05d9\u05e8 \u05d4\u05d9\u05e2\u05d3 \u05e9\u05dc\u05da!\n\u05de\u05d7\u05d9\u05e8 \u05e0\u05d5\u05db\u05d7\u05d9: $%.2f\n\u05de\u05d7\u05d9\u05e8 \u05d9\u05e2\u05d3: $%.2f",
                                 symbol, current, target)))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentIntent(pendingIntent)
-                .setAutoCancel(true); // נעלם לאחר לחיצה
+                .setAutoCancel(true);
 
         NotificationManagerCompat manager = NotificationManagerCompat.from(context);
-        // שליחה רק אם יש הרשאה (בדיקה לAndroid 13+)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
                 context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
                         == android.content.pm.PackageManager.PERMISSION_GRANTED) {
@@ -134,12 +133,11 @@ public class PriceAlertReceiver extends BroadcastReceiver {
         }
     }
 
-    // יצירת Notification Channel (חובה ב-Android 8+)
     private void createNotificationChannel(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID, "Stock Price Alerts", NotificationManager.IMPORTANCE_HIGH);
-            channel.setDescription("התראות מחיר למניות ב-Watchlist");
+            channel.setDescription("\u05d4\u05ea\u05e8\u05d0\u05d5\u05ea \u05de\u05d7\u05d9\u05e8 \u05dc\u05de\u05e0\u05d9\u05d5\u05ea \u05d1-Watchlist");
             NotificationManager nm = context.getSystemService(NotificationManager.class);
             if (nm != null) nm.createNotificationChannel(channel);
         }

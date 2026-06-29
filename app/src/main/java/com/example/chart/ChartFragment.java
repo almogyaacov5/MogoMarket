@@ -58,7 +58,9 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -106,7 +108,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private ProgressBar progressAI;
 
     private final OkHttpClient client  = new OkHttpClient();
-    private final String API_KEY       = "0518811f0d394fa39842a8024a25c049";
+    private final String API_KEY       = "YOUR_FINNHUB_API_KEY_HERE";
 
     private String  symbol      = "SPY";
     private String  interval    = "1day";
@@ -533,51 +535,82 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.invalidate();
     }
 
-    // ========================= DATA FETCHING =========================
+    // ========================= DATA FETCHING (Finnhub) =========================
+
+    private String intervalToFinnhubResolution(String interval) {
+        switch (interval) {
+            case "1min":   return "1";
+            case "5min":   return "5";
+            case "15min":  return "15";
+            case "30min":  return "30";
+            case "1h":     return "60";
+            case "1week":  return "W";
+            case "1month": return "M";
+            default:       return "D"; // 1day
+        }
+    }
 
     private void fetchStockData(String symbol, String interval) {
-        String url = "https://api.twelvedata.com/time_series?symbol=" + symbol
-                + "&interval=" + interval + "&apikey=" + API_KEY + "&outputsize=252";
+        String resolution = intervalToFinnhubResolution(interval);
+        long toTime   = System.currentTimeMillis() / 1000L;
+        long fromTime = toTime - (400L * 24 * 60 * 60); // ~400 days back to cover 252 trading days
+
+        String url = "https://finnhub.io/api/v1/stock/candle?symbol=" + symbol
+                + "&resolution=" + resolution
+                + "&from=" + fromTime
+                + "&to=" + toTime
+                + "&token=" + API_KEY;
+
         client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
             @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {}
             @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (!response.isSuccessful() || response.body() == null) return;
                 try {
-                    JSONObject json   = new JSONObject(response.body().string());
-                    JSONArray  series = json.getJSONArray("values");
+                    JSONObject json = new JSONObject(response.body().string());
+
+                    String status = json.optString("s", "");
+                    if (!"ok".equals(status)) return;
+
+                    JSONArray opens      = json.getJSONArray("o");
+                    JSONArray highs      = json.getJSONArray("h");
+                    JSONArray lows       = json.getJSONArray("l");
+                    JSONArray closes     = json.getJSONArray("c");
+                    JSONArray timestamps = json.getJSONArray("t");
+
+                    int size = closes.length();
+                    if (size == 0) return;
+
                     fullCloses.clear();
                     dateLabels.clear();
                     List<CandleEntry> candleEntries = new ArrayList<>();
-                    float lastClose = 0, prevClose = 0;
-                    if (series.length() > 0)
-                        lastClose = Float.parseFloat(series.getJSONObject(0).getString("close"));
-                    if (series.length() > 1)
-                        prevClose = Float.parseFloat(series.getJSONObject(1).getString("close"));
+
+                    float lastClose = (float) closes.getDouble(size - 1);
+                    float prevClose = size > 1 ? (float) closes.getDouble(size - 2) : 0;
                     lastPrice = lastClose;
-                    for (int i = 0; i < series.length(); i++)
-                        fullCloses.add(Float.parseFloat(series.getJSONObject(i).getString("close")));
-                    if (fullCloses.isEmpty()) return;
-                    int chartIndex = 0;
-                    int startIndex = Math.max(0, series.length() - 252);
-                    for (int i = series.length() - 1; i >= startIndex; i--) {
-                        JSONObject data = series.getJSONObject(i);
-                        String datetime = data.optString("datetime", "");
-                        // Keep only MM-dd or MM/dd for brevity (chars 5-9 of "2024-01-15")
-                        String label = datetime.length() >= 10 ? datetime.substring(5, 10) : datetime;
-                        dateLabels.add(label);
-                        candleEntries.add(new CandleEntry(chartIndex++,
-                                Float.parseFloat(data.getString("high")),
-                                Float.parseFloat(data.getString("low")),
-                                Float.parseFloat(data.getString("open")),
-                                Float.parseFloat(data.getString("close"))));
+
+                    SimpleDateFormat sdf = new SimpleDateFormat("MM-dd", Locale.US);
+
+                    for (int i = 0; i < size; i++) {
+                        fullCloses.add((float) closes.getDouble(i));
+                        long ts = timestamps.getLong(i);
+                        Date date = new Date(ts * 1000L);
+                        dateLabels.add(sdf.format(date));
+                        candleEntries.add(new CandleEntry(i,
+                                (float) highs.getDouble(i),
+                                (float) lows.getDouble(i),
+                                (float) opens.getDouble(i),
+                                (float) closes.getDouble(i)));
                     }
+
                     currentEntries.clear();
                     currentEntries.addAll(candleEntries);
+
                     float change    = lastClose - prevClose;
                     float changePct = (prevClose != 0) ? (change / prevClose) * 100 : 0;
                     final float fClose = lastClose, fChng = change, fPct = changePct;
                     final String sym = symbol;
                     final List<CandleEntry> fin = new ArrayList<>(candleEntries);
+
                     if (getActivity() != null) {
                         getActivity().runOnUiThread(() -> {
                             if (isCandleStick) updateCandleChart(fin);
@@ -655,7 +688,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         });
     }
 
-    // ========================= SYMBOL SEARCH =========================
+    // ========================= SYMBOL SEARCH (Finnhub) =========================
 
     private void openChartFromInput(String userInput) {
         String q = userInput.trim();
@@ -675,17 +708,16 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private void resolveFirstMatchAndOpen(String query) {
         try {
             String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name());
-            String url = "https://api.twelvedata.com/symbol_search?symbol=" + encoded
-                    + "&outputsize=1&country=US&exchange=NYSE&apikey=" + API_KEY;
+            String url = "https://finnhub.io/api/v1/search?q=" + encoded + "&token=" + API_KEY;
             client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
                 @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {}
                 @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                     if (!response.isSuccessful() || response.body() == null) return;
                     try {
-                        JSONObject json = new JSONObject(response.body().string());
-                        JSONArray data  = json.optJSONArray("data");
-                        if (data == null || data.length() == 0) return;
-                        String sym = data.optJSONObject(0).optString("symbol", "").trim();
+                        JSONObject json   = new JSONObject(response.body().string());
+                        JSONArray  result = json.optJSONArray("result");
+                        if (result == null || result.length() == 0) return;
+                        String sym = result.optJSONObject(0).optString("symbol", "").trim();
                         if (sym.isEmpty()) return;
                         String finalSym = sym.toUpperCase(Locale.US);
                         if (getActivity() == null) return;
@@ -718,59 +750,49 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         try {
             String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name());
             if (suggestionAdapter != null) { suggestionAdapter.clear(); suggestionAdapter.notifyDataSetChanged(); }
-            final java.util.HashSet<String> addedSymbols = new java.util.HashSet<>();
-            fetchSymbolSuggestionsOneExchange(encoded, query, "NYSE",   addedSymbols);
-            fetchSymbolSuggestionsOneExchange(encoded, query, "NASDAQ", addedSymbols);
-        } catch (Exception ignored) {}
-    }
 
-    private void fetchSymbolSuggestionsOneExchange(String encoded, String originalQuery,
-                                                   String exchange, java.util.HashSet<String> addedSymbols) {
-        String url = "https://api.twelvedata.com/symbol_search?symbol=" + encoded
-                + "&outputsize=20&country=US&exchange=" + exchange + "&apikey=" + API_KEY;
-        client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
-            @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {}
-            @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                if (!response.isSuccessful() || response.body() == null) return;
-                ArrayList<StockSuggestion> list = new ArrayList<>();
-                try {
-                    JSONObject json = new JSONObject(response.body().string());
-                    JSONArray data  = json.optJSONArray("data");
-                    if (data == null) return;
-                    for (int i = 0; i < data.length(); i++) {
-                        JSONObject o = data.optJSONObject(i);
-                        if (o == null) continue;
-                        String sym = o.optString("symbol", "").trim();
-                        if (sym.isEmpty()) continue;
-                        String name = o.optString("instrument_name", "");
-                        String ex   = o.optString("exchange", "");
-                        if (!"NYSE".equalsIgnoreCase(ex) && !"NASDAQ".equalsIgnoreCase(ex)) continue;
-                        synchronized (addedSymbols) {
-                            if (addedSymbols.contains(sym)) continue;
-                            addedSymbols.add(sym);
+            String url = "https://finnhub.io/api/v1/search?q=" + encoded + "&token=" + API_KEY;
+            client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
+                @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {}
+                @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                    if (!response.isSuccessful() || response.body() == null) return;
+                    ArrayList<StockSuggestion> list = new ArrayList<>();
+                    try {
+                        JSONObject json   = new JSONObject(response.body().string());
+                        JSONArray  result = json.optJSONArray("result");
+                        if (result == null) return;
+                        for (int i = 0; i < result.length() && i < 20; i++) {
+                            JSONObject o = result.optJSONObject(i);
+                            if (o == null) continue;
+                            String sym      = o.optString("symbol",      "").trim();
+                            String name     = o.optString("description", "");
+                            String type     = o.optString("type",        "");
+                            if (sym.isEmpty()) continue;
+                            if (!"Common Stock".equals(type)) continue;
+                            list.add(new StockSuggestion(sym, name, "US"));
                         }
-                        list.add(new StockSuggestion(sym, name, ex));
-                    }
-                } catch (Exception ignored) {}
-                if (getActivity() == null) return;
-                getActivity().runOnUiThread(() -> {
-                    if (!originalQuery.equals(latestQuery) || suggestionAdapter == null) return;
-                    suggestionAdapter.addAll(list);
-                    suggestionAdapter.notifyDataSetChanged();
-                    if (tickerInput == null) return;
-                    CharSequence cs = tickerInput.getText();
-                    if (cs == null) return;
-                    if (tickerInput.enoughToFilter()) {
-                        suggestionAdapter.getFilter().filter(cs, count -> {
-                            if (count > 0) tickerInput.showDropDown();
-                            else           tickerInput.dismissDropDown();
-                        });
-                    }
-                    if (tickerInput.hasFocus() && suggestionAdapter.getCount() > 0)
-                        tickerInput.post(tickerInput::showDropDown);
-                });
-            }
-        });
+                    } catch (Exception ignored) {}
+                    if (getActivity() == null) return;
+                    getActivity().runOnUiThread(() -> {
+                        if (!query.equals(latestQuery) || suggestionAdapter == null) return;
+                        suggestionAdapter.clear();
+                        suggestionAdapter.addAll(list);
+                        suggestionAdapter.notifyDataSetChanged();
+                        if (tickerInput == null) return;
+                        CharSequence cs = tickerInput.getText();
+                        if (cs == null) return;
+                        if (tickerInput.enoughToFilter()) {
+                            suggestionAdapter.getFilter().filter(cs, count -> {
+                                if (count > 0) tickerInput.showDropDown();
+                                else           tickerInput.dismissDropDown();
+                            });
+                        }
+                        if (tickerInput.hasFocus() && suggestionAdapter.getCount() > 0)
+                            tickerInput.post(tickerInput::showDropDown);
+                    });
+                }
+            });
+        } catch (Exception ignored) {}
     }
 
     @Override

@@ -49,6 +49,7 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
     private List<StockData> stocksList = new ArrayList<>();
     private DatabaseReference stocksRef;
     private final OkHttpClient client = new OkHttpClient();
+    private static final String API_KEY = "YOUR_FINNHUB_API_KEY_HERE";
 
     @Nullable
     @Override
@@ -134,8 +135,14 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
     }
 
     private void fetchStockInfo(String symbol) {
-        String url = "https://api.twelvedata.com/time_series?symbol=" + symbol +
-                "&interval=1day&apikey=0518811f0d394fa39842a8024a25c049&outputsize=2";
+        long toTime   = System.currentTimeMillis() / 1000L;
+        long fromTime = toTime - (3L * 24 * 60 * 60); // 3 days back
+
+        String url = "https://finnhub.io/api/v1/stock/candle?symbol=" + symbol
+                + "&resolution=D&from=" + fromTime
+                + "&to=" + toTime
+                + "&token=" + API_KEY;
+
         Request request = new Request.Builder().url(url).build();
         client.newCall(request).enqueue(new Callback() {
             @Override
@@ -144,11 +151,17 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 try {
-                    JSONObject json = new JSONObject(response.body().string());
-                    JSONArray values = json.getJSONArray("values");
-                    float lastPrice = Float.parseFloat(values.getJSONObject(0).getString("close"));
-                    float prevPrice = Float.parseFloat(values.getJSONObject(1).getString("close"));
+                    JSONObject json   = new JSONObject(response.body().string());
+                    String     status = json.optString("s", "");
+                    if (!"ok".equals(status)) return;
+
+                    JSONArray closes = json.getJSONArray("c");
+                    if (closes.length() < 2) return;
+
+                    float lastPrice    = (float) closes.getDouble(closes.length() - 1);
+                    float prevPrice    = (float) closes.getDouble(closes.length() - 2);
                     float changePercent = (lastPrice - prevPrice) / prevPrice * 100;
+
                     StockData data = new StockData(symbol, lastPrice, changePercent);
                     if (getActivity() != null) getActivity().runOnUiThread(() -> {
                         stocksList.add(data);
