@@ -54,6 +54,9 @@ public class PortfolioAddStockFragment extends Fragment {
     private String latestQuery = "";
     private boolean isManualSelection = false;
 
+    // שם החברה שנשמר לאחר בחירה מה-AutoComplete
+    private String selectedCompanyName = "";
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -99,6 +102,10 @@ public class PortfolioAddStockFragment extends Fragment {
             if (sel == null || sel.symbol == null) return;
 
             String picked = sel.symbol.trim().toUpperCase(Locale.US);
+
+            // שמור את שם החברה מהסאגשן שנבחר
+            selectedCompanyName = (sel.name != null) ? sel.name.trim() : "";
+
             isManualSelection = true;
             editTicker.setText(picked);
             editTicker.setSelection(picked.length());
@@ -116,6 +123,8 @@ public class PortfolioAddStockFragment extends Fragment {
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 if (isManualSelection) return;
+                // אם המשתמש הקליד ידנית (לא בחר מהרשימה) - נקה את שם החברה
+                selectedCompanyName = "";
                 String q = s == null ? "" : s.toString().trim();
                 scheduleSearch(q);
             }
@@ -257,6 +266,8 @@ public class PortfolioAddStockFragment extends Fragment {
         data.tradeAmount  = tradeAmount;
         data.targetPrice  = targetPrice;
         data.notes        = notes;
+        // שמור את שם החברה שזוהה אוטומטית מהחיפוש
+        data.name         = selectedCompanyName;
 
         stocksRef.child(ticker).setValue(data)
                 .addOnSuccessListener(unused -> {
