@@ -480,6 +480,12 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
     }
 
+    /**
+     * פורמט תאריך לציר X:
+     * - אינטראדיי (דקות/שעות): MM/dd HH:mm
+     * - יומי/שבועי: MM/dd/yyyy  ← כולל שנה
+     * - חודשי: yyyy-MM
+     */
     private SimpleDateFormat dateFormatFor(String yahooInterval) {
         switch (yahooInterval) {
             case "1m": case "5m": case "15m": case "30m": case "1h":
@@ -487,7 +493,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             case "1mo":
                 return new SimpleDateFormat("yyyy-MM", Locale.US);
             default:
-                return new SimpleDateFormat("MM-dd", Locale.US);
+                // 1d, 1wk - מציג יום, שבוע עם שנה
+                return new SimpleDateFormat("MM/dd/yyyy", Locale.US);
         }
     }
 

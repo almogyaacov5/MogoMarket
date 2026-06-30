@@ -128,9 +128,14 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
         if (stock.currentPrice != 0f) {
             holder.priceText.setText(String.format(Locale.US, "$%.2f", stock.currentPrice));
             holder.priceText.setTextColor(colorPrimary);
-            String arrow = stock.dayChange >= 0 ? "\u25b2" : "\u25bc";
-            holder.dayChangeText.setText(String.format(Locale.US, "%s %.2f%%", arrow, Math.abs(stock.dayChange)));
-            holder.dayChangeText.setTextColor(stock.dayChange >= 0 ? colorGain : colorLoss);
+            // מניה עולה: חץ + ▲ +X.XX%, מניה יורדת: חץ ▼ -X.XX%
+            if (stock.dayChange >= 0) {
+                holder.dayChangeText.setText(String.format(Locale.US, "\u25b2 +%.2f%%", stock.dayChange));
+                holder.dayChangeText.setTextColor(colorGain);
+            } else {
+                holder.dayChangeText.setText(String.format(Locale.US, "\u25bc -%.2f%%", Math.abs(stock.dayChange)));
+                holder.dayChangeText.setTextColor(colorLoss);
+            }
         } else {
             holder.priceText.setText("...");
             holder.priceText.setTextColor(textSecondary);
@@ -147,9 +152,13 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
                     holder.priceText.setTextColor(colorPrimary);
                 });
                 holder.dayChangeText.post(() -> {
-                    String arrow = dayChange >= 0 ? "\u25b2" : "\u25bc";
-                    holder.dayChangeText.setText(String.format(Locale.US, "%s %.2f%%", arrow, Math.abs(dayChange)));
-                    holder.dayChangeText.setTextColor(dayChange >= 0 ? colorGain : colorLoss);
+                    if (dayChange >= 0) {
+                        holder.dayChangeText.setText(String.format(Locale.US, "\u25b2 +%.2f%%", dayChange));
+                        holder.dayChangeText.setTextColor(colorGain);
+                    } else {
+                        holder.dayChangeText.setText(String.format(Locale.US, "\u25bc -%.2f%%", Math.abs(dayChange)));
+                        holder.dayChangeText.setTextColor(colorLoss);
+                    }
                 });
                 processAlert(stock, price, ctx);
             }
