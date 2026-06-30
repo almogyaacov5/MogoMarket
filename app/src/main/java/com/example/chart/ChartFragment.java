@@ -86,7 +86,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private boolean isChartDark;
     private boolean isFullscreen = false;
 
-    // שומר את ה-LayoutParams המקוריים של chartContainer לפני fullscreen
     private ViewGroup.LayoutParams chartOriginalParams;
 
     private CandleStickChart candleStickChart;
@@ -136,12 +135,17 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         @NonNull
         @Override
         public String toString() {
-            String s  = symbol   == null ? "" : symbol;
-            String n  = name     == null ? "" : name;
+            String s = symbol == null ? "" : symbol;
+            String n = name   == null ? "" : name;
             if (n.isEmpty()) return s;
             if (n.length() > 30) n = n.substring(0, 28) + "...";
             return s + "  ·  " + n;
         }
+    }
+
+    // בדיקה אם הסמבול הוא קריפטו ("BINANCE:BTCUSDT" וכו')
+    private boolean isCryptoSymbol(String sym) {
+        return sym != null && sym.contains(":");
     }
 
     @Nullable
@@ -212,28 +216,18 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     // ─────────────────────────────────────────────────
     //  FULLSCREEN
     // ─────────────────────────────────────────────────
-
     private void enterFullscreen() {
         if (isFullscreen || chartContainer == null) return;
         isFullscreen = true;
-
-        // שמור params מקוריים
         chartOriginalParams = chartContainer.getLayoutParams();
-
-        // הסתר את כל שאר הסקציות
         if (headerSection   != null) headerSection.setVisibility(View.GONE);
         if (searchSection   != null) searchSection.setVisibility(View.GONE);
         if (controlsSection != null) controlsSection.setVisibility(View.GONE);
         if (bottomBar       != null) bottomBar.setVisibility(View.GONE);
-
-        // הגדל את chartContainer למסך מלא ללא margins
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT);
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
         lp.setMargins(0, 0, 0, 0);
         chartContainer.setLayoutParams(lp);
-
-        // הצג כפתור יציאה, הסתר כפתור הגדלה
         if (btnExpandChart    != null) btnExpandChart.setVisibility(View.GONE);
         if (btnExitFullscreen != null) btnExitFullscreen.setVisibility(View.VISIBLE);
     }
@@ -241,8 +235,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private void exitFullscreen() {
         if (!isFullscreen || chartContainer == null) return;
         isFullscreen = false;
-
-        // שחזר params מקוריים
         if (chartOriginalParams != null) {
             chartContainer.setLayoutParams(chartOriginalParams);
         } else {
@@ -252,38 +244,33 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             lp.setMargins(dpToPx(12), dpToPx(8), dpToPx(12), 0);
             chartContainer.setLayoutParams(lp);
         }
-
-        // הצג חזרה את כל הסקציות
         if (headerSection   != null) headerSection.setVisibility(View.VISIBLE);
         if (searchSection   != null) searchSection.setVisibility(View.VISIBLE);
         if (controlsSection != null) controlsSection.setVisibility(View.VISIBLE);
         if (bottomBar       != null) bottomBar.setVisibility(View.VISIBLE);
-
-        // הצג כפתור הגדלה, הסתר כפתור יציאה
         if (btnExpandChart    != null) btnExpandChart.setVisibility(View.VISIBLE);
         if (btnExitFullscreen != null) btnExitFullscreen.setVisibility(View.GONE);
     }
 
     private int dpToPx(int dp) {
-        float density = getResources().getDisplayMetrics().density;
-        return Math.round(dp * density);
+        return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 
     // ─────────────────────────────────────────────────
 
     private void applyTheme() {
-        int bgColor   = isDarkTheme ? DARK_BG        : LIGHT_BG;
-        int cardColor = isDarkTheme ? DARK_CARD      : LIGHT_CARD;
-        int textPri   = isDarkTheme ? DARK_TEXT_PRI  : LIGHT_TEXT_PRI;
-        int textSec   = isDarkTheme ? DARK_TEXT_SEC  : LIGHT_TEXT_SEC;
+        int bgColor   = isDarkTheme ? DARK_BG       : LIGHT_BG;
+        int cardColor = isDarkTheme ? DARK_CARD     : LIGHT_CARD;
+        int textPri   = isDarkTheme ? DARK_TEXT_PRI : LIGHT_TEXT_PRI;
+        int textSec   = isDarkTheme ? DARK_TEXT_SEC : LIGHT_TEXT_SEC;
 
-        if (chartRootLayout  != null) chartRootLayout.setBackgroundColor(bgColor);
-        if (headerSection    != null) headerSection.setBackgroundColor(cardColor);
-        if (controlsSection  != null) controlsSection.setBackgroundColor(cardColor);
-        if (bottomBar        != null) bottomBar.setBackgroundColor(cardColor);
-        if (tickerText       != null) tickerText.setTextColor(textPri);
-        if (timeFrameText    != null) timeFrameText.setTextColor(textSec);
-        if (tickerInput      != null) {
+        if (chartRootLayout != null) chartRootLayout.setBackgroundColor(bgColor);
+        if (headerSection   != null) headerSection.setBackgroundColor(cardColor);
+        if (controlsSection != null) controlsSection.setBackgroundColor(cardColor);
+        if (bottomBar       != null) bottomBar.setBackgroundColor(cardColor);
+        if (tickerText      != null) tickerText.setTextColor(textPri);
+        if (timeFrameText   != null) timeFrameText.setTextColor(textSec);
+        if (tickerInput     != null) {
             tickerInput.setBackgroundColor(cardColor);
             tickerInput.setTextColor(textPri);
             tickerInput.setHintTextColor(textSec);
@@ -292,9 +279,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     }
 
     private void applyChartColors() {
-        int chartCard = isChartDark ? DARK_CARD : LIGHT_CARD;
+        int chartCard = isChartDark ? DARK_CARD     : LIGHT_CARD;
         int chartSec  = isChartDark ? DARK_TEXT_SEC : LIGHT_TEXT_SEC;
-
         if (chartContainer   != null) chartContainer.setBackgroundColor(chartCard);
         if (candleStickChart != null) {
             candleStickChart.setBackgroundColor(chartCard);
@@ -311,16 +297,14 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     }
 
     private void updateChartThemeToggleLabel() {
-        if (btnChartThemeToggle != null) {
+        if (btnChartThemeToggle != null)
             btnChartThemeToggle.setText(isChartDark ? "\u2600\uFE0F Light Chart" : "\uD83C\uDF19 Dark Chart");
-        }
     }
 
     private void setupCandleChartStyle() {
         if (candleStickChart == null) return;
         int cardColor = isChartDark ? DARK_CARD : LIGHT_CARD;
         int textSec   = isChartDark ? DARK_TEXT_SEC : LIGHT_TEXT_SEC;
-
         candleStickChart.setBackgroundColor(cardColor);
         candleStickChart.setDrawGridBackground(false);
         candleStickChart.getDescription().setEnabled(false);
@@ -336,7 +320,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         candleStickChart.setDragDecelerationFrictionCoef(0.92f);
         candleStickChart.setHighlightPerTapEnabled(true);
         candleStickChart.setHighlightPerDragEnabled(true);
-
         XAxis xAxis = candleStickChart.getXAxis();
         xAxis.setDrawGridLines(false);
         xAxis.setDrawAxisLine(false);
@@ -346,12 +329,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         xAxis.setLabelCount(5, true);
         xAxis.setValueFormatter(new ValueFormatter() {
             @Override public String getFormattedValue(float value) {
-                int index = (int) value;
-                if (index >= 0 && index < dateLabels.size()) return dateLabels.get(index);
-                return "";
+                int i = (int) value;
+                return (i >= 0 && i < dateLabels.size()) ? dateLabels.get(i) : "";
             }
         });
-
         YAxis leftAxis = candleStickChart.getAxisLeft();
         leftAxis.setDrawGridLines(false);
         leftAxis.setDrawAxisLine(false);
@@ -365,7 +346,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         if (lineChart == null) return;
         int cardColor = isChartDark ? DARK_CARD : LIGHT_CARD;
         int textSec   = isChartDark ? DARK_TEXT_SEC : LIGHT_TEXT_SEC;
-
         lineChart.setBackgroundColor(cardColor);
         lineChart.setDrawGridBackground(false);
         lineChart.getDescription().setEnabled(false);
@@ -381,7 +361,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.setDragDecelerationFrictionCoef(0.92f);
         lineChart.setHighlightPerTapEnabled(true);
         lineChart.setHighlightPerDragEnabled(true);
-
         XAxis xAxis = lineChart.getXAxis();
         xAxis.setDrawGridLines(false);
         xAxis.setDrawAxisLine(false);
@@ -391,12 +370,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         xAxis.setLabelCount(5, true);
         xAxis.setValueFormatter(new ValueFormatter() {
             @Override public String getFormattedValue(float value) {
-                int index = (int) value;
-                if (index >= 0 && index < dateLabels.size()) return dateLabels.get(index);
-                return "";
+                int i = (int) value;
+                return (i >= 0 && i < dateLabels.size()) ? dateLabels.get(i) : "";
             }
         });
-
         YAxis leftAxis = lineChart.getAxisLeft();
         leftAxis.setDrawGridLines(false);
         leftAxis.setDrawAxisLine(false);
@@ -443,8 +420,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             });
         }
         if (btnAIAnalysis != null) btnAIAnalysis.setOnClickListener(v -> analyzeWithAI());
-
-        // Chart-only theme toggle
         if (btnChartThemeToggle != null) {
             btnChartThemeToggle.setOnClickListener(v -> {
                 isChartDark = !isChartDark;
@@ -456,16 +431,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 updateChartThemeToggleLabel();
             });
         }
-
-        // ── EXPAND לפולסקרין ──
-        if (btnExpandChart != null) {
-            btnExpandChart.setOnClickListener(v -> enterFullscreen());
-        }
-
-        // ── EXIT פולסקרין ──
-        if (btnExitFullscreen != null) {
-            btnExitFullscreen.setOnClickListener(v -> exitFullscreen());
-        }
+        if (btnExpandChart    != null) btnExpandChart.setOnClickListener(v -> enterFullscreen());
+        if (btnExitFullscreen != null) btnExitFullscreen.setOnClickListener(v -> exitFullscreen());
     }
 
     private void setupAutoComplete() {
@@ -478,15 +445,11 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             @Override
             public android.widget.Filter getFilter() {
                 return new android.widget.Filter() {
-                    @Override
-                    protected FilterResults performFiltering(CharSequence constraint) {
+                    @Override protected FilterResults performFiltering(CharSequence c) {
                         FilterResults r = new FilterResults();
-                        r.values = new ArrayList<>();
-                        r.count  = 0;
-                        return r;
+                        r.values = new ArrayList<>(); r.count = 0; return r;
                     }
-                    @Override
-                    protected void publishResults(CharSequence constraint, FilterResults results) {}
+                    @Override protected void publishResults(CharSequence c, FilterResults r) {}
                 };
             }
         };
@@ -497,7 +460,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         tickerInput.setOnItemClickListener((parent, view, position, id) -> {
             StockSuggestion sel = suggestionAdapter.getItem(position);
             if (sel == null || sel.symbol == null || sel.symbol.trim().isEmpty()) return;
-            String picked = sel.symbol.trim().toUpperCase(Locale.US);
+            // קריפטו: שמור כברייס (BINANCE:BTCUSDT) — לא upper-case לשתי חלקי
+            String picked = isCryptoSymbol(sel.symbol)
+                    ? sel.symbol.trim()
+                    : sel.symbol.trim().toUpperCase(Locale.US);
 
             isManualSelection = true;
             tickerInput.setText(picked);
@@ -516,12 +482,11 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         });
 
         tickerInput.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
             @Override public void afterTextChanged(Editable s) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+            @Override public void onTextChanged(CharSequence s, int st, int b, int c) {
                 if (isManualSelection) return;
-                String q = s == null ? "" : s.toString().trim();
-                scheduleSymbolSearch(q);
+                scheduleSymbolSearch(s == null ? "" : s.toString().trim());
             }
         });
     }
@@ -539,10 +504,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         dataSet.setHighLightColor(COLOR_PRIMARY);
         dataSet.enableDashedHighlightLine(10f, 5f, 0f);
         candleStickChart.setData(new CandleData(dataSet));
-        TradingMarkerView candleMarker = new TradingMarkerView(requireContext());
-        candleMarker.setDateLabels(dateLabels);
-        candleMarker.setChartView(candleStickChart);
-        candleStickChart.setMarker(candleMarker);
+        TradingMarkerView mv = new TradingMarkerView(requireContext());
+        mv.setDateLabels(dateLabels); mv.setChartView(candleStickChart);
+        candleStickChart.setMarker(mv);
         candleStickChart.animateX(400);
         candleStickChart.invalidate();
     }
@@ -563,14 +527,27 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         ds.setFillColor(COLOR_FILL);
         ds.setFillAlpha(isChartDark ? 90 : 50);
         lineChart.setData(new LineData(ds));
-        TradingMarkerView lineMarker = new TradingMarkerView(requireContext());
-        lineMarker.setDateLabels(dateLabels);
-        lineMarker.setChartView(lineChart);
-        lineChart.setMarker(lineMarker);
+        TradingMarkerView mv = new TradingMarkerView(requireContext());
+        mv.setDateLabels(dateLabels); mv.setChartView(lineChart);
+        lineChart.setMarker(mv);
         lineChart.animateX(400);
         lineChart.invalidate();
     }
 
+    // ─────────────────────────────────────────────────
+    //  fetchStockData — מניפה לפי סוג הסמבול
+    // ─────────────────────────────────────────────────
+    private void fetchStockData(String symbol, String interval) {
+        if (isCryptoSymbol(symbol)) {
+            fetchCryptoData(symbol, interval);
+        } else {
+            fetchYahooData(symbol, interval);
+        }
+    }
+
+    // ─────────────────────────────────────────────────
+    //  Yahoo Finance — מניות רגילות
+    // ─────────────────────────────────────────────────
     private String[] intervalToYahoo(String interval) {
         switch (interval) {
             case "1min":   return new String[]{"1m",  "1d"};
@@ -596,113 +573,175 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
     }
 
-    private void fetchStockData(String symbol, String interval) {
-        String[] yahooParams   = intervalToYahoo(interval);
-        String   yahooInterval = yahooParams[0];
-        String   yahooRange    = yahooParams[1];
-
+    private void fetchYahooData(String symbol, String interval) {
+        String[] p = intervalToYahoo(interval);
         String url = "https://query1.finance.yahoo.com/v8/finance/chart/" + symbol
-                + "?interval=" + yahooInterval
-                + "&range="    + yahooRange
-                + "&includePrePost=false";
+                + "?interval=" + p[0] + "&range=" + p[1] + "&includePrePost=false";
 
-        Request req = new Request.Builder()
-                .url(url)
-                .header("User-Agent", "Mozilla/5.0")
-                .build();
-
+        Request req = new Request.Builder().url(url).header("User-Agent", "Mozilla/5.0").build();
         client.newCall(req).enqueue(new Callback() {
             @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 if (getActivity() != null) getActivity().runOnUiThread(() ->
                         Toast.makeText(requireContext(), "Network error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
-
             @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (!response.isSuccessful() || response.body() == null) return;
                 try {
-                    String     body   = response.body().string();
-                    JSONObject root   = new JSONObject(body);
-                    JSONObject chart  = root.getJSONObject("chart");
-                    JSONArray  result = chart.optJSONArray("result");
+                    JSONObject root   = new JSONObject(response.body().string());
+                    JSONArray  result = root.getJSONObject("chart").optJSONArray("result");
                     if (result == null || result.length() == 0) {
                         if (getActivity() != null) getActivity().runOnUiThread(() ->
                                 Toast.makeText(requireContext(), "No data for: " + symbol, Toast.LENGTH_SHORT).show());
                         return;
                     }
+                    JSONObject item  = result.getJSONObject(0);
+                    JSONArray  ts    = item.getJSONArray("timestamp");
+                    JSONObject quote = item.getJSONObject("indicators").getJSONArray("quote").getJSONObject(0);
+                    JSONArray  opens = quote.getJSONArray("open");
+                    JSONArray  highs = quote.getJSONArray("high");
+                    JSONArray  lows  = quote.getJSONArray("low");
+                    JSONArray  cls   = quote.getJSONArray("close");
+                    int size = ts.length();
+                    if (size == 0) return;
+                    fullCloses.clear(); dateLabels.clear();
+                    List<CandleEntry> entries = new ArrayList<>();
+                    SimpleDateFormat sdf = dateFormatFor(p[0]);
+                    float lc = 0f, pc = 0f; int vc = 0;
+                    for (int i = 0; i < size; i++) {
+                        if (cls.isNull(i)||opens.isNull(i)||highs.isNull(i)||lows.isNull(i)) continue;
+                        float o=(float)opens.getDouble(i), h=(float)highs.getDouble(i),
+                              l=(float)lows.getDouble(i),  c=(float)cls.getDouble(i);
+                        dateLabels.add(sdf.format(new Date(ts.getLong(i)*1000L)));
+                        fullCloses.add(c);
+                        entries.add(new CandleEntry(vc, h, l, o, c));
+                        pc = lc; lc = c; vc++;
+                    }
+                    if (vc == 0) return;
+                    if (pc == 0f) pc = lc;
+                    postChartUpdate(symbol, entries, lc, pc);
+                } catch (Exception e) { Log.e("ChartFragment", "Yahoo parse error", e); }
+            }
+        });
+    }
 
-                    JSONObject item       = result.getJSONObject(0);
-                    JSONArray  timestamps = item.getJSONArray("timestamp");
-                    JSONObject indicators = item.getJSONObject("indicators");
-                    JSONArray  quoteArr   = indicators.getJSONArray("quote");
-                    JSONObject quote      = quoteArr.getJSONObject(0);
+    // ─────────────────────────────────────────────────
+    //  Finnhub Crypto Candle API
+    // ─────────────────────────────────────────────────
+    private String intervalToFinnhubResolution(String interval) {
+        switch (interval) {
+            case "1min":   return "1";
+            case "5min":   return "5";
+            case "15min":  return "15";
+            case "30min":  return "30";
+            case "1h":     return "60";
+            case "1week":  return "W";
+            case "1month": return "M";
+            default:       return "D";
+        }
+    }
 
-                    JSONArray opens  = quote.getJSONArray("open");
-                    JSONArray highs  = quote.getJSONArray("high");
-                    JSONArray lows   = quote.getJSONArray("low");
-                    JSONArray closes = quote.getJSONArray("close");
+    private void fetchCryptoData(String symbol, String interval) {
+        String resolution = intervalToFinnhubResolution(interval);
+        long toTime   = System.currentTimeMillis() / 1000L;
+        // טווח נתונים לפי resolution
+        long rangeSeconds;
+        switch (resolution) {
+            case "1":  rangeSeconds = 2L  * 24 * 60 * 60; break;  // 2 ימים
+            case "5":  rangeSeconds = 5L  * 24 * 60 * 60; break;  // 5 ימים
+            case "15": rangeSeconds = 10L * 24 * 60 * 60; break;  // 10 ימים
+            case "30": rangeSeconds = 20L * 24 * 60 * 60; break;  // 20 ימים
+            case "60": rangeSeconds = 60L * 24 * 60 * 60; break;  // 60 ימים
+            case "W":  rangeSeconds = 3L  * 365 * 24 * 60 * 60; break; // 3 שנים
+            case "M":  rangeSeconds = 5L  * 365 * 24 * 60 * 60; break; // 5 שנים
+            default:   rangeSeconds = 365L * 24 * 60 * 60; break; // שנה
+        }
+        long fromTime = toTime - rangeSeconds;
 
-                    int size = timestamps.length();
+        String url = "https://finnhub.io/api/v1/crypto/candle?symbol=" + symbol
+                + "&resolution=" + resolution
+                + "&from=" + fromTime
+                + "&to="   + toTime
+                + "&token=" + FINNHUB_KEY;
+
+        Request req = new Request.Builder().url(url).header("User-Agent", "Mozilla/5.0").build();
+        client.newCall(req).enqueue(new Callback() {
+            @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                if (getActivity() != null) getActivity().runOnUiThread(() ->
+                        Toast.makeText(requireContext(), "Crypto fetch error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+            @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                if (!response.isSuccessful() || response.body() == null) return;
+                try {
+                    JSONObject json = new JSONObject(response.body().string());
+                    if (!"ok".equals(json.optString("s"))) {
+                        if (getActivity() != null) getActivity().runOnUiThread(() ->
+                                Toast.makeText(requireContext(), "No crypto data for: " + symbol, Toast.LENGTH_SHORT).show());
+                        return;
+                    }
+                    JSONArray opens  = json.getJSONArray("o");
+                    JSONArray highs  = json.getJSONArray("h");
+                    JSONArray lows   = json.getJSONArray("l");
+                    JSONArray cls    = json.getJSONArray("c");
+                    JSONArray times  = json.getJSONArray("t");
+                    int size = cls.length();
                     if (size == 0) return;
 
-                    fullCloses.clear();
-                    dateLabels.clear();
-                    List<CandleEntry> candleEntries = new ArrayList<>();
-                    SimpleDateFormat  sdf           = dateFormatFor(yahooInterval);
+                    // פורמט תאריך לפי resolution
+                    SimpleDateFormat sdf;
+                    switch (resolution) {
+                        case "1": case "5": case "15": case "30": case "60":
+                            sdf = new SimpleDateFormat("MM/dd HH:mm", Locale.US); break;
+                        case "W": case "M":
+                            sdf = new SimpleDateFormat("yyyy-MM", Locale.US); break;
+                        default:
+                            sdf = new SimpleDateFormat("MM/dd/yyyy", Locale.US);
+                    }
 
-                    float lastClose = 0f, prevClose = 0f;
-                    int   validCount = 0;
-
+                    fullCloses.clear(); dateLabels.clear();
+                    List<CandleEntry> entries = new ArrayList<>();
+                    float lc = 0f, pc = 0f;
                     for (int i = 0; i < size; i++) {
-                        if (closes.isNull(i) || opens.isNull(i) || highs.isNull(i) || lows.isNull(i)) continue;
-                        float o = (float) opens.getDouble(i);
-                        float h = (float) highs.getDouble(i);
-                        float l = (float) lows.getDouble(i);
-                        float c = (float) closes.getDouble(i);
-                        long  ts   = timestamps.getLong(i);
-                        Date  date = new Date(ts * 1000L);
-                        dateLabels.add(sdf.format(date));
+                        float o=(float)opens.getDouble(i), h=(float)highs.getDouble(i),
+                              l=(float)lows.getDouble(i),  c=(float)cls.getDouble(i);
+                        dateLabels.add(sdf.format(new Date(times.getLong(i) * 1000L)));
                         fullCloses.add(c);
-                        candleEntries.add(new CandleEntry(validCount, h, l, o, c));
-                        prevClose = lastClose;
-                        lastClose = c;
-                        validCount++;
+                        entries.add(new CandleEntry(i, h, l, o, c));
+                        pc = lc; lc = c;
                     }
-
-                    if (validCount == 0) return;
-                    if (prevClose == 0f) prevClose = lastClose;
-
-                    currentEntries.clear();
-                    currentEntries.addAll(candleEntries);
-                    lastPrice = lastClose;
-
-                    float change    = lastClose - prevClose;
-                    float changePct = (prevClose != 0f) ? (change / prevClose) * 100f : 0f;
-                    final float fClose = lastClose, fChng = change, fPct = changePct;
-                    final String sym = symbol;
-                    final List<CandleEntry> fin = new ArrayList<>(candleEntries);
-
-                    if (getActivity() != null) {
-                        getActivity().runOnUiThread(() -> {
-                            if (isCandleStick) updateCandleChart(fin);
-                            else               updateLineChart(fin);
-                            if (priceText != null) {
-                                priceText.setText("$" + df.format(fClose));
-                                priceText.setTextColor(COLOR_PRIMARY);
-                            }
-                            if (changeText != null) {
-                                String sign = fChng >= 0 ? "+" : "";
-                                changeText.setText(sign + String.format(Locale.US, "%.2f", fChng)
-                                        + " (" + sign + String.format(Locale.US, "%.2f", fPct) + "%)");
-                                changeText.setTextColor(fChng >= 0 ? COLOR_GAIN : COLOR_LOSS);
-                            }
-                            if (timeFrameText != null) timeFrameText.setText("Timeframe: " + interval);
-                            if (tickerText    != null) tickerText.setText(sym + " / USD");
-                        });
-                    }
-                } catch (Exception e) {
-                    Log.e("ChartFragment", "Yahoo parse error", e);
-                }
+                    if (pc == 0f) pc = lc;
+                    postChartUpdate(symbol, entries, lc, pc);
+                } catch (Exception e) { Log.e("ChartFragment", "Crypto parse error", e); }
             }
+        });
+    }
+
+    // ─────────────────────────────────────────────────
+    //  helper: עדכון UI לאחר טעינת נתונים
+    // ─────────────────────────────────────────────────
+    private void postChartUpdate(String sym, List<CandleEntry> entries, float lc, float pc) {
+        currentEntries.clear();
+        currentEntries.addAll(entries);
+        lastPrice = lc;
+        float change = lc - pc;
+        float pct    = (pc != 0f) ? (change / pc) * 100f : 0f;
+        final float fC = lc, fCh = change, fP = pct;
+        final List<CandleEntry> fin = new ArrayList<>(entries);
+        if (getActivity() != null) getActivity().runOnUiThread(() -> {
+            if (isCandleStick) updateCandleChart(fin);
+            else               updateLineChart(fin);
+            if (priceText  != null) { priceText.setText("$" + df.format(fC)); priceText.setTextColor(COLOR_PRIMARY); }
+            if (changeText != null) {
+                String sign = fCh >= 0 ? "+" : "";
+                changeText.setText(sign + String.format(Locale.US, "%.2f", fCh)
+                        + " (" + sign + String.format(Locale.US, "%.2f", fP) + "%)");
+                changeText.setTextColor(fCh >= 0 ? COLOR_GAIN : COLOR_LOSS);
+            }
+            if (timeFrameText != null) timeFrameText.setText("Timeframe: " + interval);
+            // סמבול קריפטו: הוצא BINANCE: מהתצוגה
+            String displaySym = isCryptoSymbol(sym)
+                    ? sym.substring(sym.indexOf(':') + 1)
+                    : sym;
+            if (tickerText != null) tickerText.setText(displaySym + " / USD");
         });
     }
 
@@ -717,48 +756,42 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private void showCustomAIDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_ai_chat, null);
-        TextView   tvHint    = dialogView.findViewById(R.id.tv_hint);
+        TextView tvHint      = dialogView.findViewById(R.id.tv_hint);
         ProgressBar progress = dialogView.findViewById(R.id.progress_ai);
-        TextView   tvResponse= dialogView.findViewById(R.id.tv_response);
-        Button     btnSend   = dialogView.findViewById(R.id.btn_send);
-        android.widget.EditText etQuestion = dialogView.findViewById(R.id.et_question);
-        tvHint.setText("Examples: 'What do you think about a short-term investment?' or 'Should I buy now?'");
+        TextView tvResponse  = dialogView.findViewById(R.id.tv_response);
+        Button btnSend       = dialogView.findViewById(R.id.btn_send);
+        android.widget.EditText etQ = dialogView.findViewById(R.id.et_question);
+        tvHint.setText("Examples: 'Short-term outlook?' or 'Should I buy now?'");
         AlertDialog dialog = builder.setView(dialogView).setNegativeButton("Cancel", null).create();
         btnSend.setOnClickListener(vv -> {
-            String question = etQuestion.getText().toString().trim();
-            if (question.isEmpty()) {
-                Toast.makeText(requireContext(), "Type a question", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            sendQuestionToAI(question, tvResponse, progress, etQuestion, dialog);
+            String q = etQ.getText().toString().trim();
+            if (q.isEmpty()) { Toast.makeText(requireContext(), "Type a question", Toast.LENGTH_SHORT).show(); return; }
+            sendQuestionToAI(q, tvResponse, progress, etQ, dialog);
         });
         dialog.show();
     }
 
     private void sendQuestionToAI(String question, TextView tvResponse, ProgressBar progressBar,
-                                  android.widget.EditText etQuestion, AlertDialog dialog) {
+                                  android.widget.EditText etQ, AlertDialog dialog) {
         progressBar.setVisibility(View.VISIBLE);
-        etQuestion.setEnabled(false);
-        String context = String.format(Locale.US, "Stock: %s | Price: $%.2f | Range: %s | %d data points",
+        etQ.setEnabled(false);
+        String ctx = String.format(Locale.US, "Asset: %s | Price: $%.2f | Range: %s | %d pts",
                 symbol, lastPrice, interval, fullCloses.size());
-        llmService.askQuestion(symbol, question, context, fullCloses, new LLMService.AnalysisCallback() {
+        llmService.askQuestion(symbol, question, ctx, fullCloses, new LLMService.AnalysisCallback() {
             @Override public void onAnalysisReceived(String analysis) {
                 if (getActivity() == null) return;
                 getActivity().runOnUiThread(() -> {
                     progressBar.setVisibility(View.GONE);
-                    etQuestion.setEnabled(true);
-                    etQuestion.setText("");
-                    tvResponse.setText(analysis);
-                    tvResponse.setVisibility(View.VISIBLE);
+                    etQ.setEnabled(true); etQ.setText("");
+                    tvResponse.setText(analysis); tvResponse.setVisibility(View.VISIBLE);
                 });
             }
             @Override public void onError(String error) {
                 if (getActivity() == null) return;
                 getActivity().runOnUiThread(() -> {
                     progressBar.setVisibility(View.GONE);
-                    etQuestion.setEnabled(true);
-                    tvResponse.setText("\u274C Error: " + error);
-                    tvResponse.setVisibility(View.VISIBLE);
+                    etQ.setEnabled(true);
+                    tvResponse.setText("\u274C Error: " + error); tvResponse.setVisibility(View.VISIBLE);
                 });
             }
         });
@@ -767,8 +800,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private void openChartFromInput(String userInput) {
         String q = userInput.trim();
         if (q.isEmpty()) return;
-        if (q.matches("^[A-Za-z0-9./-]{1,20}$") && !q.contains(" ")) {
-            setSymbolAndLoad(q.toUpperCase(Locale.US));
+        // קריפטו או טיקר ישיר
+        if (q.matches("^[A-Za-z0-9.:/-]{1,30}$") && !q.contains(" ")) {
+            setSymbolAndLoad(isCryptoSymbol(q) ? q.trim() : q.toUpperCase(Locale.US));
             return;
         }
         resolveFirstMatchAndOpen(q);
@@ -776,19 +810,20 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     private void setSymbolAndLoad(String sym) {
         symbol = sym;
-        if (tickerText  != null) tickerText.setText(symbol + " / USD");
-        if (getActivity()!= null) getActivity().setTitle("Chart: " + symbol);
+        String displaySym = isCryptoSymbol(sym) ? sym.substring(sym.indexOf(':') + 1) : sym;
+        if (tickerText   != null) tickerText.setText(displaySym + " / USD");
+        if (getActivity()!= null) getActivity().setTitle("Chart: " + displaySym);
         fetchStockData(symbol, interval);
         hideKeyboard();
     }
 
+    // ─────────────────────────────────────────────────
+    //  Finnhub Search — מניות + קריפטו
+    // ─────────────────────────────────────────────────
     private void scheduleSymbolSearch(String q) {
         if (pendingSearch != null) searchHandler.removeCallbacks(pendingSearch);
         latestQuery = q;
-        if (q.length() < 1) {
-            clearSuggestions();
-            return;
-        }
+        if (q.length() < 1) { clearSuggestions(); return; }
         final String finalQ = q;
         pendingSearch = () -> fetchSymbolSuggestions(finalQ);
         searchHandler.postDelayed(pendingSearch, SEARCH_DEBOUNCE_MS);
@@ -801,7 +836,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
             client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
                 @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {}
-
                 @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                     if (!response.isSuccessful() || response.body() == null) return;
                     ArrayList<StockSuggestion> list = new ArrayList<>();
@@ -810,26 +844,32 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                         JSONArray  result = json.optJSONArray("result");
                         if (result == null) return;
 
-                        for (int i = 0; i < result.length() && list.size() < 10; i++) {
+                        for (int i = 0; i < result.length() && list.size() < 12; i++) {
                             JSONObject o = result.optJSONObject(i);
                             if (o == null) continue;
-                            String sym      = o.optString("symbol",      "").trim();
-                            String name     = o.optString("description", "").trim();
-                            String type     = o.optString("type",        "").trim();
-                            String exchange = o.optString("displaySymbol","").trim();
+                            String sym  = o.optString("symbol",      "").trim();
+                            String name = o.optString("description", "").trim();
+                            String type = o.optString("type",        "").trim();
+                            String disp = o.optString("displaySymbol","").trim();
                             if (sym.isEmpty()) continue;
 
+                            // קריפטו: תמיד מקובל
+                            if (type.equals("Cryptocurrency")) {
+                                list.add(new StockSuggestion(sym, name, disp));
+                                continue;
+                            }
+
+                            // מניות/ETF רגילים
                             boolean allowed = type.equals("Common Stock")
                                     || type.equals("ETF")
                                     || type.equals("ETP")
                                     || type.equals("ADR")
                                     || type.isEmpty();
                             if (!allowed) continue;
-
                             if (sym.contains(".") && sym.length() > 5) continue;
                             if (sym.length() > 6) continue;
 
-                            list.add(new StockSuggestion(sym, name, exchange));
+                            list.add(new StockSuggestion(sym, name, disp));
                         }
                     } catch (Exception ignored) {}
 
@@ -837,19 +877,11 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     getActivity().runOnUiThread(() -> {
                         if (!query.equals(latestQuery) || isManualSelection) return;
                         if (suggestionAdapter == null) return;
-
                         suggestionAdapter.clear();
-                        if (!list.isEmpty()) {
-                            suggestionAdapter.addAll(list);
-                        }
+                        if (!list.isEmpty()) suggestionAdapter.addAll(list);
                         suggestionAdapter.notifyDataSetChanged();
-
                         if (tickerInput != null && tickerInput.hasFocus() && !list.isEmpty()) {
-                            tickerInput.post(() -> {
-                                if (tickerInput.hasFocus()) {
-                                    tickerInput.showDropDown();
-                                }
-                            });
+                            tickerInput.post(() -> { if (tickerInput.hasFocus()) tickerInput.showDropDown(); });
                         } else if (list.isEmpty() && tickerInput != null) {
                             tickerInput.dismissDropDown();
                         }
@@ -873,7 +905,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                         if (result == null || result.length() == 0) return;
                         String sym = result.optJSONObject(0).optString("symbol", "").trim();
                         if (sym.isEmpty()) return;
-                        String finalSym = sym.toUpperCase(Locale.US);
+                        String finalSym = isCryptoSymbol(sym) ? sym : sym.toUpperCase(Locale.US);
                         if (getActivity() == null) return;
                         getActivity().runOnUiThread(() -> setSymbolAndLoad(finalSym));
                     } catch (Exception ignored) {}
