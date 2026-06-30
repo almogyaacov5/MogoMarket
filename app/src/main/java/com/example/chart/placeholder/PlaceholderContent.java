@@ -1,4 +1,4 @@
-package com.example.chart.placeholder;
+package com.mogomarket.app.placeholder;
 
 import java.util.ArrayList;
 import java.util.HashMap;

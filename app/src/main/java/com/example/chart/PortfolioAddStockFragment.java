@@ -1,4 +1,4 @@
-package com.example.chart;
+package com.mogomarket.app;
 
 import android.os.Bundle;
 import android.os.Handler;

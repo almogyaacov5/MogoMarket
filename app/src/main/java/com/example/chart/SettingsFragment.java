@@ -1,4 +1,4 @@
-package com.example.chart;
+package com.mogomarket.app;
 
 import android.content.Intent;
 import android.content.SharedPreferences;

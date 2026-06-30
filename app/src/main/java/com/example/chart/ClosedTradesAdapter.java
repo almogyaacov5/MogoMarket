@@ -1,4 +1,4 @@
-package com.example.chart;
+package com.mogomarket.app;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;

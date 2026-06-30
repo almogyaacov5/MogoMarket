@@ -1,4 +1,4 @@
-package com.example.chart;
+package com.mogomarket.app;
 
 // מחלקת מודל (Model Class) - מייצגת אובייקט נתוני ניתוח שמור ב-Firebase
 public class AnalysisData {

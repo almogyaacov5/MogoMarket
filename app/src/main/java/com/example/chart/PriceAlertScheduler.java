@@ -1,4 +1,4 @@
-package com.example.chart;
+package com.mogomarket.app;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -13,7 +13,7 @@ import android.os.Build;
 public class PriceAlertScheduler {
 
     private static final long INTERVAL_MS = 15 * 60 * 1000L; //15 דקות במילישניות
-    private static final String ACTION = "com.example.chart.CHECK_PRICE_ALERTS";
+    private static final String ACTION = "com.mogomarket.app.CHECK_PRICE_ALERTS";
     private static final int REQUEST_CODE = 1001;
 
     /**

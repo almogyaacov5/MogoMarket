@@ -1,4 +1,4 @@
-package com.example.chart;
+package com.mogomarket.app;
 
 public class StockData {
     public String symbol;

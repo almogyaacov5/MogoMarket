@@ -14,11 +14,11 @@ if (localPropertiesFile.exists()) {
 val geminiKey = localProperties.getProperty("GEMINI_API_KEY") ?: ""
 
 android {
-    namespace = "com.example.chart"
+    namespace = "com.mogomarket.app"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.chart"
+        applicationId = "com.mogomarket.app"
         minSdk = 29
         targetSdk = 36
         versionCode = 1

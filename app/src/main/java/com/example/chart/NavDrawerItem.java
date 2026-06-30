@@ -1,4 +1,4 @@
-package com.example.chart;
+package com.mogomarket.app;
 
 // מודל נתונים פשוט לפריט אחד בתפריט הניווט
 public class NavDrawerItem {

@@ -9,7 +9,7 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="com.example.chart" />
+                  <option name="appId" value="com.mogomarket.app" />
                   <option name="mobileSdkAppId" value="1:686946641629:android:54335f56c9c06b8258dd34" />
                   <option name="projectId" value="myfirst-62934" />
                   <option name="projectNumber" value="686946641629" />

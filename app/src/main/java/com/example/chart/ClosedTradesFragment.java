@@ -1,4 +1,4 @@
-package com.example.chart;
+package com.mogomarket.app;
 
 import android.app.AlertDialog;
 import android.graphics.Color;
