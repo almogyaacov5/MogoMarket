@@ -423,23 +423,38 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         if (btnLoad != null) {
             btnLoad.setOnClickListener(v -> {
                 String u = tickerInput == null ? "" : tickerInput.getText().toString().trim();
+                Log.d("ChartFragment", "OPEN clicked, text='" + u + "'");
                 if (!u.isEmpty()) openChartFromInput(u);
                 hideKeyboard();
                 if (tickerInput != null) tickerInput.clearFocus();
             });
         }
+
+        // IME action — לחיצת Enter/Search במקלדת
+        if (tickerInput != null) {
+            tickerInput.setOnEditorActionListener((tv, actionId, event) -> {
+                String u = tv.getText().toString().trim();
+                Log.d("ChartFragment", "IME action, text='" + u + "'");
+                if (!u.isEmpty()) openChartFromInput(u);
+                hideKeyboard();
+                return true;
+            });
+        }
+
         if (btnChartRefresh != null) {
             btnChartRefresh.setOnClickListener(v -> {
                 fetchStockData(symbol, interval);
                 Toast.makeText(requireContext(), "Chart refreshed", Toast.LENGTH_SHORT).show();
             });
         }
+
         if (btnTimeFrame != null) {
             btnTimeFrame.setOnClickListener(v -> {
                 TimeFrameFragment dialog = new TimeFrameFragment();
                 dialog.show(getChildFragmentManager(), "timeframe");
             });
         }
+
         if (btnToggleChart != null) {
             btnToggleChart.setOnClickListener(v -> {
                 isCandleStick = !isCandleStick;
@@ -455,7 +470,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 fetchStockData(symbol, interval);
             });
         }
+
         if (btnAIAnalysis != null) btnAIAnalysis.setOnClickListener(v -> analyzeWithAI());
+
         if (btnChartThemeToggle != null) {
             btnChartThemeToggle.setOnClickListener(v -> {
                 isChartDark = !isChartDark;
@@ -467,8 +484,17 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 updateChartThemeToggleLabel();
             });
         }
+
         if (btnExpandChart    != null) btnExpandChart.setOnClickListener(v -> enterFullscreen());
         if (btnExitFullscreen != null) btnExitFullscreen.setOnClickListener(v -> exitFullscreen());
+
+        if (btnThemeToggle != null) {
+            btnThemeToggle.setOnClickListener(v -> {
+                isDarkTheme = !isDarkTheme;
+                AppCompatDelegate.setDefaultNightMode(
+                        isDarkTheme ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO);
+            });
+        }
     }
 
     private void setupAutoComplete() {
