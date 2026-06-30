@@ -82,11 +82,12 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private static final int COLOR_LOSS     = 0xFFFF4D4D;
     private static final int COLOR_FILL     = 0xFF1C6DD0;
 
-    // isDarkTheme now follows the app's current night mode by default
     private boolean isDarkTheme;
-    // independent chart-only theme toggle
     private boolean isChartDark;
     private boolean isFullscreen = false;
+
+    // שומר את ה-LayoutParams המקוריים של chartContainer לפני fullscreen
+    private ViewGroup.LayoutParams chartOriginalParams;
 
     private CandleStickChart candleStickChart;
     private LineChart lineChart;
@@ -148,11 +149,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_chart, container, false);
 
-        // Detect current app theme (night mode)
         int currentNightMode = getResources().getConfiguration().uiMode
                 & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
         isDarkTheme = (currentNightMode == android.content.res.Configuration.UI_MODE_NIGHT_YES);
-        isChartDark = isDarkTheme; // chart starts aligned with app theme
+        isChartDark = isDarkTheme;
 
         chartRootLayout    = v.findViewById(R.id.chartRootLayout);
         candleStickChart   = v.findViewById(R.id.stock_chart);
@@ -173,6 +173,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     ((MainActivity) getActivity()).openSettings();
             });
         }
+
         btnExpandChart     = v.findViewById(R.id.btnExpandChart);
         btnExitFullscreen  = v.findViewById(R.id.btnExitFullscreen);
         progressAI         = v.findViewById(R.id.progressAI);
@@ -188,7 +189,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         chartContainer     = v.findViewById(R.id.chartContainer);
 
         llmService = new LLMService();
-        if (progressAI       != null) progressAI.setVisibility(View.GONE);
+        if (progressAI          != null) progressAI.setVisibility(View.GONE);
         if (currentPriceDisplay != null) currentPriceDisplay.setVisibility(View.GONE);
 
         if (getArguments() != null && getArguments().containsKey("symbol")) {
@@ -208,6 +209,68 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         return v;
     }
 
+    // ─────────────────────────────────────────────────
+    //  FULLSCREEN
+    // ─────────────────────────────────────────────────
+
+    private void enterFullscreen() {
+        if (isFullscreen || chartContainer == null) return;
+        isFullscreen = true;
+
+        // שמור params מקוריים
+        chartOriginalParams = chartContainer.getLayoutParams();
+
+        // הסתר את כל שאר הסקציות
+        if (headerSection   != null) headerSection.setVisibility(View.GONE);
+        if (searchSection   != null) searchSection.setVisibility(View.GONE);
+        if (controlsSection != null) controlsSection.setVisibility(View.GONE);
+        if (bottomBar       != null) bottomBar.setVisibility(View.GONE);
+
+        // הגדל את chartContainer למסך מלא ללא margins
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT);
+        lp.setMargins(0, 0, 0, 0);
+        chartContainer.setLayoutParams(lp);
+
+        // הצג כפתור יציאה, הסתר כפתור הגדלה
+        if (btnExpandChart    != null) btnExpandChart.setVisibility(View.GONE);
+        if (btnExitFullscreen != null) btnExitFullscreen.setVisibility(View.VISIBLE);
+    }
+
+    private void exitFullscreen() {
+        if (!isFullscreen || chartContainer == null) return;
+        isFullscreen = false;
+
+        // שחזר params מקוריים
+        if (chartOriginalParams != null) {
+            chartContainer.setLayoutParams(chartOriginalParams);
+        } else {
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 0);
+            lp.weight = 1;
+            lp.setMargins(dpToPx(12), dpToPx(8), dpToPx(12), 0);
+            chartContainer.setLayoutParams(lp);
+        }
+
+        // הצג חזרה את כל הסקציות
+        if (headerSection   != null) headerSection.setVisibility(View.VISIBLE);
+        if (searchSection   != null) searchSection.setVisibility(View.VISIBLE);
+        if (controlsSection != null) controlsSection.setVisibility(View.VISIBLE);
+        if (bottomBar       != null) bottomBar.setVisibility(View.VISIBLE);
+
+        // הצג כפתור הגדלה, הסתר כפתור יציאה
+        if (btnExpandChart    != null) btnExpandChart.setVisibility(View.VISIBLE);
+        if (btnExitFullscreen != null) btnExitFullscreen.setVisibility(View.GONE);
+    }
+
+    private int dpToPx(int dp) {
+        float density = getResources().getDisplayMetrics().density;
+        return Math.round(dp * density);
+    }
+
+    // ─────────────────────────────────────────────────
+
     private void applyTheme() {
         int bgColor   = isDarkTheme ? DARK_BG        : LIGHT_BG;
         int cardColor = isDarkTheme ? DARK_CARD      : LIGHT_CARD;
@@ -225,11 +288,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             tickerInput.setTextColor(textPri);
             tickerInput.setHintTextColor(textSec);
         }
-        // chart container uses its own isChartDark theme
         applyChartColors();
     }
 
-    /** Apply colors only to the chart area, based on isChartDark */
     private void applyChartColors() {
         int chartCard = isChartDark ? DARK_CARD : LIGHT_CARD;
         int chartSec  = isChartDark ? DARK_TEXT_SEC : LIGHT_TEXT_SEC;
@@ -383,18 +444,27 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
         if (btnAIAnalysis != null) btnAIAnalysis.setOnClickListener(v -> analyzeWithAI());
 
-        // Chart-only theme toggle button
+        // Chart-only theme toggle
         if (btnChartThemeToggle != null) {
             btnChartThemeToggle.setOnClickListener(v -> {
                 isChartDark = !isChartDark;
                 applyChartColors();
-                // redraw datasets with updated fill alpha
                 if (!currentEntries.isEmpty()) {
                     if (isCandleStick) updateCandleChart(currentEntries);
                     else               updateLineChart(currentEntries);
                 }
                 updateChartThemeToggleLabel();
             });
+        }
+
+        // ── EXPAND לפולסקרין ──
+        if (btnExpandChart != null) {
+            btnExpandChart.setOnClickListener(v -> enterFullscreen());
+        }
+
+        // ── EXIT פולסקרין ──
+        if (btnExitFullscreen != null) {
+            btnExitFullscreen.setOnClickListener(v -> exitFullscreen());
         }
     }
 
