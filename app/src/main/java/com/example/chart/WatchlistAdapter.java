@@ -53,8 +53,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         this.longClickListener = longClick;
     }
 
-    // ─── filter / sort ────────────────────────────────────────────────────────
-
     public void filter(String query) {
         filteredList.clear();
         if (query == null || query.isEmpty()) {
@@ -88,8 +86,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             notifyItemRemoved(position);
         }
     }
-
-    // ─── RecyclerView ──────────────────────────────────────────────────────────
 
     @NonNull @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -183,18 +179,14 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
 
     @Override public int getItemCount() { return filteredList.size(); }
 
-    // ─── Alert helper ──────────────────────────────────────────────────────────
-
     private void processAlert(StockWatchData stock, float price, Context ctx) {
-        // לא מפעיל אם ההתראה כבויה, אין יעד, או כבר הופעלה
         if (!stock.alertEnabled || stock.alertTargetPrice <= 0 || stock.alertTriggered) return;
 
-        // ההתראה תופעל כאשר המחיר גבוה מהיעד (עלייה) או נמוך ממנו (ירידה)
-        // כיוון ההתראה נקבע לפי היעד לעומת המחיר הנוכחי שנשמר
         boolean triggered = (price >= stock.alertTargetPrice);
         if (!triggered) return;
 
         String symbol = stock.symbol;
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             android.app.NotificationChannel channel = new android.app.NotificationChannel(
                     "price_alerts", "Price Alerts",
@@ -213,13 +205,13 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true);
 
-        try (NotificationManagerCompat nm = NotificationManagerCompat.from(ctx)) {
-            nm.notify(symbol.hashCode(), builder.build());
+        try {
+            NotificationManagerCompat.from(ctx).notify(symbol.hashCode(), builder.build());
         } catch (SecurityException ignored) {}
 
-        // סמן כהופעלה כדי לא לחזור שוב
         stock.alertTriggered = true;
         stock.alertEnabled   = false;
+
         FirebaseAuth auth = FirebaseAuth.getInstance();
         if (auth.getCurrentUser() != null) {
             DatabaseReference ref = FirebaseDatabase.getInstance()
@@ -229,8 +221,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             ref.child("alertTriggered").setValue(true);
         }
     }
-
-    // ─── Quote fetch ───────────────────────────────────────────────────────────
 
     private void fetchQuote(String symbol, QuoteCallback callback) {
         new Thread(() -> {
@@ -257,8 +247,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         void onQuoteReceived(float price, float dayChange);
         void onError(Exception e);
     }
-
-    // ─── ViewHolder ────────────────────────────────────────────────────────────
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView symbolText, priceText, dayChangeText, alertText;
