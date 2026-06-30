@@ -18,13 +18,13 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <!-- לוגו במרכז -->
+        <!-- לוגו גדול במרכז -->
         <ImageView
             android:id="@+id/stockLogoBackground"
-            android:layout_width="160dp"
-            android:layout_height="160dp"
+            android:layout_width="220dp"
+            android:layout_height="220dp"
             android:layout_gravity="center"
-            android:alpha="0.08"
+            android:alpha="0.09"
             android:scaleType="centerCrop"
             android:clipToOutline="true"
             android:background="@drawable/circle_logo_bg" />
