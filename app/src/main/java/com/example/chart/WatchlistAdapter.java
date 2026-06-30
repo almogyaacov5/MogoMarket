@@ -47,7 +47,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
     }
 
     private static final String TAG          = "FINNHUB";
-    private static final String FINNHUB_KEY  = "d0omel1r01qua2guc4ggd0omel1r01qua2guc4h0";
+    private static final String FINNHUB_KEY  = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
 
     private final List<StockWatchData> masterList  = new ArrayList<>();
     private final List<StockWatchData> displayList = new ArrayList<>();

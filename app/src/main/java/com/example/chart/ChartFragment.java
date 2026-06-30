@@ -843,48 +843,36 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                         JSONObject json   = new JSONObject(response.body().string());
                         JSONArray  result = json.optJSONArray("result");
                         if (result == null) return;
-
-                        for (int i = 0; i < result.length() && list.size() < 12; i++) {
+                        for (int i = 0; i < result.length() && i < 25; i++) {
                             JSONObject o = result.optJSONObject(i);
                             if (o == null) continue;
-                            String sym  = o.optString("symbol",      "").trim();
-                            String name = o.optString("description", "").trim();
-                            String type = o.optString("type",        "").trim();
-                            String disp = o.optString("displaySymbol","").trim();
+                            String sym      = o.optString("symbol",      "").trim();
+                            String name     = o.optString("description", "");
+                            String type     = o.optString("type",        "");
+
                             if (sym.isEmpty()) continue;
 
-                            // קריפטו: תמיד מקובל
-                            if (type.equals("Cryptocurrency")) {
-                                list.add(new StockSuggestion(sym, name, disp));
-                                continue;
-                            }
+                            // ✅ אפשר מניות אמריקאיות + קריפטו
+                            boolean isStock  = "Common Stock".equals(type);
+                            boolean isCrypto = "Crypto".equals(type);
+                            if (!isStock && !isCrypto) continue;
 
-                            // מניות/ETF רגילים
-                            boolean allowed = type.equals("Common Stock")
-                                    || type.equals("ETF")
-                                    || type.equals("ETP")
-                                    || type.equals("ADR")
-                                    || type.isEmpty();
-                            if (!allowed) continue;
-                            if (sym.contains(".") && sym.length() > 5) continue;
-                            if (sym.length() > 6) continue;
+                            // קריפטו: הצג רק BINANCE:XXXUSDT
+                            if (isCrypto && !sym.startsWith("BINANCE:")) continue;
+                            if (isCrypto && !sym.endsWith("USDT")) continue;
 
-                            list.add(new StockSuggestion(sym, name, disp));
+                            String exchange = isCrypto ? "Crypto" : "US";
+                            list.add(new StockSuggestion(sym, name, exchange));
                         }
                     } catch (Exception ignored) {}
-
                     if (getActivity() == null) return;
                     getActivity().runOnUiThread(() -> {
-                        if (!query.equals(latestQuery) || isManualSelection) return;
-                        if (suggestionAdapter == null) return;
+                        if (!query.equals(latestQuery) || suggestionAdapter == null) return;
                         suggestionAdapter.clear();
-                        if (!list.isEmpty()) suggestionAdapter.addAll(list);
+                        suggestionAdapter.addAll(list);
                         suggestionAdapter.notifyDataSetChanged();
-                        if (tickerInput != null && tickerInput.hasFocus() && !list.isEmpty()) {
-                            tickerInput.post(() -> { if (tickerInput.hasFocus()) tickerInput.showDropDown(); });
-                        } else if (list.isEmpty() && tickerInput != null) {
-                            tickerInput.dismissDropDown();
-                        }
+                        if (tickerInput != null && tickerInput.hasFocus() && suggestionAdapter.getCount() > 0)
+                            tickerInput.showDropDown();
                     });
                 }
             });
