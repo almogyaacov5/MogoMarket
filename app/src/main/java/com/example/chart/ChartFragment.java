@@ -84,40 +84,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private static final int COLOR_LOSS     = 0xFFFF4D4D;
     private static final int COLOR_FILL     = 0xFF1C6DD0;
 
-    // מיפוי קריפטו: כינויים נפוצים -> פורמט Finnhub
-    private static final Map<String, String> CRYPTO_MAP = new HashMap<>();
-    static {
-        CRYPTO_MAP.put("BTC",      "BINANCE:BTCUSDT");
-        CRYPTO_MAP.put("BTCUSD",   "BINANCE:BTCUSDT");
-        CRYPTO_MAP.put("BTCUSDT",  "BINANCE:BTCUSDT");
-        CRYPTO_MAP.put("ETH",      "BINANCE:ETHUSDT");
-        CRYPTO_MAP.put("ETHUSD",   "BINANCE:ETHUSDT");
-        CRYPTO_MAP.put("ETHUSDT",  "BINANCE:ETHUSDT");
-        CRYPTO_MAP.put("XRP",      "BINANCE:XRPUSDT");
-        CRYPTO_MAP.put("XRPUSD",   "BINANCE:XRPUSDT");
-        CRYPTO_MAP.put("SOL",      "BINANCE:SOLUSDT");
-        CRYPTO_MAP.put("SOLUSD",   "BINANCE:SOLUSDT");
-        CRYPTO_MAP.put("BNB",      "BINANCE:BNBUSDT");
-        CRYPTO_MAP.put("BNBUSD",   "BINANCE:BNBUSDT");
-        CRYPTO_MAP.put("DOGE",     "BINANCE:DOGEUSDT");
-        CRYPTO_MAP.put("DOGEUSD",  "BINANCE:DOGEUSDT");
-        CRYPTO_MAP.put("DOGEUSDT", "BINANCE:DOGEUSDT");
-        CRYPTO_MAP.put("ADA",      "BINANCE:ADAUSDT");
-        CRYPTO_MAP.put("ADAUSD",   "BINANCE:ADAUSDT");
-        CRYPTO_MAP.put("AVAX",     "BINANCE:AVAXUSDT");
-        CRYPTO_MAP.put("AVAXUSD",  "BINANCE:AVAXUSDT");
-        CRYPTO_MAP.put("DOT",      "BINANCE:DOTUSDT");
-        CRYPTO_MAP.put("DOTUSD",   "BINANCE:DOTUSDT");
-        CRYPTO_MAP.put("LINK",     "BINANCE:LINKUSDT");
-        CRYPTO_MAP.put("LINKUSD",  "BINANCE:LINKUSDT");
-        CRYPTO_MAP.put("LTC",      "BINANCE:LTCUSDT");
-        CRYPTO_MAP.put("LTCUSD",   "BINANCE:LTCUSDT");
-        CRYPTO_MAP.put("MATIC",    "BINANCE:MATICUSDT");
-        CRYPTO_MAP.put("MATICUSD", "BINANCE:MATICUSDT");
-        CRYPTO_MAP.put("UNI",      "BINANCE:UNIUSDT");
-        CRYPTO_MAP.put("UNIUSD",   "BINANCE:UNIUSDT");
-    }
-
     private boolean isDarkTheme;
     private boolean isChartDark;
     private boolean isFullscreen = false;
@@ -179,7 +145,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
     }
 
-    // בדיקה אם הסמבול הוא קריפטו ("BINANCE:BTCUSDT" וכו')
     private boolean isCryptoSymbol(String sym) {
         return sym != null && sym.contains(":");
     }
@@ -291,8 +256,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private int dpToPx(int dp) {
         return Math.round(dp * getResources().getDisplayMetrics().density);
     }
-
-    // ─────────────────────────────────────────────────
 
     private void applyTheme() {
         int bgColor   = isDarkTheme ? DARK_BG       : LIGHT_BG;
@@ -423,18 +386,15 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         if (btnLoad != null) {
             btnLoad.setOnClickListener(v -> {
                 String u = tickerInput == null ? "" : tickerInput.getText().toString().trim();
-                Log.d("ChartFragment", "OPEN clicked, text='" + u + "'");
                 if (!u.isEmpty()) openChartFromInput(u);
                 hideKeyboard();
                 if (tickerInput != null) tickerInput.clearFocus();
             });
         }
 
-        // IME action — לחיצת Enter/Search במקלדת
         if (tickerInput != null) {
             tickerInput.setOnEditorActionListener((tv, actionId, event) -> {
                 String u = tv.getText().toString().trim();
-                Log.d("ChartFragment", "IME action, text='" + u + "'");
                 if (!u.isEmpty()) openChartFromInput(u);
                 hideKeyboard();
                 return true;
@@ -497,6 +457,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
     }
 
+    // ─────────────────────────────────────────────────
+    //  AutoComplete — קריפטו מיידי + מניות מ-Finnhub
+    // ─────────────────────────────────────────────────
     private void setupAutoComplete() {
         if (tickerInput == null) return;
 
@@ -522,7 +485,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         tickerInput.setOnItemClickListener((parent, view, position, id) -> {
             StockSuggestion sel = suggestionAdapter.getItem(position);
             if (sel == null || sel.symbol == null || sel.symbol.trim().isEmpty()) return;
-            // קריפטו: שמור כברייס (BINANCE:BTCUSDT) — לא upper-case לשתי חלקי
             String picked = isCryptoSymbol(sel.symbol)
                     ? sel.symbol.trim()
                     : sel.symbol.trim().toUpperCase(Locale.US);
@@ -534,9 +496,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             clearSuggestions();
             hideKeyboard();
             tickerInput.clearFocus();
-
             setSymbolAndLoad(picked);
-
             tickerInput.postDelayed(() -> {
                 isManualSelection = false;
                 tickerInput.setText("");
@@ -596,20 +556,11 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.invalidate();
     }
 
-    // ─────────────────────────────────────────────────
-    //  fetchStockData — מניפה לפי סוג הסמבול
-    // ─────────────────────────────────────────────────
     private void fetchStockData(String symbol, String interval) {
-        if (isCryptoSymbol(symbol)) {
-            fetchCryptoData(symbol, interval);
-        } else {
-            fetchYahooData(symbol, interval);
-        }
+        if (isCryptoSymbol(symbol)) fetchCryptoData(symbol, interval);
+        else                        fetchYahooData(symbol, interval);
     }
 
-    // ─────────────────────────────────────────────────
-    //  Yahoo Finance — מניות רגילות
-    // ─────────────────────────────────────────────────
     private String[] intervalToYahoo(String interval) {
         switch (interval) {
             case "1min":   return new String[]{"1m",  "1d"};
@@ -639,7 +590,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         String[] p = intervalToYahoo(interval);
         String url = "https://query1.finance.yahoo.com/v8/finance/chart/" + symbol
                 + "?interval=" + p[0] + "&range=" + p[1] + "&includePrePost=false";
-
         Request req = new Request.Builder().url(url).header("User-Agent", "Mozilla/5.0").build();
         client.newCall(req).enqueue(new Callback() {
             @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
@@ -686,9 +636,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         });
     }
 
-    // ─────────────────────────────────────────────────
-    //  Finnhub Crypto Candle API
-    // ─────────────────────────────────────────────────
     private String intervalToFinnhubResolution(String interval) {
         switch (interval) {
             case "1min":   return "1";
@@ -705,26 +652,23 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private void fetchCryptoData(String symbol, String interval) {
         String resolution = intervalToFinnhubResolution(interval);
         long toTime   = System.currentTimeMillis() / 1000L;
-        // טווח נתונים לפי resolution
         long rangeSeconds;
         switch (resolution) {
-            case "1":  rangeSeconds = 2L  * 24 * 60 * 60; break;  // 2 ימים
-            case "5":  rangeSeconds = 5L  * 24 * 60 * 60; break;  // 5 ימים
-            case "15": rangeSeconds = 10L * 24 * 60 * 60; break;  // 10 ימים
-            case "30": rangeSeconds = 20L * 24 * 60 * 60; break;  // 20 ימים
-            case "60": rangeSeconds = 60L * 24 * 60 * 60; break;  // 60 ימים
-            case "W":  rangeSeconds = 3L  * 365 * 24 * 60 * 60; break; // 3 שנים
-            case "M":  rangeSeconds = 5L  * 365 * 24 * 60 * 60; break; // 5 שנים
-            default:   rangeSeconds = 365L * 24 * 60 * 60; break; // שנה
+            case "1":  rangeSeconds = 2L  * 24 * 60 * 60; break;
+            case "5":  rangeSeconds = 5L  * 24 * 60 * 60; break;
+            case "15": rangeSeconds = 10L * 24 * 60 * 60; break;
+            case "30": rangeSeconds = 20L * 24 * 60 * 60; break;
+            case "60": rangeSeconds = 60L * 24 * 60 * 60; break;
+            case "W":  rangeSeconds = 3L  * 365 * 24 * 60 * 60; break;
+            case "M":  rangeSeconds = 5L  * 365 * 24 * 60 * 60; break;
+            default:   rangeSeconds = 365L * 24 * 60 * 60; break;
         }
         long fromTime = toTime - rangeSeconds;
-
         String url = "https://finnhub.io/api/v1/crypto/candle?symbol=" + symbol
                 + "&resolution=" + resolution
                 + "&from=" + fromTime
                 + "&to="   + toTime
                 + "&token=" + FINNHUB_KEY;
-
         Request req = new Request.Builder().url(url).header("User-Agent", "Mozilla/5.0").build();
         client.newCall(req).enqueue(new Callback() {
             @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
@@ -747,8 +691,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     JSONArray times  = json.getJSONArray("t");
                     int size = cls.length();
                     if (size == 0) return;
-
-                    // פורמט תאריך לפי resolution
                     SimpleDateFormat sdf;
                     switch (resolution) {
                         case "1": case "5": case "15": case "30": case "60":
@@ -758,7 +700,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                         default:
                             sdf = new SimpleDateFormat("MM/dd/yyyy", Locale.US);
                     }
-
                     fullCloses.clear(); dateLabels.clear();
                     List<CandleEntry> entries = new ArrayList<>();
                     float lc = 0f, pc = 0f;
@@ -777,9 +718,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         });
     }
 
-    // ─────────────────────────────────────────────────
-    //  helper: עדכון UI לאחר טעינת נתונים
-    // ─────────────────────────────────────────────────
     private void postChartUpdate(String sym, List<CandleEntry> entries, float lc, float pc) {
         currentEntries.clear();
         currentEntries.addAll(entries);
@@ -799,10 +737,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 changeText.setTextColor(fCh >= 0 ? COLOR_GAIN : COLOR_LOSS);
             }
             if (timeFrameText != null) timeFrameText.setText("Timeframe: " + interval);
-            // סמבול קריפטו: הוצא BINANCE: מהתצוגה
-            String displaySym = isCryptoSymbol(sym)
-                    ? sym.substring(sym.indexOf(':') + 1)
-                    : sym;
+            String displaySym = isCryptoSymbol(sym) ? sym.substring(sym.indexOf(':') + 1) : sym;
             if (tickerText != null) tickerText.setText(displaySym + " / USD");
         });
     }
@@ -862,51 +797,57 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private void openChartFromInput(String userInput) {
         String q = userInput.trim();
         if (q.isEmpty()) return;
-
-        // בדיקה במיפוי קריפטו לפני הכל
+        // בדיקה במיפוי CryptoHelper
         String upper = q.toUpperCase(Locale.US);
-        if (CRYPTO_MAP.containsKey(upper)) {
-            setSymbolAndLoad(CRYPTO_MAP.get(upper));
-            return;
-        }
-
-        // קריפטו בפורמט Finnhub (כבר עם נקודותיים) — BINANCE:BTCUSDT
-        if (isCryptoSymbol(q)) {
-            setSymbolAndLoad(q.trim());
-            return;
-        }
-
-        // טיקר רגיל ללא רווחים
+        String cryptoMapped = CryptoHelper.CRYPTO_MAP.get(upper);
+        if (cryptoMapped != null) { setSymbolAndLoad(cryptoMapped); return; }
+        if (isCryptoSymbol(q)) { setSymbolAndLoad(q.trim()); return; }
         if (q.matches("^[A-Za-z0-9./-]{1,20}$") && !q.contains(" ")) {
-            setSymbolAndLoad(q.toUpperCase(Locale.US));
-            return;
+            setSymbolAndLoad(q.toUpperCase(Locale.US)); return;
         }
-
         resolveFirstMatchAndOpen(q);
     }
 
     private void setSymbolAndLoad(String sym) {
         symbol = sym;
         String displaySym = isCryptoSymbol(sym) ? sym.substring(sym.indexOf(':') + 1) : sym;
-        if (tickerText   != null) tickerText.setText(displaySym + " / USD");
-        if (getActivity()!= null) getActivity().setTitle("Chart: " + displaySym);
+        if (tickerText    != null) tickerText.setText(displaySym + " / USD");
+        if (getActivity() != null) getActivity().setTitle("Chart: " + displaySym);
         fetchStockData(symbol, interval);
         hideKeyboard();
     }
 
     // ─────────────────────────────────────────────────
-    //  Finnhub Search — מניות + קריפטו
+    //  חיפוש הצעות: קריפטו מקומי (מיידי) + Finnhub
     // ─────────────────────────────────────────────────
     private void scheduleSymbolSearch(String q) {
         if (pendingSearch != null) searchHandler.removeCallbacks(pendingSearch);
         latestQuery = q;
         if (q.length() < 1) { clearSuggestions(); return; }
+
+        // קריפטו — מיידי
+        List<CryptoHelper.CryptoSuggestion> cryptoList = CryptoHelper.searchLocal(q);
+        ArrayList<StockSuggestion> cryptoSuggestions = new ArrayList<>();
+        for (CryptoHelper.CryptoSuggestion cs : cryptoList) {
+            cryptoSuggestions.add(new StockSuggestion(
+                    cs.binanceSymbol, cs.fullName + " (Crypto)", "Crypto"));
+        }
+        if (!cryptoSuggestions.isEmpty()) {
+            suggestionAdapter.clear();
+            suggestionAdapter.addAll(cryptoSuggestions);
+            suggestionAdapter.notifyDataSetChanged();
+            if (tickerInput != null && tickerInput.hasFocus())
+                tickerInput.post(() -> tickerInput.showDropDown());
+        }
+
+        // מניות — עם debounce
         final String finalQ = q;
-        pendingSearch = () -> fetchSymbolSuggestions(finalQ);
+        pendingSearch = () -> fetchFinnhubSuggestions(finalQ, cryptoSuggestions);
         searchHandler.postDelayed(pendingSearch, SEARCH_DEBOUNCE_MS);
     }
 
-    private void fetchSymbolSuggestions(final String query) {
+    private void fetchFinnhubSuggestions(final String query,
+                                          final List<StockSuggestion> cryptoBase) {
         try {
             String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name());
             String url = "https://finnhub.io/api/v1/search?q=" + encoded + "&token=" + FINNHUB_KEY;
@@ -915,38 +856,29 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {}
                 @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                     if (!response.isSuccessful() || response.body() == null) return;
-                    ArrayList<StockSuggestion> list = new ArrayList<>();
+                    ArrayList<StockSuggestion> combined = new ArrayList<>(cryptoBase);
                     try {
                         JSONObject json   = new JSONObject(response.body().string());
                         JSONArray  result = json.optJSONArray("result");
-                        if (result == null) return;
-                        for (int i = 0; i < result.length() && i < 25; i++) {
-                            JSONObject o = result.optJSONObject(i);
-                            if (o == null) continue;
-                            String sym      = o.optString("symbol",      "").trim();
-                            String name     = o.optString("description", "");
-                            String type     = o.optString("type",        "");
-
-                            if (sym.isEmpty()) continue;
-
-                            // אפשר מניות אמריקאיות + קריפטו
-                            boolean isStock  = "Common Stock".equals(type);
-                            boolean isCrypto = "Crypto".equals(type);
-                            if (!isStock && !isCrypto) continue;
-
-                            // קריפטו: הצג רק BINANCE:XXXUSDT
-                            if (isCrypto && !sym.startsWith("BINANCE:")) continue;
-                            if (isCrypto && !sym.endsWith("USDT")) continue;
-
-                            String exchange = isCrypto ? "Crypto" : "US";
-                            list.add(new StockSuggestion(sym, name, exchange));
+                        if (result != null) {
+                            for (int i = 0; i < result.length() && i < 25; i++) {
+                                JSONObject o = result.optJSONObject(i);
+                                if (o == null) continue;
+                                String sym  = o.optString("symbol", "").trim();
+                                String name = o.optString("description", "");
+                                String type = o.optString("type", "");
+                                if (sym.isEmpty()) continue;
+                                // רק מניות אמריקאיות (Crypto כבר מגיע מ-CryptoHelper)
+                                if (!"Common Stock".equals(type)) continue;
+                                combined.add(new StockSuggestion(sym, name, "US"));
+                            }
                         }
                     } catch (Exception ignored) {}
                     if (getActivity() == null) return;
                     getActivity().runOnUiThread(() -> {
                         if (!query.equals(latestQuery) || suggestionAdapter == null) return;
                         suggestionAdapter.clear();
-                        suggestionAdapter.addAll(list);
+                        suggestionAdapter.addAll(combined);
                         suggestionAdapter.notifyDataSetChanged();
                         if (tickerInput != null && tickerInput.hasFocus() && suggestionAdapter.getCount() > 0)
                             tickerInput.showDropDown();

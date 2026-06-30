@@ -35,6 +35,7 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class WatchlistFragment extends Fragment {
 
@@ -83,18 +84,33 @@ public class WatchlistFragment extends Fragment {
         if (addStockBtn != null) {
             addStockBtn.setOnClickListener(view -> {
                 if (stockInput == null) return;
-                String raw    = stockInput.getText().toString().trim();
-                String symbol = raw.contains(":")
-                        ? raw.trim()
-                        : raw.toUpperCase();
-                if (symbol.isEmpty()) {
+                String raw = stockInput.getText().toString().trim();
+                if (raw.isEmpty()) {
                     Toast.makeText(getContext(), "הזן סימבול", Toast.LENGTH_SHORT).show();
                     return;
                 }
+
+                // בדוק אם זה קריפטו במיפוי
+                String upperRaw = raw.toUpperCase(Locale.US);
+                String cryptoMapped = CryptoHelper.CRYPTO_MAP.get(upperRaw);
+
+                String symbol;
+                if (cryptoMapped != null) {
+                    // BTC נהפך ל-BINANCE:BTCUSDT
+                    symbol = cryptoMapped;
+                } else if (raw.contains(":")) {
+                    // כבר בפורמט BINANCE:XXXUSDT
+                    symbol = raw.trim();
+                } else {
+                    // מניה רגילה
+                    symbol = raw.toUpperCase(Locale.US);
+                }
+
                 String firebaseKey = symbol.replace(":", "_");
                 StockWatchData stock = new StockWatchData(symbol, 0f, 0f);
                 watchlistRef.child(firebaseKey).setValue(stock);
                 stockInput.setText("");
+                Toast.makeText(getContext(), symbol + " נוסף!", Toast.LENGTH_SHORT).show();
             });
         }
 
@@ -133,6 +149,7 @@ public class WatchlistFragment extends Fragment {
                     if (data == null) continue;
                     if (data.symbol == null || data.symbol.isEmpty()) {
                         String key = ds.getKey();
+                        // key: BINANCE_BTCUSDT -> symbol: BINANCE:BTCUSDT
                         data.symbol = (key != null) ? key.replace("_", ":") : "";
                     }
                     if (!data.symbol.isEmpty()) fresh.add(data);
@@ -149,11 +166,6 @@ public class WatchlistFragment extends Fragment {
         return v;
     }
 
-    /**
-     * טיפול בלחיצה על מניה:
-     * אם ההגדרה פעילה — עובר לגרף דרך MainActivity.showChartWithSymbol כדי שהטאב יתעדכן
-     * אם לא — פותח את הגרף בתוך אותו Container (בלי שינוי בטאב)
-     */
     private void handleStockClick(String symbol) {
         if (!isAdded()) return;
         SharedPreferences prefs = requireActivity()
@@ -161,10 +173,8 @@ public class WatchlistFragment extends Fragment {
         boolean navigateToChart = prefs.getBoolean(KEY_WATCHLIST_NAV, true);
 
         if (navigateToChart && getActivity() instanceof MainActivity) {
-            // שינוי טאב + פתיחת גרף
             ((MainActivity) getActivity()).showChartWithSymbol(symbol);
         } else {
-            // פתיחת גרף בתוך אותו Container בלי שינוי טאב
             ChartFragment chartFragment = new ChartFragment();
             Bundle args = new Bundle();
             args.putString("symbol", symbol);
@@ -175,10 +185,6 @@ public class WatchlistFragment extends Fragment {
                     .addToBackStack(null)
                     .commit();
         }
-    }
-
-    private void openChart(String symbol) {
-        handleStockClick(symbol);
     }
 
     private void deleteStock(String symbol) {
