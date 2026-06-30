@@ -702,77 +702,93 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
     }
 
-    private void fetchCryptoData(String symbol, String interval) {
-        String resolution = intervalToFinnhubResolution(interval);
-        long toTime   = System.currentTimeMillis() / 1000L;
-        // טווח נתונים לפי resolution
-        long rangeSeconds;
-        switch (resolution) {
-            case "1":  rangeSeconds = 2L  * 24 * 60 * 60; break;  // 2 ימים
-            case "5":  rangeSeconds = 5L  * 24 * 60 * 60; break;  // 5 ימים
-            case "15": rangeSeconds = 10L * 24 * 60 * 60; break;  // 10 ימים
-            case "30": rangeSeconds = 20L * 24 * 60 * 60; break;  // 20 ימים
-            case "60": rangeSeconds = 60L * 24 * 60 * 60; break;  // 60 ימים
-            case "W":  rangeSeconds = 3L  * 365 * 24 * 60 * 60; break; // 3 שנים
-            case "M":  rangeSeconds = 5L  * 365 * 24 * 60 * 60; break; // 5 שנים
-            default:   rangeSeconds = 365L * 24 * 60 * 60; break; // שנה
+    // ─────────────────────────────────────────────────
+//  Binance API — קריפטו (חינמי, ללא מפתח)
+// ─────────────────────────────────────────────────
+    private String intervalToBinance(String interval) {
+        switch (interval) {
+            case "1min":   return "1m";
+            case "5min":   return "5m";
+            case "15min":  return "15m";
+            case "30min":  return "30m";
+            case "1h":
+            case "60min":  return "1h";
+            case "1week":  return "1w";
+            case "1month": return "1M";
+            default:       return "1d";
         }
-        long fromTime = toTime - rangeSeconds;
+    }
 
-        String url = "https://finnhub.io/api/v1/crypto/candle?symbol=" + symbol
-                + "&resolution=" + resolution
-                + "&from=" + fromTime
-                + "&to="   + toTime
-                + "&token=" + FINNHUB_KEY;
+    private void fetchCryptoData(String symbol, String interval) {
+        // symbol = "BINANCE:BTCUSDT" → נוציא רק "BTCUSDT"
+        String pair = symbol.contains(":") ? symbol.substring(symbol.indexOf(':') + 1) : symbol;
+        String binanceInterval = intervalToBinance(interval);
 
-        Request req = new Request.Builder().url(url).header("User-Agent", "Mozilla/5.0").build();
+        // Binance מחזיר מקסימום 1000 נרות
+        String url = "https://api.binance.com/api/v3/klines?symbol=" + pair
+                + "&interval=" + binanceInterval
+                + "&limit=365";
+
+        Request req = new Request.Builder().url(url)
+                .header("User-Agent", "Mozilla/5.0").build();
+
         client.newCall(req).enqueue(new Callback() {
-            @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 if (getActivity() != null) getActivity().runOnUiThread(() ->
-                        Toast.makeText(requireContext(), "Crypto fetch error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                        Toast.makeText(requireContext(), "Crypto error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
-            @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                if (!response.isSuccessful() || response.body() == null) return;
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                if (!response.isSuccessful() || response.body() == null) {
+                    if (getActivity() != null) getActivity().runOnUiThread(() ->
+                            Toast.makeText(requireContext(), "No crypto data for: " + pair, Toast.LENGTH_SHORT).show());
+                    return;
+                }
                 try {
-                    JSONObject json = new JSONObject(response.body().string());
-                    if (!"ok".equals(json.optString("s"))) {
-                        if (getActivity() != null) getActivity().runOnUiThread(() ->
-                                Toast.makeText(requireContext(), "No crypto data for: " + symbol, Toast.LENGTH_SHORT).show());
-                        return;
-                    }
-                    JSONArray opens  = json.getJSONArray("o");
-                    JSONArray highs  = json.getJSONArray("h");
-                    JSONArray lows   = json.getJSONArray("l");
-                    JSONArray cls    = json.getJSONArray("c");
-                    JSONArray times  = json.getJSONArray("t");
-                    int size = cls.length();
+                    JSONArray klines = new JSONArray(response.body().string());
+                    int size = klines.length();
                     if (size == 0) return;
 
-                    // פורמט תאריך לפי resolution
+                    // פורמט תאריך לפי interval
                     SimpleDateFormat sdf;
-                    switch (resolution) {
-                        case "1": case "5": case "15": case "30": case "60":
+                    switch (binanceInterval) {
+                        case "1m": case "5m": case "15m": case "30m": case "1h":
                             sdf = new SimpleDateFormat("MM/dd HH:mm", Locale.US); break;
-                        case "W": case "M":
+                        case "1w": case "1M":
                             sdf = new SimpleDateFormat("yyyy-MM", Locale.US); break;
                         default:
-                            sdf = new SimpleDateFormat("MM/dd/yyyy", Locale.US);
+                            sdf = new SimpleDateFormat("MM/dd/yy", Locale.US);
                     }
 
-                    fullCloses.clear(); dateLabels.clear();
+                    fullCloses.clear();
+                    dateLabels.clear();
                     List<CandleEntry> entries = new ArrayList<>();
                     float lc = 0f, pc = 0f;
+
                     for (int i = 0; i < size; i++) {
-                        float o=(float)opens.getDouble(i), h=(float)highs.getDouble(i),
-                              l=(float)lows.getDouble(i),  c=(float)cls.getDouble(i);
-                        dateLabels.add(sdf.format(new Date(times.getLong(i) * 1000L)));
+                        JSONArray k = klines.getJSONArray(i);
+                        // Binance kline: [openTime, open, high, low, close, volume, ...]
+                        long openTime = k.getLong(0);
+                        float o = (float) k.getDouble(1);
+                        float h = (float) k.getDouble(2);
+                        float l = (float) k.getDouble(3);
+                        float c = (float) k.getDouble(4);
+
+                        dateLabels.add(sdf.format(new Date(openTime)));
                         fullCloses.add(c);
                         entries.add(new CandleEntry(i, h, l, o, c));
-                        pc = lc; lc = c;
+                        pc = lc;
+                        lc = c;
                     }
+
                     if (pc == 0f) pc = lc;
                     postChartUpdate(symbol, entries, lc, pc);
-                } catch (Exception e) { Log.e("ChartFragment", "Crypto parse error", e); }
+
+                } catch (Exception e) {
+                    Log.e("ChartFragment", "Binance parse error", e);
+                }
             }
         });
     }
