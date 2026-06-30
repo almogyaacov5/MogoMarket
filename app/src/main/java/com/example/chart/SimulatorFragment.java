@@ -1,13 +1,14 @@
 package com.example.chart;
 
+import android.content.Context;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -18,6 +19,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -33,12 +35,11 @@ import java.util.Locale;
 public class SimulatorFragment extends Fragment {
 
     private DatabaseReference closedTradesRef;
-    private EditText  etAmount;
-    private RadioGroup rgMode;
+    private TextInputEditText etAmount;
     private RadioButton rbSequential, rbParallel;
-    private Button    btnRun;
+    private Button      btnRun;
     private ProgressBar progress;
-    private TextView  tvResult;
+    private TextView    tvResult;
 
     private enum Mode { SEQUENTIAL, SPLIT_EQUAL }
 
@@ -51,7 +52,6 @@ public class SimulatorFragment extends Fragment {
         View v = inflater.inflate(R.layout.fragment_simulator, container, false);
 
         etAmount     = v.findViewById(R.id.etSimAmount);
-        rgMode       = v.findViewById(R.id.rgSimMode);
         rbSequential = v.findViewById(R.id.rbSequential);
         rbParallel   = v.findViewById(R.id.rbParallel);
         btnRun       = v.findViewById(R.id.btnRunSimulation);
@@ -63,7 +63,7 @@ public class SimulatorFragment extends Fragment {
 
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) {
-            tvResult.setText("יש להתחבר כדי להשתמש בסימולטור");
+            tvResult.setText("Please log in to use the simulator.");
             btnRun.setEnabled(false);
             return v;
         }
@@ -71,33 +71,40 @@ public class SimulatorFragment extends Fragment {
         closedTradesRef = FirebaseDatabase.getInstance()
                 .getReference("users/" + user.getUid() + "/closed-trades");
 
-        btnRun.setOnClickListener(view -> runSimulation());
+        btnRun.setOnClickListener(view -> {
+            hideKeyboard(view);
+            runSimulation();
+        });
         return v;
     }
 
+    // סגירת מקלדת
+    private void hideKeyboard(View view) {
+        InputMethodManager imm = (InputMethodManager)
+                requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+    }
+
     private void runSimulation() {
-        // 1. בדוק שהוזן סכום תקני
-        String raw = etAmount.getText().toString().trim();
+        String raw = etAmount.getText() != null ? etAmount.getText().toString().trim() : "";
         if (TextUtils.isEmpty(raw)) {
-            etAmount.setError("הזן סכום להשקעה");
+            etAmount.setError("Enter an investment amount");
             return;
         }
         double amount;
         try {
             amount = Double.parseDouble(raw);
         } catch (NumberFormatException e) {
-            etAmount.setError("סכום לא תקני");
+            etAmount.setError("Invalid number");
             return;
         }
         if (amount <= 0) {
-            etAmount.setError("הסכום חייב להיות גדול מ-0");
+            etAmount.setError("Amount must be greater than 0");
             return;
         }
 
-        // 2. קבע מצב
-        Mode mode = (rbSequential.isChecked()) ? Mode.SEQUENTIAL : Mode.SPLIT_EQUAL;
+        Mode mode = rbSequential.isChecked() ? Mode.SEQUENTIAL : Mode.SPLIT_EQUAL;
 
-        // 3. טען טריידים סגורים וחשב
         setLoading(true);
         tvResult.setText("");
 
@@ -113,7 +120,7 @@ public class SimulatorFragment extends Fragment {
 
                 if (trades.isEmpty()) {
                     tvResult.setTextColor(Color.GRAY);
-                    tvResult.setText("לא נמצאו טריידים סגורים.\nסגור טרייד כדי להשתמש בסימולטור.");
+                    tvResult.setText("No closed trades found.\nClose a trade to use the simulator.");
                     return;
                 }
 
@@ -124,7 +131,7 @@ public class SimulatorFragment extends Fragment {
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 setLoading(false);
-                Toast.makeText(getContext(), "שגיאה בטעינת הטריידים", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Error loading trades", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -134,21 +141,21 @@ public class SimulatorFragment extends Fragment {
         double  diff     = r.finalAmount - r.startAmount;
         String  sign     = diff >= 0 ? "+" : "";
         String  modeText = (mode == Mode.SEQUENTIAL)
-                ? "רציף (טרייד אחרי טרייד)"
-                : "במקביל (חלוקה שווה)";
+                ? "Sequential (trade after trade)"
+                : "Parallel (equal split)";
 
         String text = String.format(Locale.US,
-                "📊 מצב: %s\n" +
-                "📈 מספר טריידים: %d\n" +
-                "💵 סכום התחלתי: $%.2f\n" +
-                "💰 סכום סופי:    $%.2f\n" +
+                "\uD83D\uDCCA Mode: %s\n" +
+                "\uD83D\uDCC8 Trades: %d\n" +
+                "\uD83D\uDCB5 Starting amount: $%.2f\n" +
+                "\uD83D\uDCB0 Final amount:    $%.2f\n" +
                 "%s: %s$%.2f\n" +
-                "📉 תשואה: %s%.2f%%",
+                "\uD83D\uDCC9 Return: %s%.2f%%",
                 modeText,
                 r.tradeCount,
                 r.startAmount,
                 r.finalAmount,
-                isProfit ? "📈 רווח" : "📉 הפסד",
+                isProfit ? "\uD83D\uDCC8 Profit" : "\uD83D\uDCC9 Loss",
                 sign, Math.abs(diff),
                 sign, r.percent);
 
@@ -158,8 +165,6 @@ public class SimulatorFragment extends Fragment {
                 : Color.parseColor("#FF4D4D"));
     }
 
-    // ─── חישוב ──────────────────────────────────────────────────────────────────────────
-
     private SimulationResult simulate(List<StockData> trades, double startAmount, Mode mode) {
         int n = trades.size();
         if (n == 0) return new SimulationResult(startAmount, startAmount, 0);
@@ -167,16 +172,14 @@ public class SimulatorFragment extends Fragment {
         if (mode == Mode.SEQUENTIAL) {
             double pot = startAmount;
             for (StockData t : trades) {
-                double r = safeReturn(returnFractionFromTrade(t));
-                pot = pot * (1.0 + r);
+                pot = pot * (1.0 + safeReturn(returnFractionFromTrade(t)));
             }
             return new SimulationResult(startAmount, pot, n);
         } else {
             double per = startAmount / n;
             double sum = 0.0;
             for (StockData t : trades) {
-                double r = safeReturn(returnFractionFromTrade(t));
-                sum += per * (1.0 + r);
+                sum += per * (1.0 + safeReturn(returnFractionFromTrade(t)));
             }
             return new SimulationResult(startAmount, sum, n);
         }
@@ -192,11 +195,8 @@ public class SimulatorFragment extends Fragment {
 
     private static double safeReturn(double r) {
         if (Double.isNaN(r) || Double.isInfinite(r)) return 0.0;
-        if (r < -1.0) return -1.0;
-        return r;
+        return Math.max(r, -1.0);
     }
-
-    // ─── עזר ─────────────────────────────────────────────────────────────────────────────
 
     private static class SimulationResult {
         final double startAmount, finalAmount, percent;
