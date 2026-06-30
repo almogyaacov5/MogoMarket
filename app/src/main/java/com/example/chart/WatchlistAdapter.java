@@ -29,63 +29,79 @@ import java.util.Locale;
 
 public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.ViewHolder> {
 
-    public interface OnStockClickListener {
-        void onStockClick(StockWatchData stock);
-    }
-
-    public interface OnStockLongClickListener {
-        void onStockLongClick(StockWatchData stock, int position);
+    // ─── Listener interface (as WatchlistFragment expects) ───
+    public interface OnWatchStockClickListener {
+        void onStockClick(String symbol);
+        void onStockDelete(String symbol);
+        void onSetPriceAlert(StockWatchData stock);
+        void onAlertStateChanged(String symbol, boolean triggered);
     }
 
     private static final String API_KEY = "d0omel1r01qua2guc4ggd0omel1r01qua2guc4h0";
 
-    private final List<StockWatchData>   originalList;
-    private       List<StockWatchData>   filteredList;
-    private final OnStockClickListener     clickListener;
-    private final OnStockLongClickListener longClickListener;
+    private final List<StockWatchData> masterList   = new ArrayList<>();
+    private final List<StockWatchData> displayList  = new ArrayList<>();
+    private final OnWatchStockClickListener listener;
 
-    public WatchlistAdapter(List<StockWatchData> stocks,
-                            OnStockClickListener click,
-                            OnStockLongClickListener longClick) {
-        this.originalList      = stocks;
-        this.filteredList      = new ArrayList<>(stocks);
-        this.clickListener     = click;
-        this.longClickListener = longClick;
+    private String currentSearch = "";
+    private String currentFilter = "default";
+
+    public WatchlistAdapter(OnWatchStockClickListener listener) {
+        this.listener = listener;
     }
 
-    public void filter(String query) {
-        filteredList.clear();
-        if (query == null || query.isEmpty()) {
-            filteredList.addAll(originalList);
-        } else {
-            String q = query.toLowerCase();
-            for (StockWatchData s : originalList)
-                if (s.symbol.toLowerCase().contains(q)) filteredList.add(s);
+    // ─── Public API used by WatchlistFragment ───
+
+    /** עדכון הרשימה המלאה מ-Firebase */
+    public void updateData(List<StockWatchData> fresh) {
+        masterList.clear();
+        if (fresh != null) masterList.addAll(fresh);
+        applyFilterAndSearch();
+    }
+
+    /** רענן מחירים מ-Finnhub */
+    public void refresh() {
+        notifyDataSetChanged();
+    }
+
+    /** סינון חיפוש */
+    public void setSearch(String query) {
+        currentSearch = query == null ? "" : query.toLowerCase().trim();
+        applyFilterAndSearch();
+    }
+
+    /** מיין: "default" / "gain" / "loss" / "alpha" */
+    public void setFilter(String filter) {
+        currentFilter = filter == null ? "default" : filter;
+        applyFilterAndSearch();
+    }
+
+    private void applyFilterAndSearch() {
+        List<StockWatchData> result = new ArrayList<>();
+
+        for (StockWatchData s : masterList) {
+            if (!currentSearch.isEmpty() && !s.symbol.toLowerCase().contains(currentSearch)) continue;
+            switch (currentFilter) {
+                case "gain":  if (s.dayChange <  0) continue; break;
+                case "loss":  if (s.dayChange >= 0) continue; break;
+            }
+            result.add(s);
         }
-        notifyDataSetChanged();
-    }
 
-    public void sortByChangeDesc() {
-        List<StockWatchData> filtered = new ArrayList<>(filteredList);
-        Collections.sort(filtered, (a, b) -> Float.compare(b.dayChange, a.dayChange));
-        filteredList = filtered;
-        notifyDataSetChanged();
-    }
-
-    public void sortByChangeAsc() {
-        List<StockWatchData> filtered = new ArrayList<>(filteredList);
-        Collections.sort(filtered, (a, b) -> Float.compare(a.dayChange, b.dayChange));
-        filteredList = filtered;
-        notifyDataSetChanged();
-    }
-
-    public void removeItem(int position) {
-        if (position >= 0 && position < filteredList.size()) {
-            StockWatchData removed = filteredList.remove(position);
-            originalList.remove(removed);
-            notifyItemRemoved(position);
+        if ("alpha".equals(currentFilter)) {
+            Collections.sort(result, (a, b) -> a.symbol.compareToIgnoreCase(b.symbol));
+        } else if ("gain".equals(currentFilter)) {
+            Collections.sort(result, (a, b) -> Float.compare(b.dayChange, a.dayChange));
+        } else if ("loss".equals(currentFilter)) {
+            Collections.sort(result, (a, b) -> Float.compare(a.dayChange, b.dayChange));
         }
+
+        displayList.clear();
+        displayList.addAll(result);
+        notifyDataSetChanged();
     }
+
+    // ─── RecyclerView ───
 
     @NonNull @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -96,7 +112,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        StockWatchData stock = filteredList.get(position);
+        StockWatchData stock = displayList.get(position);
         Context ctx = holder.itemView.getContext();
 
         int textPrimary   = ctx.getColor(R.color.text_primary);
@@ -108,22 +124,27 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         holder.symbolText.setText(stock.symbol);
         holder.symbolText.setTextColor(textPrimary);
 
+        // הצג מידי אם יש מחיר זמני (transient)
         if (stock.currentPrice > 0) {
             holder.priceText.setText(String.format(Locale.US, "$%.2f", stock.currentPrice));
             holder.priceText.setTextColor(colorPrimary);
-            if (stock.dayChange >= 0) {
-                holder.dayChangeText.setText(String.format(Locale.US, "\u25b2 +%.2f%%", stock.dayChange));
-                holder.dayChangeText.setTextColor(colorGain);
-            } else {
-                holder.dayChangeText.setText(String.format(Locale.US, "\u25bc %.2f%%", stock.dayChange));
-                holder.dayChangeText.setTextColor(colorLoss);
-            }
+            bindChange(holder.dayChangeText, stock.dayChange, colorGain, colorLoss);
         } else {
             holder.priceText.setText("...");
             holder.priceText.setTextColor(textSecondary);
             holder.dayChangeText.setText("");
         }
 
+        // התראה
+        if (stock.alertEnabled && stock.alertTargetPrice > 0) {
+            holder.alertText.setText(String.format(Locale.US, "\uD83D\uDD14 $%.2f", stock.alertTargetPrice));
+            holder.alertText.setTextColor(colorPrimary);
+        } else {
+            holder.alertText.setText("\uD83D\uDD15 Off");
+            holder.alertText.setTextColor(textSecondary);
+        }
+
+        // Fetch מחיר חי
         fetchQuote(stock.symbol, new QuoteCallback() {
             @Override
             public void onQuoteReceived(float price, float dayChange) {
@@ -133,15 +154,8 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                     holder.priceText.setText(String.format(Locale.US, "$%.2f", price));
                     holder.priceText.setTextColor(colorPrimary);
                 });
-                holder.dayChangeText.post(() -> {
-                    if (dayChange >= 0) {
-                        holder.dayChangeText.setText(String.format(Locale.US, "\u25b2 +%.2f%%", dayChange));
-                        holder.dayChangeText.setTextColor(colorGain);
-                    } else {
-                        holder.dayChangeText.setText(String.format(Locale.US, "\u25bc %.2f%%", dayChange));
-                        holder.dayChangeText.setTextColor(colorLoss);
-                    }
-                });
+                holder.dayChangeText.post(() ->
+                    bindChange(holder.dayChangeText, dayChange, colorGain, colorLoss));
                 processAlert(stock, price, ctx);
             }
             @Override
@@ -157,50 +171,52 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             }
         });
 
-        if (stock.alertEnabled && stock.alertTargetPrice > 0) {
-            holder.alertText.setText(String.format(Locale.US, "\uD83D\uDD14 $%.2f", stock.alertTargetPrice));
-            holder.alertText.setTextColor(colorPrimary);
-        } else {
-            holder.alertText.setText("\uD83D\uDD15 Off");
-            holder.alertText.setTextColor(textSecondary);
-        }
-
+        // Clicks
         holder.itemView.setOnClickListener(v -> {
-            if (clickListener != null) clickListener.onStockClick(stock);
+            if (listener != null) listener.onStockClick(stock.symbol);
         });
         holder.itemView.setOnLongClickListener(v -> {
-            if (longClickListener != null) {
-                longClickListener.onStockLongClick(stock, holder.getAdapterPosition());
-                return true;
-            }
-            return false;
+            if (listener != null) listener.onStockDelete(stock.symbol);
+            return true;
         });
     }
 
-    @Override public int getItemCount() { return filteredList.size(); }
+    @Override public int getItemCount() { return displayList.size(); }
+
+    // ─── עזר UI ───
+
+    /** מציג ▲ +X.XX% או ▼ -X.XX% בצבע נכון */
+    private void bindChange(TextView tv, float change, int colorGain, int colorLoss) {
+        if (change >= 0) {
+            tv.setText(String.format(Locale.US, "\u25b2 +%.2f%%", change));
+            tv.setTextColor(colorGain);
+        } else {
+            tv.setText(String.format(Locale.US, "\u25bc %.2f%%", change)); // change כבר שלילי
+            tv.setTextColor(colorLoss);
+        }
+    }
+
+    // ─── Alert ───
 
     private void processAlert(StockWatchData stock, float price, Context ctx) {
         if (!stock.alertEnabled || stock.alertTargetPrice <= 0 || stock.alertTriggered) return;
-
-        boolean triggered = (price >= stock.alertTargetPrice);
-        if (!triggered) return;
+        if (price < stock.alertTargetPrice) return;
 
         String symbol = stock.symbol;
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            android.app.NotificationChannel channel = new android.app.NotificationChannel(
+            android.app.NotificationChannel ch = new android.app.NotificationChannel(
                     "price_alerts", "Price Alerts",
                     android.app.NotificationManager.IMPORTANCE_HIGH);
             android.app.NotificationManager nm =
                     (android.app.NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
-            if (nm != null) nm.createNotificationChannel(channel);
+            if (nm != null) nm.createNotificationChannel(ch);
         }
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx, "price_alerts")
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setContentTitle("\uD83D\uDCC8 Stock Alert: " + symbol)
                 .setContentText(String.format(Locale.US,
-                        "%s hit your target of $%.2f! Current: $%.2f",
+                        "%s הגיע ליעד $%.2f! מחיר נוכחי: $%.2f",
                         symbol, stock.alertTargetPrice, price))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true);
@@ -211,16 +227,19 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
 
         stock.alertTriggered = true;
         stock.alertEnabled   = false;
+        if (listener != null) listener.onAlertStateChanged(symbol, true);
 
         FirebaseAuth auth = FirebaseAuth.getInstance();
         if (auth.getCurrentUser() != null) {
             DatabaseReference ref = FirebaseDatabase.getInstance()
                     .getReference("users/" + auth.getCurrentUser().getUid()
-                            + "/watchlist/" + symbol);
+                            + "/watchlist-stocks/" + symbol);
             ref.child("alertEnabled").setValue(false);
             ref.child("alertTriggered").setValue(true);
         }
     }
+
+    // ─── Finnhub fetch ───
 
     private void fetchQuote(String symbol, QuoteCallback callback) {
         new Thread(() -> {
@@ -228,6 +247,8 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                 String url = "https://finnhub.io/api/v1/quote?symbol=" + symbol + "&token=" + API_KEY;
                 HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
                 con.setRequestMethod("GET");
+                con.setConnectTimeout(5000);
+                con.setReadTimeout(5000);
                 BufferedReader br = new BufferedReader(new InputStreamReader(con.getInputStream()));
                 StringBuilder sb = new StringBuilder();
                 String line;
@@ -235,7 +256,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                 br.close();
                 JSONObject obj = new JSONObject(sb.toString());
                 float price     = (float) obj.getDouble("c");
-                float dayChange = (float) obj.getDouble("dp");
+                float dayChange = (float) obj.getDouble("dp"); // % change (can be negative)
                 callback.onQuoteReceived(price, dayChange);
             } catch (Exception e) {
                 callback.onError(e);
@@ -247,6 +268,8 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         void onQuoteReceived(float price, float dayChange);
         void onError(Exception e);
     }
+
+    // ─── ViewHolder ───
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView symbolText, priceText, dayChangeText, alertText;
