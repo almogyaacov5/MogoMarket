@@ -53,7 +53,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         this.longClickListener = longClick;
     }
 
-    // ─── filter / sort ────────────────────────────────────────────────
+    // ─── filter / sort ────────────────────────────────────────────────────────
 
     public void filter(String query) {
         filteredList.clear();
@@ -89,7 +89,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         }
     }
 
-    // ─── RecyclerView ─────────────────────────────────────────────────
+    // ─── RecyclerView ──────────────────────────────────────────────────────────
 
     @NonNull @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -115,7 +115,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         if (stock.currentPrice > 0) {
             holder.priceText.setText(String.format(Locale.US, "$%.2f", stock.currentPrice));
             holder.priceText.setTextColor(colorPrimary);
-            // מניה עולה: ▲ +X.XX%   מניה יורדת: ▼ X.XX% (dayChange כבר שלילי)
             if (stock.dayChange >= 0) {
                 holder.dayChangeText.setText(String.format(Locale.US, "\u25b2 +%.2f%%", stock.dayChange));
                 holder.dayChangeText.setTextColor(colorGain);
@@ -151,8 +150,14 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             }
             @Override
             public void onError(Exception e) {
-                holder.priceText.post(() -> { holder.priceText.setText("$\u2014"); holder.priceText.setTextColor(textSecondary); });
-                holder.dayChangeText.post(() -> { holder.dayChangeText.setText("\u2014"); holder.dayChangeText.setTextColor(textSecondary); });
+                holder.priceText.post(() -> {
+                    holder.priceText.setText("$\u2014");
+                    holder.priceText.setTextColor(textSecondary);
+                });
+                holder.dayChangeText.post(() -> {
+                    holder.dayChangeText.setText("\u2014");
+                    holder.dayChangeText.setTextColor(textSecondary);
+                });
             }
         });
 
@@ -178,19 +183,20 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
 
     @Override public int getItemCount() { return filteredList.size(); }
 
-    // ─── Alert helper ─────────────────────────────────────────────────
+    // ─── Alert helper ──────────────────────────────────────────────────────────
 
     private void processAlert(StockWatchData stock, float price, Context ctx) {
-        if (!stock.alertEnabled || stock.alertTargetPrice <= 0) return;
-        boolean triggered = (stock.alertTargetPrice > stock.previousPrice)
-                ? price >= stock.alertTargetPrice
-                : price <= stock.alertTargetPrice;
+        // לא מפעיל אם ההתראה כבויה, אין יעד, או כבר הופעלה
+        if (!stock.alertEnabled || stock.alertTargetPrice <= 0 || stock.alertTriggered) return;
+
+        // ההתראה תופעל כאשר המחיר גבוה מהיעד (עלייה) או נמוך ממנו (ירידה)
+        // כיוון ההתראה נקבע לפי היעד לעומת המחיר הנוכחי שנשמר
+        boolean triggered = (price >= stock.alertTargetPrice);
         if (!triggered) return;
 
         String symbol = stock.symbol;
-        android.app.NotificationChannel channel = null;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            channel = new android.app.NotificationChannel(
+            android.app.NotificationChannel channel = new android.app.NotificationChannel(
                     "price_alerts", "Price Alerts",
                     android.app.NotificationManager.IMPORTANCE_HIGH);
             android.app.NotificationManager nm =
@@ -211,17 +217,20 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             nm.notify(symbol.hashCode(), builder.build());
         } catch (SecurityException ignored) {}
 
-        stock.alertEnabled = false;
+        // סמן כהופעלה כדי לא לחזור שוב
+        stock.alertTriggered = true;
+        stock.alertEnabled   = false;
         FirebaseAuth auth = FirebaseAuth.getInstance();
         if (auth.getCurrentUser() != null) {
             DatabaseReference ref = FirebaseDatabase.getInstance()
                     .getReference("users/" + auth.getCurrentUser().getUid()
-                            + "/watchlist/" + symbol + "/alertEnabled");
-            ref.setValue(false);
+                            + "/watchlist/" + symbol);
+            ref.child("alertEnabled").setValue(false);
+            ref.child("alertTriggered").setValue(true);
         }
     }
 
-    // ─── Quote fetch ──────────────────────────────────────────────────
+    // ─── Quote fetch ───────────────────────────────────────────────────────────
 
     private void fetchQuote(String symbol, QuoteCallback callback) {
         new Thread(() -> {
@@ -236,7 +245,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                 br.close();
                 JSONObject obj = new JSONObject(sb.toString());
                 float price     = (float) obj.getDouble("c");
-                float dayChange = (float) obj.getDouble("dp"); // daily % change
+                float dayChange = (float) obj.getDouble("dp");
                 callback.onQuoteReceived(price, dayChange);
             } catch (Exception e) {
                 callback.onError(e);
@@ -249,11 +258,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         void onError(Exception e);
     }
 
-    interface DataCallback {
-        void onDataReceived(float price, float dayChange);
-    }
-
-    // ─── ViewHolder ───────────────────────────────────────────────────
+    // ─── ViewHolder ────────────────────────────────────────────────────────────
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView symbolText, priceText, dayChangeText, alertText;
