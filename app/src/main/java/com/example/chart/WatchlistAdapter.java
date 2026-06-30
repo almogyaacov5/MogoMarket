@@ -16,6 +16,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -36,7 +37,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         void onAlertStateChanged(String symbol, boolean triggered);
     }
 
-    private static final String API_KEY = "d0omel1r01qua2guc4ggd0omel1r01qua2guc4h0";
+    private static final String FINNHUB_KEY = "d0omel1r01qua2guc4ggd0omel1r01qua2guc4h0";
 
     private final List<StockWatchData> masterList  = new ArrayList<>();
     private final List<StockWatchData> displayList = new ArrayList<>();
@@ -47,6 +48,11 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
 
     public WatchlistAdapter(OnWatchStockClickListener listener) {
         this.listener = listener;
+    }
+
+    /** true אם הסמבול הוא קריפטו (מכיל ':') */
+    private boolean isCrypto(String sym) {
+        return sym != null && sym.contains(":");
     }
 
     public void updateData(List<StockWatchData> fresh) {
@@ -72,6 +78,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
     private void applyFilterAndSearch() {
         List<StockWatchData> result = new ArrayList<>();
         for (StockWatchData s : masterList) {
+            if (s == null || s.symbol == null) continue;
             if (!currentSearch.isEmpty() && !s.symbol.toLowerCase().contains(currentSearch)) continue;
             switch (currentFilter) {
                 case "gain": if (s.dayChange <  0) continue; break;
@@ -109,7 +116,11 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         int colorLoss     = ctx.getColor(R.color.loss);
         int colorPrimary  = ctx.getColor(R.color.primary);
 
-        holder.symbolText.setText(stock.symbol);
+        // תצוגת סמבול — לקריפטו מציג רק את החלק אחרי ':'
+        String displaySymbol = isCrypto(stock.symbol)
+                ? stock.symbol.substring(stock.symbol.indexOf(':') + 1)
+                : stock.symbol;
+        holder.symbolText.setText(displaySymbol);
         holder.symbolText.setTextColor(textPrimary);
 
         if (stock.currentPrice > 0) {
@@ -130,31 +141,60 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             holder.alertText.setTextColor(textSecondary);
         }
 
-        fetchQuote(stock.symbol, new QuoteCallback() {
-            @Override
-            public void onQuoteReceived(float price, float dayChange) {
-                stock.currentPrice = price;
-                stock.dayChange    = dayChange;
-                holder.priceText.post(() -> {
-                    holder.priceText.setText(String.format(Locale.US, "$%.2f", price));
-                    holder.priceText.setTextColor(colorPrimary);
-                });
-                holder.dayChangeText.post(() ->
-                        bindChange(holder.dayChangeText, dayChange, colorGain, colorLoss));
-                processAlert(stock, price, ctx);
-            }
-            @Override
-            public void onError(Exception e) {
-                holder.priceText.post(() -> {
-                    holder.priceText.setText("$\u2014");
-                    holder.priceText.setTextColor(textSecondary);
-                });
-                holder.dayChangeText.post(() -> {
-                    holder.dayChangeText.setText("\u2014");
-                    holder.dayChangeText.setTextColor(textSecondary);
-                });
-            }
-        });
+        // בחר API מתאים לפי סוג הסמבול
+        if (isCrypto(stock.symbol)) {
+            fetchCryptoQuote(stock.symbol, new QuoteCallback() {
+                @Override
+                public void onQuoteReceived(float price, float dayChange) {
+                    stock.currentPrice = price;
+                    stock.dayChange    = dayChange;
+                    holder.priceText.post(() -> {
+                        holder.priceText.setText(String.format(Locale.US, "$%.2f", price));
+                        holder.priceText.setTextColor(colorPrimary);
+                    });
+                    holder.dayChangeText.post(() ->
+                            bindChange(holder.dayChangeText, dayChange, colorGain, colorLoss));
+                    processAlert(stock, price, ctx);
+                }
+                @Override
+                public void onError(Exception e) {
+                    holder.priceText.post(() -> {
+                        holder.priceText.setText("$\u2014");
+                        holder.priceText.setTextColor(textSecondary);
+                    });
+                    holder.dayChangeText.post(() -> {
+                        holder.dayChangeText.setText("\u2014");
+                        holder.dayChangeText.setTextColor(textSecondary);
+                    });
+                }
+            });
+        } else {
+            fetchStockQuote(stock.symbol, new QuoteCallback() {
+                @Override
+                public void onQuoteReceived(float price, float dayChange) {
+                    stock.currentPrice = price;
+                    stock.dayChange    = dayChange;
+                    holder.priceText.post(() -> {
+                        holder.priceText.setText(String.format(Locale.US, "$%.2f", price));
+                        holder.priceText.setTextColor(colorPrimary);
+                    });
+                    holder.dayChangeText.post(() ->
+                            bindChange(holder.dayChangeText, dayChange, colorGain, colorLoss));
+                    processAlert(stock, price, ctx);
+                }
+                @Override
+                public void onError(Exception e) {
+                    holder.priceText.post(() -> {
+                        holder.priceText.setText("$\u2014");
+                        holder.priceText.setTextColor(textSecondary);
+                    });
+                    holder.dayChangeText.post(() -> {
+                        holder.dayChangeText.setText("\u2014");
+                        holder.dayChangeText.setTextColor(textSecondary);
+                    });
+                }
+            });
+        }
 
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onStockClick(stock.symbol);
@@ -167,9 +207,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
 
     @Override public int getItemCount() { return displayList.size(); }
 
-    /**
-     * ▲ +X.XX% כשעולה  |  ▼ -X.XX% כשיורד (מינוס מפורש)
-     */
     private void bindChange(TextView tv, float change, int colorGain, int colorLoss) {
         if (change >= 0) {
             tv.setText(String.format(Locale.US, "\u25b2 +%.2f%%", change));
@@ -194,12 +231,16 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             if (nm != null) nm.createNotificationChannel(ch);
         }
 
+        String displaySym = isCrypto(symbol)
+                ? symbol.substring(symbol.indexOf(':') + 1)
+                : symbol;
+
         NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx, "price_alerts")
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
-                .setContentTitle("\uD83D\uDCC8 Stock Alert: " + symbol)
+                .setContentTitle("\uD83D\uDCC8 Alert: " + displaySym)
                 .setContentText(String.format(Locale.US,
-                        "%s הגיע ליעד $%.2f! מחיר נוכחי: $%.2f",
-                        symbol, stock.alertTargetPrice, price))
+                        "%s הגיע ליעד $%.2f! מחיר: $%.2f",
+                        displaySym, stock.alertTargetPrice, price))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true);
 
@@ -213,31 +254,78 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
 
         FirebaseAuth auth = FirebaseAuth.getInstance();
         if (auth.getCurrentUser() != null) {
+            // Firebase לא אוהב ':' בנתיב — מחליפים ב-'_'
+            String safeKey = symbol.replace(":", "_");
             DatabaseReference ref = FirebaseDatabase.getInstance()
                     .getReference("users/" + auth.getCurrentUser().getUid()
-                            + "/watchlist-stocks/" + symbol);
+                            + "/watchlist-stocks/" + safeKey);
             ref.child("alertEnabled").setValue(false);
             ref.child("alertTriggered").setValue(true);
         }
     }
 
-    private void fetchQuote(String symbol, QuoteCallback callback) {
+    // ─── מניות: Finnhub /quote ─────────────────────────────────
+    private void fetchStockQuote(String symbol, QuoteCallback callback) {
         new Thread(() -> {
             try {
-                String url = "https://finnhub.io/api/v1/quote?symbol=" + symbol + "&token=" + API_KEY;
+                String url = "https://finnhub.io/api/v1/quote?symbol=" + symbol
+                        + "&token=" + FINNHUB_KEY;
                 HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
-                con.setRequestMethod("GET");
-                con.setConnectTimeout(5000);
-                con.setReadTimeout(5000);
+                con.setConnectTimeout(6000);
+                con.setReadTimeout(6000);
                 BufferedReader br = new BufferedReader(new InputStreamReader(con.getInputStream()));
                 StringBuilder sb = new StringBuilder();
                 String line;
                 while ((line = br.readLine()) != null) sb.append(line);
                 br.close();
                 JSONObject obj  = new JSONObject(sb.toString());
-                float price     = (float) obj.getDouble("c");
-                float dayChange = (float) obj.getDouble("dp");
+                float price     = (float) obj.getDouble("c");   // מחיר נוכחי
+                float dayChange = (float) obj.getDouble("dp");  // שינוי % יומי
+                if (price <= 0) { callback.onError(new Exception("price=0")); return; }
                 callback.onQuoteReceived(price, dayChange);
+            } catch (Exception e) {
+                callback.onError(e);
+            }
+        }).start();
+    }
+
+    // ─── קריפטו: Finnhub /crypto/candle ──────────────────────────
+    // /quote לא עובד לקריפטו — צריך נרות יומיים ולחשב את השינוי ידנית
+    private void fetchCryptoQuote(String symbol, QuoteCallback callback) {
+        new Thread(() -> {
+            try {
+                long toTime   = System.currentTimeMillis() / 1000L;
+                long fromTime = toTime - (3L * 24 * 60 * 60); // 3 ימים אחורה
+                String url = "https://finnhub.io/api/v1/crypto/candle?symbol=" + symbol
+                        + "&resolution=D"
+                        + "&from=" + fromTime
+                        + "&to="   + toTime
+                        + "&token=" + FINNHUB_KEY;
+
+                HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
+                con.setConnectTimeout(6000);
+                con.setReadTimeout(6000);
+                BufferedReader br = new BufferedReader(new InputStreamReader(con.getInputStream()));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) sb.append(line);
+                br.close();
+
+                JSONObject json = new JSONObject(sb.toString());
+                if (!"ok".equals(json.optString("s"))) {
+                    callback.onError(new Exception("status not ok"));
+                    return;
+                }
+                JSONArray closes = json.getJSONArray("c");
+                int len = closes.length();
+                if (len == 0) { callback.onError(new Exception("empty")); return; }
+
+                float lastPrice = (float) closes.getDouble(len - 1);
+                float prevPrice = len > 1 ? (float) closes.getDouble(len - 2) : lastPrice;
+                float dayChange = prevPrice > 0
+                        ? ((lastPrice - prevPrice) / prevPrice) * 100f
+                        : 0f;
+                callback.onQuoteReceived(lastPrice, dayChange);
             } catch (Exception e) {
                 callback.onError(e);
             }
