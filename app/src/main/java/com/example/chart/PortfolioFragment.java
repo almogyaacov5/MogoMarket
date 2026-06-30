@@ -50,7 +50,7 @@ public class PortfolioFragment extends Fragment {
     private DatabaseReference closedTradesRef;
 
     private final OkHttpClient httpClient = new OkHttpClient();
-    private static final String API_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
+    private static final String FINNHUB_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
 
     @Nullable
     @Override
@@ -89,13 +89,15 @@ public class PortfolioFragment extends Fragment {
 
             @Override
             public void onStockDelete(String symbol, double sellPrice) {
-                portfolioRef.child(symbol).get().addOnSuccessListener(snapshot -> {
+                // Firebase key: BINANCE:BTCUSDT -> BINANCE_BTCUSDT
+                String firebaseKey = symbol.replace(":", "_");
+                portfolioRef.child(firebaseKey).get().addOnSuccessListener(snapshot -> {
                     if (snapshot.exists()) {
                         StockData data = snapshot.getValue(StockData.class);
                         if (data != null) {
                             data.sellPrice = sellPrice;
-                            closedTradesRef.child(symbol).setValue(data);
-                            portfolioRef.child(symbol).removeValue();
+                            closedTradesRef.child(firebaseKey).setValue(data);
+                            portfolioRef.child(firebaseKey).removeValue();
                         }
                     }
                 });
@@ -103,10 +105,12 @@ public class PortfolioFragment extends Fragment {
 
             @Override
             public void onStockEdit(StockData updatedStock, String oldSymbol) {
-                if (!updatedStock.symbol.equals(oldSymbol)) {
-                    portfolioRef.child(oldSymbol).removeValue();
+                String oldKey = oldSymbol.replace(":", "_");
+                String newKey = updatedStock.symbol.replace(":", "_");
+                if (!newKey.equals(oldKey)) {
+                    portfolioRef.child(oldKey).removeValue();
                 }
-                portfolioRef.child(updatedStock.symbol).setValue(updatedStock);
+                portfolioRef.child(newKey).setValue(updatedStock);
             }
         });
 
@@ -119,7 +123,14 @@ public class PortfolioFragment extends Fragment {
                 stocksList.clear();
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     StockData data = ds.getValue(StockData.class);
-                    if (data != null) stocksList.add(data);
+                    if (data == null) continue;
+                    // שחזור Firebase key ל-symbol: BINANCE_BTCUSDT -> BINANCE:BTCUSDT
+                    if (data.symbol == null || data.symbol.isEmpty()) {
+                        String key = ds.getKey();
+                        if (key != null) data.symbol = key.replace("_BINANCE", ":BINANCE")
+                                .replaceFirst("BINANCE_", "BINANCE:");
+                    }
+                    stocksList.add(data);
                 }
                 adapter.notifyDataSetChanged();
                 updateSummary();
@@ -145,13 +156,12 @@ public class PortfolioFragment extends Fragment {
         return v;
     }
 
-    // ==================== עדכון סיכום ====================
+    // ==================== סיכום PnL ====================
 
     private void updateSummary() {
         if (tvOpenCount != null) {
             tvOpenCount.setText(String.valueOf(stocksList.size()));
         }
-
         if (stocksList.isEmpty()) {
             if (tvTotalPnl != null) tvTotalPnl.setText("$0.00");
             return;
@@ -161,7 +171,6 @@ public class PortfolioFragment extends Fragment {
         for (StockData s : stocksList) {
             if (s.tradeAmount > 0) withAmount.add(s);
         }
-
         if (withAmount.isEmpty()) {
             if (tvTotalPnl != null) tvTotalPnl.setText("N/A");
             return;
@@ -171,29 +180,48 @@ public class PortfolioFragment extends Fragment {
         final AtomicInteger remaining = new AtomicInteger(withAmount.size());
 
         for (StockData stock : withAmount) {
-            // Finnhub quote endpoint: מחזיר "c" = מחיר נוכחי
-            String url = "https://finnhub.io/api/v1/quote?symbol=" + stock.symbol + "&token=" + API_KEY;
-            httpClient.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
-                @Override
-                public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    if (remaining.decrementAndGet() == 0) showTotalPnl(totalPnl[0]);
-                }
-
-                @Override
-                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                    try {
-                        String body = response.body().string();
-                        JSONObject obj = new JSONObject(body);
-                        float price = (float) obj.getDouble("c"); // current price
-                        if (price > 0 && stock.buyPrice != 0f) {
-                            float pct = (price - stock.buyPrice) / stock.buyPrice * 100f;
-                            double pnl = stock.tradeAmount * (pct / 100.0);
-                            synchronized (totalPnl) { totalPnl[0] += pnl; }
-                        }
-                    } catch (Exception ignored) {}
-                    if (remaining.decrementAndGet() == 0) showTotalPnl(totalPnl[0]);
-                }
-            });
+            if (CryptoHelper.isCryptoSymbol(stock.symbol)) {
+                // Binance ticker
+                String pair = CryptoHelper.getPair(stock.symbol);
+                String url  = "https://api.binance.com/api/v3/ticker/price?symbol=" + pair;
+                httpClient.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
+                    @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                        if (remaining.decrementAndGet() == 0) showTotalPnl(totalPnl[0]);
+                    }
+                    @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                        try {
+                            JSONObject obj = new JSONObject(response.body().string());
+                            float price = (float) obj.getDouble("price");
+                            if (price > 0 && stock.buyPrice != 0f) {
+                                float pct = (price - stock.buyPrice) / stock.buyPrice * 100f;
+                                double pnl = stock.tradeAmount * (pct / 100.0);
+                                synchronized (totalPnl) { totalPnl[0] += pnl; }
+                            }
+                        } catch (Exception ignored) {}
+                        if (remaining.decrementAndGet() == 0) showTotalPnl(totalPnl[0]);
+                    }
+                });
+            } else {
+                // Finnhub /quote
+                String url = "https://finnhub.io/api/v1/quote?symbol=" + stock.symbol + "&token=" + FINNHUB_KEY;
+                httpClient.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
+                    @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                        if (remaining.decrementAndGet() == 0) showTotalPnl(totalPnl[0]);
+                    }
+                    @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                        try {
+                            JSONObject obj = new JSONObject(response.body().string());
+                            float price = (float) obj.getDouble("c");
+                            if (price > 0 && stock.buyPrice != 0f) {
+                                float pct = (price - stock.buyPrice) / stock.buyPrice * 100f;
+                                double pnl = stock.tradeAmount * (pct / 100.0);
+                                synchronized (totalPnl) { totalPnl[0] += pnl; }
+                            }
+                        } catch (Exception ignored) {}
+                        if (remaining.decrementAndGet() == 0) showTotalPnl(totalPnl[0]);
+                    }
+                });
+            }
         }
     }
 

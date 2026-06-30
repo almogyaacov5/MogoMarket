@@ -42,7 +42,7 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
     private final List<StockData> stocks;
     private final OnStockClickListener listener;
     private final OkHttpClient client = new OkHttpClient();
-    private static final String API_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
+    private static final String FINNHUB_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
 
     public StocksAdapter(List<StockData> stocks, OnStockClickListener listener) {
         this.stocks = stocks;
@@ -72,7 +72,12 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         holder.itemView.setBackgroundColor(bgCard);
 
         String sym = (stock.symbol != null) ? stock.symbol.trim() : "?";
-        holder.symbolText.setText(sym);
+
+        // תצוגה: קריפטו -> קצר שם (למשל "BTC"), מניה -> כרגיל
+        String displaySym = CryptoHelper.isCryptoSymbol(sym)
+                ? CryptoHelper.getShortName(sym)
+                : sym;
+        holder.symbolText.setText(displaySym);
         holder.symbolText.setTextColor(textPrimary);
         holder.buyPriceText.setText(String.format(Locale.US, "$%.2f", stock.buyPrice));
         holder.buyPriceText.setTextColor(textSecondary);
@@ -96,76 +101,28 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         holder.changePercentDetailText.setText("...");
         holder.pnlDollarText.setText("-");
 
-        // טעינת לוגו החברה ברקע
-        holder.stockLogoBackground.setImageBitmap(null);
-        String logoUrl = "https://static2.finnhub.io/file/publicdatany/finnhubimage/stock_logo/" + sym + ".png";
-        new Thread(() -> {
-            try {
-                Bitmap bitmap = BitmapFactory.decodeStream(new URL(logoUrl).openStream());
-                if (bitmap != null) {
-                    holder.itemView.post(() -> holder.stockLogoBackground.setImageBitmap(bitmap));
-                }
-            } catch (Exception ignored) {}
-        }).start();
+        // לוגו: לקריפטו אין לוגו מפינהב, למניות טוען
+        if (!CryptoHelper.isCryptoSymbol(sym)) {
+            holder.stockLogoBackground.setImageBitmap(null);
+            String logoUrl = "https://static2.finnhub.io/file/publicdatany/finnhubimage/stock_logo/" + sym + ".png";
+            new Thread(() -> {
+                try {
+                    Bitmap bitmap = BitmapFactory.decodeStream(new URL(logoUrl).openStream());
+                    if (bitmap != null) {
+                        holder.itemView.post(() -> holder.stockLogoBackground.setImageBitmap(bitmap));
+                    }
+                } catch (Exception ignored) {}
+            }).start();
+        } else {
+            holder.stockLogoBackground.setImageBitmap(null);
+        }
 
-        fetchQuote(stock.symbol, new QuoteCallback() {
-            @Override
-            public void onQuoteReceived(float currentPrice, float dailyChangePercent) {
-                float totalChangePercent = (stock.buyPrice != 0f)
-                        ? ((currentPrice - stock.buyPrice) / stock.buyPrice * 100f) : 0f;
-                double pnlDollar = (stock.tradeAmount > 0)
-                        ? stock.tradeAmount * (totalChangePercent / 100.0) : 0;
-
-                int gainLossColor      = totalChangePercent >= 0 ? colorGain : colorLoss;
-                int dailyGainLossColor = dailyChangePercent >= 0 ? colorGain : colorLoss;
-
-                String dailySign = dailyChangePercent >= 0 ? "+" : "-";
-                String totalSign = totalChangePercent  >= 0 ? "+" : "-";
-
-                holder.currentPriceText.post(() -> {
-                    holder.currentPriceText.setText(String.format(Locale.US, "$%.2f", currentPrice));
-                    holder.currentPriceText.setTextColor(textPrimary);
-                });
-
-                holder.changePercentText.post(() -> {
-                    holder.changePercentText.setText(
-                            String.format(Locale.US, "%s%.2f%% Today",
-                                    dailySign, Math.abs(dailyChangePercent)));
-                    holder.changePercentText.setTextColor(dailyGainLossColor);
-                });
-
-                holder.changePercentDetailText.post(() -> {
-                    holder.changePercentDetailText.setText(
-                            String.format(Locale.US, "%s%.2f%% vs Entry",
-                                    totalSign, Math.abs(totalChangePercent)));
-                    holder.changePercentDetailText.setTextColor(gainLossColor);
-                });
-
-                if (stock.tradeAmount > 0) {
-                    holder.pnlDollarText.post(() -> {
-                        String sign = pnlDollar >= 0 ? "+" : "-";
-                        holder.pnlDollarText.setText(
-                                String.format(Locale.US, "%s$%.2f", sign, Math.abs(pnlDollar)));
-                        holder.pnlDollarText.setTextColor(pnlDollar >= 0 ? colorGain : colorLoss);
-                    });
-                } else {
-                    holder.pnlDollarText.post(() -> {
-                        holder.pnlDollarText.setText("-");
-                        holder.pnlDollarText.setTextColor(colorNeutral);
-                    });
-                }
-            }
-
-            @Override
-            public void onError(Exception e) {
-                holder.currentPriceText.post(() -> {
-                    holder.currentPriceText.setText("?");
-                    holder.currentPriceText.setTextColor(colorNeutral);
-                });
-                holder.changePercentText.post(() -> holder.changePercentText.setText("N/A"));
-                holder.changePercentDetailText.post(() -> holder.changePercentDetailText.setText("N/A"));
-            }
-        });
+        // שליפת מחיר: קריפטו -> Binance, מניה -> Finnhub
+        if (CryptoHelper.isCryptoSymbol(sym)) {
+            fetchCryptoQuote(sym, stock, holder, colorGain, colorLoss, textPrimary, textSecondary, colorNeutral);
+        } else {
+            fetchStockQuote(sym, stock, holder, colorGain, colorLoss, textPrimary, textSecondary, colorNeutral);
+        }
 
         holder.btnEdit.setOnClickListener(view -> showEditDialog(ctx, stock));
         holder.btnDelete.setOnClickListener(view -> showSellPriceDialog(ctx, stock.symbol));
@@ -175,11 +132,110 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
     @Override
     public int getItemCount() { return stocks != null ? stocks.size() : 0; }
 
+    // ========================= FETCH: קריפטו (Binance) =========================
+
+    private void fetchCryptoQuote(String symbol, StockData stock, StockViewHolder holder,
+                                  int colorGain, int colorLoss, int textPrimary,
+                                  int textSecondary, int colorNeutral) {
+        String pair = CryptoHelper.getPair(symbol);
+        // מחיר נוכחי + שינוי 24ש מ-Binance
+        String urlTicker = "https://api.binance.com/api/v3/ticker/24hr?symbol=" + pair;
+        client.newCall(new Request.Builder().url(urlTicker).build()).enqueue(new Callback() {
+            @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                holder.currentPriceText.post(() -> { holder.currentPriceText.setText("?"); holder.currentPriceText.setTextColor(colorNeutral); });
+                holder.changePercentText.post(() -> holder.changePercentText.setText("N/A"));
+                holder.changePercentDetailText.post(() -> holder.changePercentDetailText.setText("N/A"));
+            }
+            @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                try {
+                    JSONObject obj = new JSONObject(response.body().string());
+                    float currentPrice      = (float) obj.getDouble("lastPrice");
+                    float dailyChangePercent = (float) obj.getDouble("priceChangePercent");
+                    if (currentPrice == 0f) return;
+                    updateHolderWithPrices(holder, stock, currentPrice, dailyChangePercent,
+                            colorGain, colorLoss, textPrimary, textSecondary, colorNeutral);
+                } catch (Exception ignored) {}
+            }
+        });
+    }
+
+    // ========================= FETCH: מניה (Finnhub) =========================
+
+    private void fetchStockQuote(String symbol, StockData stock, StockViewHolder holder,
+                                 int colorGain, int colorLoss, int textPrimary,
+                                 int textSecondary, int colorNeutral) {
+        String url = "https://finnhub.io/api/v1/quote?symbol=" + symbol + "&token=" + FINNHUB_KEY;
+        client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
+            @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                holder.currentPriceText.post(() -> { holder.currentPriceText.setText("?"); holder.currentPriceText.setTextColor(colorNeutral); });
+                holder.changePercentText.post(() -> holder.changePercentText.setText("N/A"));
+                holder.changePercentDetailText.post(() -> holder.changePercentDetailText.setText("N/A"));
+            }
+            @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                try {
+                    JSONObject obj = new JSONObject(response.body().string());
+                    float currentPrice       = (float) obj.getDouble("c");
+                    float dailyChangePercent = (float) obj.getDouble("dp");
+                    if (currentPrice == 0f) return;
+                    updateHolderWithPrices(holder, stock, currentPrice, dailyChangePercent,
+                            colorGain, colorLoss, textPrimary, textSecondary, colorNeutral);
+                } catch (Exception ignored) {}
+            }
+        });
+    }
+
+    // ========================= עדכון ה-UI בויזואל =========================
+
+    private void updateHolderWithPrices(StockViewHolder holder, StockData stock,
+                                        float currentPrice, float dailyChangePercent,
+                                        int colorGain, int colorLoss,
+                                        int textPrimary, int textSecondary, int colorNeutral) {
+        float totalChangePercent = (stock.buyPrice != 0f)
+                ? ((currentPrice - stock.buyPrice) / stock.buyPrice * 100f) : 0f;
+        double pnlDollar = (stock.tradeAmount > 0)
+                ? stock.tradeAmount * (totalChangePercent / 100.0) : 0;
+
+        int gainLossColor      = totalChangePercent >= 0 ? colorGain : colorLoss;
+        int dailyGainLossColor = dailyChangePercent >= 0 ? colorGain : colorLoss;
+
+        String dailySign = dailyChangePercent >= 0 ? "+" : "-";
+        String totalSign = totalChangePercent  >= 0 ? "+" : "-";
+
+        holder.currentPriceText.post(() -> {
+            holder.currentPriceText.setText(String.format(Locale.US, "$%.2f", currentPrice));
+            holder.currentPriceText.setTextColor(textPrimary);
+        });
+        holder.changePercentText.post(() -> {
+            holder.changePercentText.setText(
+                    String.format(Locale.US, "%s%.2f%% Today", dailySign, Math.abs(dailyChangePercent)));
+            holder.changePercentText.setTextColor(dailyGainLossColor);
+        });
+        holder.changePercentDetailText.post(() -> {
+            holder.changePercentDetailText.setText(
+                    String.format(Locale.US, "%s%.2f%% vs Entry", totalSign, Math.abs(totalChangePercent)));
+            holder.changePercentDetailText.setTextColor(gainLossColor);
+        });
+        if (stock.tradeAmount > 0) {
+            holder.pnlDollarText.post(() -> {
+                String sign = pnlDollar >= 0 ? "+" : "-";
+                holder.pnlDollarText.setText(
+                        String.format(Locale.US, "%s$%.2f", sign, Math.abs(pnlDollar)));
+                holder.pnlDollarText.setTextColor(pnlDollar >= 0 ? colorGain : colorLoss);
+            });
+        } else {
+            holder.pnlDollarText.post(() -> {
+                holder.pnlDollarText.setText("-");
+                holder.pnlDollarText.setTextColor(colorNeutral);
+            });
+        }
+    }
+
     // ========================= EDIT DIALOG =========================
 
     private void showEditDialog(Context context, StockData stock) {
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setTitle("\u270f\ufe0f Edit " + stock.symbol);
+        boolean isCrypto = CryptoHelper.isCryptoSymbol(stock.symbol);
+        builder.setTitle("\u270f\ufe0f Edit " + (isCrypto ? CryptoHelper.getShortName(stock.symbol) : stock.symbol));
 
         LinearLayout layout = new LinearLayout(context);
         layout.setOrientation(LinearLayout.VERTICAL);
@@ -221,7 +277,11 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         builder.setView(layout);
 
         builder.setPositiveButton("Save", (dialog, which) -> {
-            String newSymbol = etSymbol.getText().toString().trim().toUpperCase(Locale.US);
+            String rawSym = etSymbol.getText().toString().trim();
+            // אם קריפטו שומר פורמט BINANCE:XXX, אחרת uppercase
+            String newSymbol = CryptoHelper.isCryptoSymbol(rawSym)
+                    ? rawSym.trim()
+                    : rawSym.toUpperCase(Locale.US);
             if (newSymbol.isEmpty()) {
                 Toast.makeText(context, "Ticker cannot be empty", Toast.LENGTH_SHORT).show();
                 return;
@@ -270,28 +330,6 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         return et;
     }
 
-    // ========================= FETCH QUOTE (Finnhub /quote) =========================
-    private void fetchQuote(String symbol, QuoteCallback callback) {
-        String url = "https://finnhub.io/api/v1/quote?symbol=" + symbol + "&token=" + API_KEY;
-        client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
-            @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                callback.onError(e);
-            }
-            @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                try {
-                    String body = response.body().string();
-                    JSONObject obj = new JSONObject(body);
-                    float currentPrice       = (float) obj.getDouble("c");
-                    float dailyChangePercent = (float) obj.getDouble("dp");
-                    if (currentPrice == 0f) { callback.onError(new Exception("price=0")); return; }
-                    callback.onQuoteReceived(currentPrice, dailyChangePercent);
-                } catch (Exception e) {
-                    callback.onError(e);
-                }
-            }
-        });
-    }
-
     public interface QuoteCallback {
         void onQuoteReceived(float currentPrice, float dailyChangePercent);
         void onError(Exception e);
@@ -328,8 +366,10 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
     public void refreshPrices() { notifyDataSetChanged(); }
 
     private void showSellPriceDialog(Context context, String symbol) {
+        boolean isCrypto = CryptoHelper.isCryptoSymbol(symbol);
+        String displaySym = isCrypto ? CryptoHelper.getShortName(symbol) : symbol;
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setTitle("Close Position - " + symbol);
+        builder.setTitle("Close Position - " + displaySym);
         final EditText input = new EditText(context);
         input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         input.setHint("Exit price ($)");
