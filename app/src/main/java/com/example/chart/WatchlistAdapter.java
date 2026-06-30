@@ -5,6 +5,7 @@ import android.os.Build;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -124,6 +125,9 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         StockWatchData stock = displayList.get(position);
         Context ctx = holder.itemView.getContext();
 
+        // שמירת הסמבול על ViewHolder — קריטי למניעת עדכון על ה-ViewHolder הלא נכון אחרי גלילה
+        holder.itemView.setTag(stock.symbol);
+
         int textPrimary   = ctx.getColor(R.color.text_primary);
         int textSecondary = ctx.getColor(R.color.text_secondary);
         int colorGain     = ctx.getColor(R.color.gain);
@@ -151,7 +155,9 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
 
             if (!loading.contains(stock.symbol)) {
                 loading.add(stock.symbol);
-                fetchQuote(stock, holder, colorPrimary, textSecondary, colorGain, colorLoss, ctx);
+                // שמירת סימבול להשוואה לאחר קבלת תשובה
+                final String targetSymbol = stock.symbol;
+                fetchQuote(stock, holder, targetSymbol, colorPrimary, textSecondary, colorGain, colorLoss, ctx);
             }
         }
 
@@ -163,18 +169,30 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             holder.alertText.setTextColor(textSecondary);
         }
 
+        // כפתור פתיחת גרף
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onStockClick(stock.symbol);
         });
-        holder.itemView.setOnLongClickListener(v -> {
-            if (listener != null) listener.onStockDelete(stock.symbol);
-            return true;
-        });
+
+        // כפתור מחיקה
+        if (holder.btnDelete != null) {
+            holder.btnDelete.setOnClickListener(v -> {
+                if (listener != null) listener.onStockDelete(stock.symbol);
+            });
+        }
+
+        // כפתור התראה
+        if (holder.btnAlert != null) {
+            holder.btnAlert.setOnClickListener(v -> {
+                if (listener != null) listener.onSetPriceAlert(stock);
+            });
+        }
     }
 
     @Override public int getItemCount() { return displayList.size(); }
 
     private void fetchQuote(StockWatchData stock, ViewHolder holder,
+                            String targetSymbol,
                             int colorPrimary, int textSecondary,
                             int colorGain, int colorLoss, Context ctx) {
         String url;
@@ -185,7 +203,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                     + "&resolution=D&from=" + from + "&to=" + to
                     + "&token=" + FINNHUB_KEY;
         } else {
-            // /quote מחזיר גם את מחיר הסגירה האחרון (pc) בנוסף למחיר הנוכחי (c)
             url = "https://finnhub.io/api/v1/quote?symbol=" + stock.symbol
                     + "&token=" + FINNHUB_KEY;
         }
@@ -195,12 +212,9 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 loading.remove(stock.symbol);
-                holder.priceText.post(() -> {
-                    holder.priceText.setText("$\u2014");
-                    holder.priceText.setTextColor(textSecondary);
-                    holder.dayChangeText.setText("\u2014");
-                    holder.dayChangeText.setTextColor(textSecondary);
-                });
+                // בדיקה שה-ViewHolder עדיין מציג את אותו סמבול
+                if (!targetSymbol.equals(holder.itemView.getTag())) return;
+                showDash(holder, textSecondary);
             }
 
             @Override
@@ -214,27 +228,32 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                     float price, dayChange;
 
                     if (isCrypto(stock.symbol)) {
-                        // קריפטו: /crypto/candle
                         if (!"ok".equals(json.optString("s"))) {
-                            showDash(holder, textSecondary);
+                            if (targetSymbol.equals(holder.itemView.getTag()))
+                                showDash(holder, textSecondary);
                             return;
                         }
                         JSONArray closes = json.getJSONArray("c");
                         int len = closes.length();
-                        if (len == 0) { showDash(holder, textSecondary); return; }
+                        if (len == 0) {
+                            if (targetSymbol.equals(holder.itemView.getTag()))
+                                showDash(holder, textSecondary);
+                            return;
+                        }
                         price = (float) closes.getDouble(len - 1);
                         float prev = len > 1 ? (float) closes.getDouble(len - 2) : price;
                         dayChange = prev > 0 ? ((price - prev) / prev) * 100f : 0f;
                     } else {
-                        // מניה: /quote
-                        // c = מחיר נוכחי, pc = מחיר סגירה אחרון
-                        // כשהשוק סגור c=0, משתמשים ב-pc
                         float c  = (float) json.optDouble("c",  0);
                         float pc = (float) json.optDouble("pc", 0);
                         float dp = (float) json.optDouble("dp", 0);
-                        price = (c > 0) ? c : pc;  // אם שוק סגור, השתמש במחיר הסגירה
+                        price     = (c > 0) ? c : pc;
                         dayChange = (c > 0) ? dp : 0f;
-                        if (price <= 0) { showDash(holder, textSecondary); return; }
+                        if (price <= 0) {
+                            if (targetSymbol.equals(holder.itemView.getTag()))
+                                showDash(holder, textSecondary);
+                            return;
+                        }
                     }
 
                     // שמירה ב-cache
@@ -242,17 +261,24 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                     stock.currentPrice = price;
                     stock.dayChange    = dayChange;
 
+                    // עדכון UI רק אם ה-ViewHolder עדיין שייך לאותו סמבול
+                    final float fPrice = price;
+                    final float fChange = dayChange;
                     holder.priceText.post(() -> {
-                        holder.priceText.setText(String.format(Locale.US, "$%.2f", price));
+                        if (!targetSymbol.equals(holder.itemView.getTag())) return;
+                        holder.priceText.setText(String.format(Locale.US, "$%.2f", fPrice));
                         holder.priceText.setTextColor(colorPrimary);
                     });
-                    holder.dayChangeText.post(() ->
-                            bindChange(holder.dayChangeText, dayChange, colorGain, colorLoss));
+                    holder.dayChangeText.post(() -> {
+                        if (!targetSymbol.equals(holder.itemView.getTag())) return;
+                        bindChange(holder.dayChangeText, fChange, colorGain, colorLoss);
+                    });
 
                     processAlert(stock, price, ctx);
 
                 } catch (Exception e) {
-                    showDash(holder, textSecondary);
+                    if (targetSymbol.equals(holder.itemView.getTag()))
+                        showDash(holder, textSecondary);
                 }
             }
         });
@@ -326,13 +352,17 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView symbolText, priceText, dayChangeText, alertText;
+        TextView    symbolText, priceText, dayChangeText, alertText;
+        ImageButton btnDelete, btnAlert;
+
         ViewHolder(@NonNull View itemView) {
             super(itemView);
             symbolText    = itemView.findViewById(R.id.stockSymbolText);
             priceText     = itemView.findViewById(R.id.stockPriceText);
             dayChangeText = itemView.findViewById(R.id.stockDayChangeText);
             alertText     = itemView.findViewById(R.id.stockAlertText);
+            btnDelete     = itemView.findViewById(R.id.btnDeleteStock);
+            btnAlert      = itemView.findViewById(R.id.btnSetAlert);
         }
     }
 }
