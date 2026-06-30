@@ -59,7 +59,6 @@ public class WatchlistFragment extends Fragment {
         watchlistRef = FirebaseDatabase.getInstance()
                 .getReference("users").child(user.getUid()).child("watchlist-stocks");
 
-        // יצירת Adapter ללא רשימה - מתעדכן דרך updateData()
         adapter = new WatchlistAdapter(new WatchlistAdapter.OnWatchStockClickListener() {
             @Override public void onStockClick(String symbol)       { openChart(symbol); }
             @Override public void onStockDelete(String symbol)      { deleteStock(symbol); }
@@ -74,7 +73,6 @@ public class WatchlistFragment extends Fragment {
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(adapter);
 
-        // ---- Add stock ----
         TextInputEditText stockInput = v.findViewById(R.id.stockInput);
         MaterialButton   addStockBtn = v.findViewById(R.id.addStockBtn);
         MaterialButton   btnRefresh  = v.findViewById(R.id.btnRefreshWatchlist);
@@ -82,13 +80,19 @@ public class WatchlistFragment extends Fragment {
         if (addStockBtn != null) {
             addStockBtn.setOnClickListener(view -> {
                 if (stockInput == null) return;
-                String symbol = stockInput.getText().toString().trim().toUpperCase();
+                String raw    = stockInput.getText().toString().trim();
+                // קריפטו (BINANCE:BTCUSDT) - שמור כמות שהוא; מניה - toUpperCase
+                String symbol = raw.contains(":")
+                        ? raw.trim()
+                        : raw.toUpperCase();
                 if (symbol.isEmpty()) {
                     Toast.makeText(getContext(), "הזן סימבול", Toast.LENGTH_SHORT).show();
                     return;
                 }
+                // Firebase לא מאפשר ':' במפתח - מחליפים ב-'_'
+                String firebaseKey = symbol.replace(":", "_");
                 StockWatchData stock = new StockWatchData(symbol, 0f, 0f);
-                watchlistRef.child(symbol).setValue(stock);
+                watchlistRef.child(firebaseKey).setValue(stock);
                 stockInput.setText("");
             });
         }
@@ -97,7 +101,6 @@ public class WatchlistFragment extends Fragment {
             btnRefresh.setOnClickListener(view -> adapter.refresh());
         }
 
-        // ---- Search ----
         TextInputEditText searchInput = v.findViewById(R.id.searchInput);
         if (searchInput != null) {
             searchInput.addTextChangedListener(new TextWatcher() {
@@ -109,7 +112,6 @@ public class WatchlistFragment extends Fragment {
             });
         }
 
-        // ---- Chips: Default / Gainers / Losers / A-Z ----
         ChipGroup sortChipGroup = v.findViewById(R.id.sortChipGroup);
         if (sortChipGroup != null) {
             sortChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
@@ -122,15 +124,23 @@ public class WatchlistFragment extends Fragment {
             });
         }
 
-        // ---- Firebase listener ----
+        // Firebase listener
         watchlistRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                // בונים רשימה חדשה לגמרי - לא נוגעים ב-originalList של האדפטר ישירות
                 List<StockWatchData> fresh = new ArrayList<>();
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     StockWatchData data = ds.getValue(StockWatchData.class);
-                    if (data != null) fresh.add(data);
+                    if (data == null) continue;
+
+                    // אם symbol לא נשמר כשדה ב-Firebase, נקח אותו מהמפתח
+                    // מחזירים ':' למקום '_' לצורכי קריפטו
+                    if (data.symbol == null || data.symbol.isEmpty()) {
+                        String key = ds.getKey();
+                        data.symbol = (key != null) ? key.replace("_", ":") : "";
+                    }
+
+                    if (!data.symbol.isEmpty()) fresh.add(data);
                 }
                 adapter.updateData(fresh);
             }
@@ -157,7 +167,8 @@ public class WatchlistFragment extends Fragment {
 
     private void deleteStock(String symbol) {
         if (watchlistRef == null) return;
-        watchlistRef.child(symbol).removeValue();
+        String firebaseKey = symbol.replace(":", "_");
+        watchlistRef.child(firebaseKey).removeValue();
         if (getContext() != null)
             Toast.makeText(getContext(), "המניה הוסרה", Toast.LENGTH_SHORT).show();
     }
@@ -174,17 +185,19 @@ public class WatchlistFragment extends Fragment {
                 .setPositiveButton("שמור", (d, w) -> {
                     try {
                         float target = Float.parseFloat(input.getText().toString().trim());
-                        watchlistRef.child(stock.symbol).child("alertTargetPrice").setValue(target);
-                        watchlistRef.child(stock.symbol).child("alertEnabled").setValue(true);
-                        watchlistRef.child(stock.symbol).child("alertTriggered").setValue(false);
+                        String firebaseKey = stock.symbol.replace(":", "_");
+                        watchlistRef.child(firebaseKey).child("alertTargetPrice").setValue(target);
+                        watchlistRef.child(firebaseKey).child("alertEnabled").setValue(true);
+                        watchlistRef.child(firebaseKey).child("alertTriggered").setValue(false);
                         Toast.makeText(getContext(), "נשמרה התראת מחיר", Toast.LENGTH_SHORT).show();
                     } catch (Exception e) {
                         Toast.makeText(getContext(), "מספר לא תקין", Toast.LENGTH_SHORT).show();
                     }
                 })
                 .setNeutralButton("כבה", (d, w) -> {
-                    watchlistRef.child(stock.symbol).child("alertEnabled").setValue(false);
-                    watchlistRef.child(stock.symbol).child("alertTriggered").setValue(false);
+                    String firebaseKey = stock.symbol.replace(":", "_");
+                    watchlistRef.child(firebaseKey).child("alertEnabled").setValue(false);
+                    watchlistRef.child(firebaseKey).child("alertTriggered").setValue(false);
                     Toast.makeText(getContext(), "ההתראה כובתה", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("ביטול", null).show();
