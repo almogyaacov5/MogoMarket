@@ -2,6 +2,7 @@ package com.example.chart;
 
 import android.content.Context;
 import android.os.Build;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -45,16 +46,15 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         void onAlertStateChanged(String symbol, boolean triggered);
     }
 
-    private static final String FINNHUB_KEY = "d0omel1r01qua2guc4ggd0omel1r01qua2guc4h0";
+    private static final String TAG          = "FINNHUB";
+    private static final String FINNHUB_KEY  = "d0omel1r01qua2guc4ggd0omel1r01qua2guc4h0";
 
     private final List<StockWatchData> masterList  = new ArrayList<>();
     private final List<StockWatchData> displayList = new ArrayList<>();
     private final OnWatchStockClickListener listener;
     private final OkHttpClient client = new OkHttpClient();
 
-    // Cache: symbol -> [price, dayChange]
     private final Map<String, float[]> quoteCache = new HashMap<>();
-    // סמבולים שכרגע בטעינה
     private final Set<String> loading = new HashSet<>();
 
     private String currentSearch = "";
@@ -125,7 +125,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         StockWatchData stock = displayList.get(position);
         Context ctx = holder.itemView.getContext();
 
-        // שמירת הסמבול על ViewHolder — קריטי למניעת עדכון על ה-ViewHolder הלא נכון אחרי גלילה
         holder.itemView.setTag(stock.symbol);
 
         int textPrimary   = ctx.getColor(R.color.text_primary);
@@ -140,7 +139,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         holder.symbolText.setText(displaySymbol);
         holder.symbolText.setTextColor(textPrimary);
 
-        // אם יש cache — מציגים מיד
         float[] cached = quoteCache.get(stock.symbol);
         if (cached != null) {
             stock.currentPrice = cached[0];
@@ -155,7 +153,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
 
             if (!loading.contains(stock.symbol)) {
                 loading.add(stock.symbol);
-                // שמירת סימבול להשוואה לאחר קבלת תשובה
                 final String targetSymbol = stock.symbol;
                 fetchQuote(stock, holder, targetSymbol, colorPrimary, textSecondary, colorGain, colorLoss, ctx);
             }
@@ -169,19 +166,16 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             holder.alertText.setTextColor(textSecondary);
         }
 
-        // כפתור פתיחת גרף
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onStockClick(stock.symbol);
         });
 
-        // כפתור מחיקה
         if (holder.btnDelete != null) {
             holder.btnDelete.setOnClickListener(v -> {
                 if (listener != null) listener.onStockDelete(stock.symbol);
             });
         }
 
-        // כפתור התראה
         if (holder.btnAlert != null) {
             holder.btnAlert.setOnClickListener(v -> {
                 if (listener != null) listener.onSetPriceAlert(stock);
@@ -207,12 +201,16 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                     + "&token=" + FINNHUB_KEY;
         }
 
+        // לוג של ה-URL שנשלח
+        Log.d(TAG, "[בקשה] " + stock.symbol + " -> " + url);
+
         Request request = new Request.Builder().url(url).build();
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 loading.remove(stock.symbol);
-                // בדיקה שה-ViewHolder עדיין מציג את אותו סמבול
+                // לוג שגיאת רשת
+                Log.e(TAG, "[כשלון-רשת] " + stock.symbol + " -> " + e.getMessage());
                 if (!targetSymbol.equals(holder.itemView.getTag())) return;
                 showDash(holder, textSecondary);
             }
@@ -220,15 +218,37 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 loading.remove(stock.symbol);
-                if (!response.isSuccessful() || response.body() == null) return;
+
+                // לוג קוד תשובה
+                Log.d(TAG, "[קוד] " + stock.symbol + " -> HTTP " + response.code());
+
+                if (response.body() == null) {
+                    Log.w(TAG, "[גוף ריק] " + stock.symbol);
+                    if (!targetSymbol.equals(holder.itemView.getTag())) return;
+                    showDash(holder, textSecondary);
+                    return;
+                }
+
+                String body = response.body().string();
+
+                // לוג ה-JSON המלא שהתקבל
+                Log.d(TAG, "[תשובה] " + stock.symbol + " -> " + body);
+
+                if (!response.isSuccessful()) {
+                    Log.w(TAG, "[לא מוצלח] " + stock.symbol + " HTTP " + response.code() + " body=" + body);
+                    if (!targetSymbol.equals(holder.itemView.getTag())) return;
+                    showDash(holder, textSecondary);
+                    return;
+                }
+
                 try {
-                    String body = response.body().string();
                     JSONObject json = new JSONObject(body);
 
                     float price, dayChange;
 
                     if (isCrypto(stock.symbol)) {
                         if (!"ok".equals(json.optString("s"))) {
+                            Log.w(TAG, "[קריפטו-סטאטוס לא ok] " + stock.symbol + " s=" + json.optString("s"));
                             if (targetSymbol.equals(holder.itemView.getTag()))
                                 showDash(holder, textSecondary);
                             return;
@@ -236,6 +256,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                         JSONArray closes = json.getJSONArray("c");
                         int len = closes.length();
                         if (len == 0) {
+                            Log.w(TAG, "[קריפטו-ריק] " + stock.symbol);
                             if (targetSymbol.equals(holder.itemView.getTag()))
                                 showDash(holder, textSecondary);
                             return;
@@ -247,22 +268,26 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                         float c  = (float) json.optDouble("c",  0);
                         float pc = (float) json.optDouble("pc", 0);
                         float dp = (float) json.optDouble("dp", 0);
+                        Log.d(TAG, "[quote-fields] " + stock.symbol
+                                + " c=" + c + " pc=" + pc + " dp=" + dp);
                         price     = (c > 0) ? c : pc;
                         dayChange = (c > 0) ? dp : 0f;
                         if (price <= 0) {
+                            Log.w(TAG, "[מחיר אפס] " + stock.symbol + " c=" + c + " pc=" + pc);
                             if (targetSymbol.equals(holder.itemView.getTag()))
                                 showDash(holder, textSecondary);
                             return;
                         }
                     }
 
-                    // שמירה ב-cache
+                    Log.d(TAG, "[עדכון UI] " + stock.symbol
+                            + " price=" + price + " change=" + dayChange + "%");
+
                     quoteCache.put(stock.symbol, new float[]{price, dayChange});
                     stock.currentPrice = price;
                     stock.dayChange    = dayChange;
 
-                    // עדכון UI רק אם ה-ViewHolder עדיין שייך לאותו סמבול
-                    final float fPrice = price;
+                    final float fPrice  = price;
                     final float fChange = dayChange;
                     holder.priceText.post(() -> {
                         if (!targetSymbol.equals(holder.itemView.getTag())) return;
@@ -277,6 +302,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                     processAlert(stock, price, ctx);
 
                 } catch (Exception e) {
+                    Log.e(TAG, "[שגיאת JSON] " + stock.symbol + " -> " + e.getMessage());
                     if (targetSymbol.equals(holder.itemView.getTag()))
                         showDash(holder, textSecondary);
                 }
