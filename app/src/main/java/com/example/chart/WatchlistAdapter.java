@@ -23,9 +23,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -49,10 +51,10 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
     private final OnWatchStockClickListener listener;
     private final OkHttpClient client = new OkHttpClient();
 
-    // Cache: symbol -> [price, dayChange] — מונע קריאות כפולות בגלילה
+    // Cache: symbol -> [price, dayChange]
     private final Map<String, float[]> quoteCache = new HashMap<>();
-    // סמבולים שכרגע בטעינה — מונע קריאות מקבילות לאותו סמבול
-    private final java.util.Set<String> loading = new java.util.HashSet<>();
+    // סמבולים שכרגע בטעינה
+    private final Set<String> loading = new HashSet<>();
 
     private String currentSearch = "";
     private String currentFilter = "default";
@@ -72,7 +74,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
     }
 
     public void refresh() {
-        // מנקה cache כדי לאלץ טעינה מחדש
         quoteCache.clear();
         loading.clear();
         applyFilterAndSearch();
@@ -148,7 +149,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             holder.priceText.setTextColor(textSecondary);
             holder.dayChangeText.setText("");
 
-            // אם כבר בטעינה — לא שולחים בקשה כפולה
             if (!loading.contains(stock.symbol)) {
                 loading.add(stock.symbol);
                 fetchQuote(stock, holder, colorPrimary, textSecondary, colorGain, colorLoss, ctx);
@@ -185,6 +185,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                     + "&resolution=D&from=" + from + "&to=" + to
                     + "&token=" + FINNHUB_KEY;
         } else {
+            // /quote מחזיר גם את מחיר הסגירה האחרון (pc) בנוסף למחיר הנוכחי (c)
             url = "https://finnhub.io/api/v1/quote?symbol=" + stock.symbol
                     + "&token=" + FINNHUB_KEY;
         }
@@ -211,20 +212,29 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                     JSONObject json = new JSONObject(body);
 
                     float price, dayChange;
+
                     if (isCrypto(stock.symbol)) {
                         // קריפטו: /crypto/candle
-                        if (!"ok".equals(json.optString("s"))) return;
+                        if (!"ok".equals(json.optString("s"))) {
+                            showDash(holder, textSecondary);
+                            return;
+                        }
                         JSONArray closes = json.getJSONArray("c");
                         int len = closes.length();
-                        if (len == 0) return;
+                        if (len == 0) { showDash(holder, textSecondary); return; }
                         price = (float) closes.getDouble(len - 1);
                         float prev = len > 1 ? (float) closes.getDouble(len - 2) : price;
                         dayChange = prev > 0 ? ((price - prev) / prev) * 100f : 0f;
                     } else {
                         // מניה: /quote
-                        price     = (float) json.getDouble("c");
-                        dayChange = (float) json.getDouble("dp");
-                        if (price <= 0) return;
+                        // c = מחיר נוכחי, pc = מחיר סגירה אחרון
+                        // כשהשוק סגור c=0, משתמשים ב-pc
+                        float c  = (float) json.optDouble("c",  0);
+                        float pc = (float) json.optDouble("pc", 0);
+                        float dp = (float) json.optDouble("dp", 0);
+                        price = (c > 0) ? c : pc;  // אם שוק סגור, השתמש במחיר הסגירה
+                        dayChange = (c > 0) ? dp : 0f;
+                        if (price <= 0) { showDash(holder, textSecondary); return; }
                     }
 
                     // שמירה ב-cache
@@ -242,12 +252,20 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                     processAlert(stock, price, ctx);
 
                 } catch (Exception e) {
-                    holder.priceText.post(() -> {
-                        holder.priceText.setText("$\u2014");
-                        holder.priceText.setTextColor(textSecondary);
-                    });
+                    showDash(holder, textSecondary);
                 }
             }
+        });
+    }
+
+    private void showDash(ViewHolder holder, int textSecondary) {
+        holder.priceText.post(() -> {
+            holder.priceText.setText("$\u2014");
+            holder.priceText.setTextColor(textSecondary);
+        });
+        holder.dayChangeText.post(() -> {
+            holder.dayChangeText.setText("\u2014");
+            holder.dayChangeText.setTextColor(textSecondary);
         });
     }
 
