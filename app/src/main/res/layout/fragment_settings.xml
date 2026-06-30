@@ -148,7 +148,6 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
-                    <!-- Label + current state text -->
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -163,7 +162,6 @@
                             android:textSize="15sp"
                             android:textStyle="bold" />
 
-                        <!-- מציג את המצב הנוכחי -->
                         <TextView
                             android:id="@+id/tvThemeStatus"
                             android:layout_width="wrap_content"
@@ -186,7 +184,6 @@
                         android:gravity="center_vertical"
                         android:padding="3dp">
 
-                        <!-- כפתור שמש (בהיר) -->
                         <LinearLayout
                             android:id="@+id/btnLightMode"
                             android:layout_width="0dp"
@@ -212,7 +209,6 @@
 
                         </LinearLayout>
 
-                        <!-- כפתור ירח (כהה) -->
                         <LinearLayout
                             android:id="@+id/btnDarkMode"
                             android:layout_width="0dp"
@@ -239,6 +235,73 @@
                         </LinearLayout>
 
                     </LinearLayout>
+
+                </LinearLayout>
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Navigation Settings Card -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="4dp"
+            app:cardUseCompatPadding="true"
+            app:cardBackgroundColor="?attr/colorSurface">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="&#127987;  Navigation / ניווט"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="14dp" />
+
+                <!-- Watchlist → Chart Toggle -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="לחיצה על מניה עוברת לגרף"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="לחיצה על מניה ברשימת המעקב תעבור לטאב הגרף"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textSize="12sp"
+                            android:layout_marginTop="2dp" />
+
+                    </LinearLayout>
+
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/switchWatchlistNav"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true" />
 
                 </LinearLayout>
 
