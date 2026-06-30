@@ -30,6 +30,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 
 import okhttp3.Call;
@@ -54,7 +55,6 @@ public class PortfolioAddStockFragment extends Fragment {
     private String latestQuery = "";
     private boolean isManualSelection = false;
 
-    // שם החברה שנשמר לאחר בחירה מה-AutoComplete
     private String selectedCompanyName = "";
 
     @Nullable
@@ -79,9 +79,7 @@ public class PortfolioAddStockFragment extends Fragment {
                 .child("portfolio-stocks");
 
         setupAutoComplete();
-
         btnAddStock.setOnClickListener(view -> addStock());
-
         return v;
     }
 
@@ -101,29 +99,26 @@ public class PortfolioAddStockFragment extends Fragment {
             ChartFragment.StockSuggestion sel = suggestionAdapter.getItem(position);
             if (sel == null || sel.symbol == null) return;
 
-            String picked = sel.symbol.trim().toUpperCase(Locale.US);
+            // קריפטו: שמור בפורמט BINANCE:BTCUSDT. מניה: UPPERCASE
+            String picked = CryptoHelper.isCryptoSymbol(sel.symbol)
+                    ? sel.symbol.trim()
+                    : sel.symbol.trim().toUpperCase(Locale.US);
 
-            // שמור את שם החברה מהסאגשן שנבחר
             selectedCompanyName = (sel.name != null) ? sel.name.trim() : "";
 
             isManualSelection = true;
             editTicker.setText(picked);
             editTicker.setSelection(picked.length());
             editTicker.dismissDropDown();
-
             editBuyPrice.requestFocus();
-
             editTicker.postDelayed(() -> isManualSelection = false, 300);
         });
 
         editTicker.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void afterTextChanged(Editable s) {}
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
                 if (isManualSelection) return;
-                // אם המשתמש הקליד ידנית (לא בחר מהרשימה) - נקה את שם החברה
                 selectedCompanyName = "";
                 String q = s == null ? "" : s.toString().trim();
                 scheduleSearch(q);
@@ -134,14 +129,9 @@ public class PortfolioAddStockFragment extends Fragment {
     private void scheduleSearch(String q) {
         if (pendingSearch != null) searchHandler.removeCallbacks(pendingSearch);
         latestQuery = q;
-
-        if (q.length() < 1) {
-            clearSuggestions();
-            return;
-        }
-
+        if (q.length() < 1) { clearSuggestions(); return; }
         pendingSearch = () -> fetchSuggestions(q);
-        searchHandler.postDelayed(pendingSearch, 50);
+        searchHandler.postDelayed(pendingSearch, 300);
     }
 
     private void clearSuggestions() {
@@ -153,81 +143,96 @@ public class PortfolioAddStockFragment extends Fragment {
     }
 
     private void fetchSuggestions(String query) {
+        // 1. קריפטו מקומי — מיידי
+        List<CryptoHelper.CryptoSuggestion> cryptoList = CryptoHelper.searchLocal(query);
+        ArrayList<ChartFragment.StockSuggestion> localResults = new ArrayList<>();
+        for (CryptoHelper.CryptoSuggestion cs : cryptoList) {
+            localResults.add(new ChartFragment.StockSuggestion(
+                    cs.binanceSymbol, cs.fullName + " (Crypto)", "Crypto"));
+        }
+        if (getActivity() != null && !localResults.isEmpty()) {
+            getActivity().runOnUiThread(() -> {
+                if (!query.equals(latestQuery) || suggestionAdapter == null) return;
+                suggestionAdapter.clear();
+                suggestionAdapter.addAll(localResults);
+                suggestionAdapter.notifyDataSetChanged();
+                if (editTicker != null && editTicker.hasFocus())
+                    editTicker.post(() -> editTicker.showDropDown());
+            });
+        }
+
+        // 2. מניות מ-TwelveData — ברקע
         try {
             String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name());
-            suggestionAdapter.clear();
-            suggestionAdapter.notifyDataSetChanged();
-
             HashSet<String> added = new HashSet<>();
-            fetchFromExchange(encoded, query, "NYSE",    added);
-            fetchFromExchange(encoded, query, "NASDAQ", added);
+            fetchFromExchange(encoded, query, "NYSE",   added, localResults);
+            fetchFromExchange(encoded, query, "NASDAQ", added, localResults);
         } catch (Exception ignored) {}
     }
 
     private void fetchFromExchange(String encoded, String originalQuery,
-                                   String exchange, HashSet<String> added) {
+                                   String exchange, HashSet<String> added,
+                                   List<ChartFragment.StockSuggestion> cryptoBase) {
         String url = "https://api.twelvedata.com/symbol_search?symbol=" + encoded
                 + "&outputsize=20&country=US&exchange=" + exchange
                 + "&apikey=" + API_KEY;
 
         client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {}
-
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+            @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {}
+            @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (!response.isSuccessful() || response.body() == null) return;
-                ArrayList<ChartFragment.StockSuggestion> list = new ArrayList<>();
-
+                ArrayList<ChartFragment.StockSuggestion> combined = new ArrayList<>(cryptoBase);
                 try {
                     JSONObject json = new JSONObject(response.body().string());
-                    JSONArray data = json.optJSONArray("data");
-                    if (data == null) return;
-
-                    for (int i = 0; i < data.length(); i++) {
-                        JSONObject o = data.optJSONObject(i);
-                        if (o == null) continue;
-
-                        String sym = o.optString("symbol", "").trim();
-                        if (sym.isEmpty()) continue;
-
-                        String ex = o.optString("exchange", "");
-                        if (!"NYSE".equalsIgnoreCase(ex) && !"NASDAQ".equalsIgnoreCase(ex)) continue;
-
-                        synchronized (added) {
-                            if (added.contains(sym)) continue;
-                            added.add(sym);
+                    JSONArray data  = json.optJSONArray("data");
+                    if (data != null) {
+                        for (int i = 0; i < data.length(); i++) {
+                            JSONObject o = data.optJSONObject(i);
+                            if (o == null) continue;
+                            String sym = o.optString("symbol", "").trim();
+                            if (sym.isEmpty()) continue;
+                            String ex = o.optString("exchange", "");
+                            if (!"NYSE".equalsIgnoreCase(ex) && !"NASDAQ".equalsIgnoreCase(ex)) continue;
+                            synchronized (added) {
+                                if (added.contains(sym)) continue;
+                                added.add(sym);
+                            }
+                            String name = o.optString("instrument_name", "");
+                            combined.add(new ChartFragment.StockSuggestion(sym, name, ex));
                         }
-
-                        String name = o.optString("instrument_name", "");
-                        list.add(new ChartFragment.StockSuggestion(sym, name, ex));
                     }
                 } catch (Exception ignored) {}
 
                 if (getActivity() == null) return;
                 getActivity().runOnUiThread(() -> {
-                    if (!originalQuery.equals(latestQuery)) return;
-                    if (suggestionAdapter == null) return;
-
-                    suggestionAdapter.addAll(list);
+                    if (!originalQuery.equals(latestQuery) || suggestionAdapter == null) return;
+                    suggestionAdapter.clear();
+                    suggestionAdapter.addAll(combined);
                     suggestionAdapter.notifyDataSetChanged();
-
-                    if (editTicker != null && editTicker.hasFocus() && suggestionAdapter.getCount() > 0) {
+                    if (editTicker != null && editTicker.hasFocus() && suggestionAdapter.getCount() > 0)
                         editTicker.post(() -> editTicker.showDropDown());
-                    }
                 });
             }
         });
     }
 
-    // ==================== הוספת מניה ====================
+    // ==================== הוספת מניה/קריפטו ====================
 
     private void addStock() {
-        String ticker      = editTicker.getText().toString().trim().toUpperCase();
-        String priceStr    = editBuyPrice.getText().toString().trim();
-        String targetStr   = editTargetPrice.getText().toString().trim();
-        String amountStr   = editTradeAmount.getText().toString().trim();
-        String notes       = editNotes.getText().toString().trim();
+        String ticker  = editTicker.getText().toString().trim();
+        String priceStr  = editBuyPrice.getText().toString().trim();
+        String targetStr = editTargetPrice.getText().toString().trim();
+        String amountStr = editTradeAmount.getText().toString().trim();
+        String notes     = editNotes.getText().toString().trim();
+
+        // קריפטו: שמור כ-BINANCE:BTCUSDT. מניה: UPPERCASE
+        if (!CryptoHelper.isCryptoSymbol(ticker)) {
+            ticker = ticker.toUpperCase(Locale.US);
+        }
+
+        // בדוק במיפוי קריפטו
+        String mapped = CryptoHelper.CRYPTO_MAP.get(ticker.toUpperCase(Locale.US));
+        if (mapped != null) ticker = mapped;
 
         if (ticker.isEmpty() || priceStr.isEmpty()) {
             Toast.makeText(getContext(), "Enter a ticker and price", Toast.LENGTH_SHORT).show();
@@ -235,18 +240,16 @@ public class PortfolioAddStockFragment extends Fragment {
         }
 
         float price;
-        try {
-            price = Float.parseFloat(priceStr);
-        } catch (NumberFormatException e) {
+        try { price = Float.parseFloat(priceStr); }
+        catch (NumberFormatException e) {
             Toast.makeText(getContext(), "Invalid price", Toast.LENGTH_SHORT).show();
             return;
         }
 
         float targetPrice = 0;
         if (!targetStr.isEmpty()) {
-            try {
-                targetPrice = Float.parseFloat(targetStr);
-            } catch (NumberFormatException e) {
+            try { targetPrice = Float.parseFloat(targetStr); }
+            catch (NumberFormatException e) {
                 Toast.makeText(getContext(), "Invalid target price", Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -254,28 +257,29 @@ public class PortfolioAddStockFragment extends Fragment {
 
         double tradeAmount = 0;
         if (!amountStr.isEmpty()) {
-            try {
-                tradeAmount = Double.parseDouble(amountStr);
-            } catch (NumberFormatException e) {
+            try { tradeAmount = Double.parseDouble(amountStr); }
+            catch (NumberFormatException e) {
                 Toast.makeText(getContext(), "Invalid trade amount", Toast.LENGTH_SHORT).show();
                 return;
             }
         }
 
-        StockData data = new StockData(ticker, price, price);
-        data.tradeAmount  = tradeAmount;
-        data.targetPrice  = targetPrice;
-        data.notes        = notes;
-        // שמור את שם החברה שזוהה אוטומטית מהחיפוש
-        data.name         = selectedCompanyName;
+        StockData data  = new StockData(ticker, price, price);
+        data.tradeAmount = tradeAmount;
+        data.targetPrice = targetPrice;
+        data.notes       = notes;
+        data.name        = selectedCompanyName;
 
-        stocksRef.child(ticker).setValue(data)
+        // Firebase key: BINANCE:BTCUSDT -> BINANCE_BTCUSDT
+        String firebaseKey = ticker.replace(":", "_");
+
+        stocksRef.child(firebaseKey).setValue(data)
                 .addOnSuccessListener(unused -> {
-                    Toast.makeText(getContext(), "מניה הוספה לתיק!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "נוסף לתיק!", Toast.LENGTH_SHORT).show();
                     if (getActivity() != null)
                         getActivity().getSupportFragmentManager().popBackStack();
                 })
                 .addOnFailureListener(e ->
-                        Toast.makeText(getContext(), "שגיאה בהוספת מניה", Toast.LENGTH_SHORT).show());
+                        Toast.makeText(getContext(), "שגיאה בהוספה", Toast.LENGTH_SHORT).show());
     }
 }
