@@ -21,8 +21,8 @@
         <!-- לוגו גדול במרכז -->
         <ImageView
             android:id="@+id/stockLogoBackground"
-            android:layout_width="220dp"
-            android:layout_height="220dp"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
             android:layout_gravity="center"
             android:alpha="0.09"
             android:scaleType="centerCrop"
