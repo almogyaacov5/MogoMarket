@@ -58,8 +58,10 @@ import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -81,6 +83,40 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private static final int COLOR_GAIN     = 0xFF00C896;
     private static final int COLOR_LOSS     = 0xFFFF4D4D;
     private static final int COLOR_FILL     = 0xFF1C6DD0;
+
+    // מיפוי קריפטו: כינויים נפוצים -> פורמט Finnhub
+    private static final Map<String, String> CRYPTO_MAP = new HashMap<>();
+    static {
+        CRYPTO_MAP.put("BTC",      "BINANCE:BTCUSDT");
+        CRYPTO_MAP.put("BTCUSD",   "BINANCE:BTCUSDT");
+        CRYPTO_MAP.put("BTCUSDT",  "BINANCE:BTCUSDT");
+        CRYPTO_MAP.put("ETH",      "BINANCE:ETHUSDT");
+        CRYPTO_MAP.put("ETHUSD",   "BINANCE:ETHUSDT");
+        CRYPTO_MAP.put("ETHUSDT",  "BINANCE:ETHUSDT");
+        CRYPTO_MAP.put("XRP",      "BINANCE:XRPUSDT");
+        CRYPTO_MAP.put("XRPUSD",   "BINANCE:XRPUSDT");
+        CRYPTO_MAP.put("SOL",      "BINANCE:SOLUSDT");
+        CRYPTO_MAP.put("SOLUSD",   "BINANCE:SOLUSDT");
+        CRYPTO_MAP.put("BNB",      "BINANCE:BNBUSDT");
+        CRYPTO_MAP.put("BNBUSD",   "BINANCE:BNBUSDT");
+        CRYPTO_MAP.put("DOGE",     "BINANCE:DOGEUSDT");
+        CRYPTO_MAP.put("DOGEUSD",  "BINANCE:DOGEUSDT");
+        CRYPTO_MAP.put("DOGEUSDT", "BINANCE:DOGEUSDT");
+        CRYPTO_MAP.put("ADA",      "BINANCE:ADAUSDT");
+        CRYPTO_MAP.put("ADAUSD",   "BINANCE:ADAUSDT");
+        CRYPTO_MAP.put("AVAX",     "BINANCE:AVAXUSDT");
+        CRYPTO_MAP.put("AVAXUSD",  "BINANCE:AVAXUSDT");
+        CRYPTO_MAP.put("DOT",      "BINANCE:DOTUSDT");
+        CRYPTO_MAP.put("DOTUSD",   "BINANCE:DOTUSDT");
+        CRYPTO_MAP.put("LINK",     "BINANCE:LINKUSDT");
+        CRYPTO_MAP.put("LINKUSD",  "BINANCE:LINKUSDT");
+        CRYPTO_MAP.put("LTC",      "BINANCE:LTCUSDT");
+        CRYPTO_MAP.put("LTCUSD",   "BINANCE:LTCUSDT");
+        CRYPTO_MAP.put("MATIC",    "BINANCE:MATICUSDT");
+        CRYPTO_MAP.put("MATICUSD", "BINANCE:MATICUSDT");
+        CRYPTO_MAP.put("UNI",      "BINANCE:UNIUSDT");
+        CRYPTO_MAP.put("UNIUSD",   "BINANCE:UNIUSDT");
+    }
 
     private boolean isDarkTheme;
     private boolean isChartDark;
@@ -800,11 +836,26 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private void openChartFromInput(String userInput) {
         String q = userInput.trim();
         if (q.isEmpty()) return;
-        // קריפטו או טיקר ישיר
-        if (q.matches("^[A-Za-z0-9.:/-]{1,30}$") && !q.contains(" ")) {
-            setSymbolAndLoad(isCryptoSymbol(q) ? q.trim() : q.toUpperCase(Locale.US));
+
+        // בדיקה במיפוי קריפטו לפני הכל
+        String upper = q.toUpperCase(Locale.US);
+        if (CRYPTO_MAP.containsKey(upper)) {
+            setSymbolAndLoad(CRYPTO_MAP.get(upper));
             return;
         }
+
+        // קריפטו בפורמט Finnhub (כבר עם נקודותיים) — BINANCE:BTCUSDT
+        if (isCryptoSymbol(q)) {
+            setSymbolAndLoad(q.trim());
+            return;
+        }
+
+        // טיקר רגיל ללא רווחים
+        if (q.matches("^[A-Za-z0-9./-]{1,20}$") && !q.contains(" ")) {
+            setSymbolAndLoad(q.toUpperCase(Locale.US));
+            return;
+        }
+
         resolveFirstMatchAndOpen(q);
     }
 
@@ -852,7 +903,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
                             if (sym.isEmpty()) continue;
 
-                            // ✅ אפשר מניות אמריקאיות + קריפטו
+                            // אפשר מניות אמריקאיות + קריפטו
                             boolean isStock  = "Common Stock".equals(type);
                             boolean isCrypto = "Crypto".equals(type);
                             if (!isStock && !isCrypto) continue;
