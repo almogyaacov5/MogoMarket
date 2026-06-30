@@ -63,7 +63,7 @@ public class SimulatorFragment extends Fragment {
 
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) {
-            if (tvResult != null) tvResult.setText("יש להתחבר כדי להשתמש בסימולטור.\nPlease log in to use the simulator.");
+            if (tvResult != null) tvResult.setText("Please log in to use the simulator.");
             if (btnRun   != null) btnRun.setEnabled(false);
             return v;
         }
@@ -83,18 +83,18 @@ public class SimulatorFragment extends Fragment {
     private void runSimulation() {
         String raw = (etAmount.getText() != null) ? etAmount.getText().toString().trim() : "";
         if (TextUtils.isEmpty(raw)) {
-            etAmount.setError("הכנס סכום להשקעה / Enter investment amount");
+            etAmount.setError("Enter investment amount");
             return;
         }
         double amount;
         try {
             amount = Double.parseDouble(raw);
         } catch (NumberFormatException e) {
-            etAmount.setError("מספר לא תקין / Invalid number");
+            etAmount.setError("Invalid number");
             return;
         }
         if (amount <= 0) {
-            etAmount.setError("הסכום חייב להיות גדול מ-0 / Amount must be greater than 0");
+            etAmount.setError("Amount must be greater than 0");
             return;
         }
 
@@ -120,9 +120,7 @@ public class SimulatorFragment extends Fragment {
                     if (tvResult != null) {
                         tvResult.setTextColor(Color.GRAY);
                         tvResult.setText(
-                            "⚠️ לא נמצאו טריידים סגורים עם נתוני מחיר.\n" +
-                            "סגור טריייד כדי להשתמש בסימולטור.\n\n" +
-                            "⚠️ No closed trades with price data found.\n" +
+                            "\u26a0\ufe0f No closed trades with price data found.\n" +
                             "Close a trade to use the simulator."
                         );
                     }
@@ -136,9 +134,7 @@ public class SimulatorFragment extends Fragment {
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 setLoading(false);
-                Toast.makeText(getContext(),
-                    "שגיאה בטעינת הטריידים / Error loading trades",
-                    Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Error loading trades", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -183,41 +179,23 @@ public class SimulatorFragment extends Fragment {
         double  diff     = r.finalAmount - r.startAmount;
         String  sign     = diff >= 0 ? "+" : "-";
 
-        // עברית
-        String modeHeb   = (mode == Mode.SEQUENTIAL) ? "🔁 רציף (טריייד אחרי טריייד)" : "⏸ מקביל (חלוקה שווה)";
-        String headerHeb = isProfit ? "✅ הייתה מרוויח!" : "❌ הייתה מפסיד!";
-        String labelHeb  = isProfit ? "📈 רווח" : "📉 הפסד";
-
-        // English
-        String modeEng   = (mode == Mode.SEQUENTIAL) ? "🔁 Sequential (trade after trade)" : "⏸ Parallel (equal split)";
-        String headerEng = isProfit ? "✅ You would have profited!" : "❌ You would have lost!";
-        String labelEng  = isProfit ? "📈 Profit" : "📉 Loss";
+        String modeStr   = (mode == Mode.SEQUENTIAL)
+                ? "\uD83D\uDD01 Sequential (trade after trade)"
+                : "\u23F8 Parallel (equal split)";
+        String header    = isProfit ? "\u2705 You would have profited!" : "\u274C You would have lost!";
+        String label     = isProfit ? "\uD83D\uDCC8 Profit" : "\uD83D\uDCC9 Loss";
 
         String text = String.format(Locale.US,
                 "%s\n" +
-                "📊 מצב:             %s\n" +
-                "💹 טריידים:          %d\n" +
-                "💵 סכום התחלתי:    $%.2f\n" +
-                "💰 סכום סופי:       $%.2f\n" +
+                "\uD83D\uDCCA Mode:             %s\n" +
+                "\uD83D\uDCB9 Trades:           %d\n" +
+                "\uD83D\uDCB5 Starting amount: $%.2f\n" +
+                "\uD83D\uDCB0 Final amount:    $%.2f\n" +
                 "%s:          %s$%.2f\n" +
-                "📊 תשואה:           %s%.2f%%\n" +
-                "\n──────────────────\n\n" +
-                "%s\n" +
-                "📊 Mode:             %s\n" +
-                "💹 Trades:           %d\n" +
-                "💵 Starting amount: $%.2f\n" +
-                "💰 Final amount:    $%.2f\n" +
-                "%s:          %s$%.2f\n" +
-                "📊 Return:           %s%.2f%%",
-                // עברית
-                headerHeb, modeHeb, r.tradeCount,
+                "\uD83D\uDCCA Return:           %s%.2f%%",
+                header, modeStr, r.tradeCount,
                 r.startAmount, r.finalAmount,
-                labelHeb, sign, Math.abs(diff),
-                sign, Math.abs(r.percent),
-                // English
-                headerEng, modeEng, r.tradeCount,
-                r.startAmount, r.finalAmount,
-                labelEng, sign, Math.abs(diff),
+                label, sign, Math.abs(diff),
                 sign, Math.abs(r.percent)
         );
 
