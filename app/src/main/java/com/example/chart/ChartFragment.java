@@ -30,6 +30,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.fragment.app.Fragment;
 
 import com.example.chart.TradingMarkerView;
@@ -81,7 +82,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private static final int COLOR_LOSS     = 0xFFFF4D4D;
     private static final int COLOR_FILL     = 0xFF1C6DD0;
 
-    private boolean isDarkTheme = true;
+    // isDarkTheme now follows the app's current night mode by default
+    private boolean isDarkTheme;
+    // independent chart-only theme toggle
+    private boolean isChartDark;
     private boolean isFullscreen = false;
 
     private CandleStickChart candleStickChart;
@@ -89,6 +93,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private AutoCompleteTextView tickerInput;
     private Button btnLoad, btnTimeFrame, btnToggleChart, btnAIAnalysis;
     private com.google.android.material.button.MaterialButton btnChartRefresh, btnExpandChart, btnExitFullscreen, btnThemeToggle, btnSettings;
+    private Button btnChartThemeToggle;
 
     private View headerSection;
     private View searchSection;
@@ -118,7 +123,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private ArrayAdapter<StockSuggestion> suggestionAdapter;
     private final Handler searchHandler = new Handler(Looper.getMainLooper());
     private Runnable pendingSearch;
-    // debounce מהיר יותר: 300ms
     private static final long SEARCH_DEBOUNCE_MS = 300;
 
     public static class StockSuggestion {
@@ -134,7 +138,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             String s  = symbol   == null ? "" : symbol;
             String n  = name     == null ? "" : name;
             if (n.isEmpty()) return s;
-            // קיצור שם ארוך מדי
             if (n.length() > 30) n = n.substring(0, 28) + "...";
             return s + "  ·  " + n;
         }
@@ -144,6 +147,12 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_chart, container, false);
+
+        // Detect current app theme (night mode)
+        int currentNightMode = getResources().getConfiguration().uiMode
+                & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
+        isDarkTheme = (currentNightMode == android.content.res.Configuration.UI_MODE_NIGHT_YES);
+        isChartDark = isDarkTheme; // chart starts aligned with app theme
 
         chartRootLayout    = v.findViewById(R.id.chartRootLayout);
         candleStickChart   = v.findViewById(R.id.stock_chart);
@@ -156,6 +165,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         btnAIAnalysis      = v.findViewById(R.id.btnAIAnalysis);
         btnThemeToggle     = v.findViewById(R.id.btnThemeToggle);
         btnSettings        = v.findViewById(R.id.btnSettings);
+        btnChartThemeToggle = v.findViewById(R.id.btnChartThemeToggle);
+
         if (btnSettings != null) {
             btnSettings.setOnClickListener(vv -> {
                 if (getActivity() instanceof MainActivity)
@@ -193,6 +204,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         setupAutoComplete();
         setupClickListeners();
         fetchStockData(symbol, interval);
+        updateChartThemeToggleLabel();
         return v;
     }
 
@@ -206,7 +218,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         if (headerSection    != null) headerSection.setBackgroundColor(cardColor);
         if (controlsSection  != null) controlsSection.setBackgroundColor(cardColor);
         if (bottomBar        != null) bottomBar.setBackgroundColor(cardColor);
-        if (chartContainer   != null) chartContainer.setBackgroundColor(cardColor);
         if (tickerText       != null) tickerText.setTextColor(textPri);
         if (timeFrameText    != null) timeFrameText.setTextColor(textSec);
         if (tickerInput      != null) {
@@ -214,24 +225,40 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             tickerInput.setTextColor(textPri);
             tickerInput.setHintTextColor(textSec);
         }
+        // chart container uses its own isChartDark theme
+        applyChartColors();
+    }
+
+    /** Apply colors only to the chart area, based on isChartDark */
+    private void applyChartColors() {
+        int chartCard = isChartDark ? DARK_CARD : LIGHT_CARD;
+        int chartSec  = isChartDark ? DARK_TEXT_SEC : LIGHT_TEXT_SEC;
+
+        if (chartContainer   != null) chartContainer.setBackgroundColor(chartCard);
         if (candleStickChart != null) {
-            candleStickChart.setBackgroundColor(cardColor);
-            candleStickChart.getXAxis().setTextColor(textSec);
-            candleStickChart.getAxisLeft().setTextColor(textSec);
+            candleStickChart.setBackgroundColor(chartCard);
+            candleStickChart.getXAxis().setTextColor(chartSec);
+            candleStickChart.getAxisLeft().setTextColor(chartSec);
             candleStickChart.invalidate();
         }
         if (lineChart != null) {
-            lineChart.setBackgroundColor(cardColor);
-            lineChart.getXAxis().setTextColor(textSec);
-            lineChart.getAxisLeft().setTextColor(textSec);
+            lineChart.setBackgroundColor(chartCard);
+            lineChart.getXAxis().setTextColor(chartSec);
+            lineChart.getAxisLeft().setTextColor(chartSec);
             lineChart.invalidate();
+        }
+    }
+
+    private void updateChartThemeToggleLabel() {
+        if (btnChartThemeToggle != null) {
+            btnChartThemeToggle.setText(isChartDark ? "\u2600\uFE0F Light Chart" : "\uD83C\uDF19 Dark Chart");
         }
     }
 
     private void setupCandleChartStyle() {
         if (candleStickChart == null) return;
-        int cardColor = isDarkTheme ? DARK_CARD : LIGHT_CARD;
-        int textSec   = isDarkTheme ? DARK_TEXT_SEC : LIGHT_TEXT_SEC;
+        int cardColor = isChartDark ? DARK_CARD : LIGHT_CARD;
+        int textSec   = isChartDark ? DARK_TEXT_SEC : LIGHT_TEXT_SEC;
 
         candleStickChart.setBackgroundColor(cardColor);
         candleStickChart.setDrawGridBackground(false);
@@ -275,8 +302,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     private void setupLineChartStyle() {
         if (lineChart == null) return;
-        int cardColor = isDarkTheme ? DARK_CARD : LIGHT_CARD;
-        int textSec   = isDarkTheme ? DARK_TEXT_SEC : LIGHT_TEXT_SEC;
+        int cardColor = isChartDark ? DARK_CARD : LIGHT_CARD;
+        int textSec   = isChartDark ? DARK_TEXT_SEC : LIGHT_TEXT_SEC;
 
         lineChart.setBackgroundColor(cardColor);
         lineChart.setDrawGridBackground(false);
@@ -355,6 +382,20 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             });
         }
         if (btnAIAnalysis != null) btnAIAnalysis.setOnClickListener(v -> analyzeWithAI());
+
+        // Chart-only theme toggle button
+        if (btnChartThemeToggle != null) {
+            btnChartThemeToggle.setOnClickListener(v -> {
+                isChartDark = !isChartDark;
+                applyChartColors();
+                // redraw datasets with updated fill alpha
+                if (!currentEntries.isEmpty()) {
+                    if (isCandleStick) updateCandleChart(currentEntries);
+                    else               updateLineChart(currentEntries);
+                }
+                updateChartThemeToggleLabel();
+            });
+        }
     }
 
     private void setupAutoComplete() {
@@ -364,7 +405,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 requireContext(),
                 android.R.layout.simple_dropdown_item_1line,
                 new ArrayList<>()) {
-            // מניעת סינון פנימי של ArrayAdapter - אנחנו מסננים בעצמנו
             @Override
             public android.widget.Filter getFilter() {
                 return new android.widget.Filter() {
@@ -384,7 +424,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         tickerInput.setAdapter(suggestionAdapter);
         tickerInput.setThreshold(1);
 
-        // בחירה מהרשימה
         tickerInput.setOnItemClickListener((parent, view, position, id) -> {
             StockSuggestion sel = suggestionAdapter.getItem(position);
             if (sel == null || sel.symbol == null || sel.symbol.trim().isEmpty()) return;
@@ -406,7 +445,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             }, 400);
         });
 
-        // הקלדה → חיפוש עם debounce
         tickerInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void afterTextChanged(Editable s) {}
@@ -424,7 +462,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         dataSet.setDecreasingColor(COLOR_LOSS);
         dataSet.setIncreasingPaintStyle(Paint.Style.FILL);
         dataSet.setDecreasingPaintStyle(Paint.Style.FILL);
-        dataSet.setShadowColor(isDarkTheme ? DARK_TEXT_SEC : LIGHT_TEXT_SEC);
+        dataSet.setShadowColor(isChartDark ? DARK_TEXT_SEC : LIGHT_TEXT_SEC);
         dataSet.setShadowWidth(1f);
         dataSet.setDrawValues(false);
         dataSet.setHighlightEnabled(true);
@@ -453,7 +491,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         ds.enableDashedHighlightLine(10f, 5f, 0f);
         ds.setDrawFilled(true);
         ds.setFillColor(COLOR_FILL);
-        ds.setFillAlpha(isDarkTheme ? 90 : 50);
+        ds.setFillAlpha(isChartDark ? 90 : 50);
         lineChart.setData(new LineData(ds));
         TradingMarkerView lineMarker = new TradingMarkerView(requireContext());
         lineMarker.setDateLabels(dateLabels);
@@ -463,9 +501,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.invalidate();
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // Yahoo Finance helpers
-    // ─────────────────────────────────────────────────────────────────
     private String[] intervalToYahoo(String interval) {
         switch (interval) {
             case "1min":   return new String[]{"1m",  "1d"};
@@ -480,12 +515,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
     }
 
-    /**
-     * פורמט תאריך לציר X:
-     * - אינטראדיי (דקות/שעות): MM/dd HH:mm
-     * - יומי/שבועי: MM/dd/yyyy  ← כולל שנה
-     * - חודשי: yyyy-MM
-     */
     private SimpleDateFormat dateFormatFor(String yahooInterval) {
         switch (yahooInterval) {
             case "1m": case "5m": case "15m": case "30m": case "1h":
@@ -493,14 +522,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             case "1mo":
                 return new SimpleDateFormat("yyyy-MM", Locale.US);
             default:
-                // 1d, 1wk - מציג יום, שבוע עם שנה
                 return new SimpleDateFormat("MM/dd/yyyy", Locale.US);
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // Main data fetch — Yahoo Finance v8
-    // ─────────────────────────────────────────────────────────────────
     private void fetchStockData(String symbol, String interval) {
         String[] yahooParams   = intervalToYahoo(interval);
         String   yahooInterval = yahooParams[0];
@@ -519,7 +544,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         client.newCall(req).enqueue(new Callback() {
             @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 if (getActivity() != null) getActivity().runOnUiThread(() ->
-                        Toast.makeText(requireContext(), "שגיאת רשת: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                        Toast.makeText(requireContext(), "Network error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
 
             @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
@@ -531,7 +556,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     JSONArray  result = chart.optJSONArray("result");
                     if (result == null || result.length() == 0) {
                         if (getActivity() != null) getActivity().runOnUiThread(() ->
-                                Toast.makeText(requireContext(), "אין נתונים עבור: " + symbol, Toast.LENGTH_SHORT).show());
+                                Toast.makeText(requireContext(), "No data for: " + symbol, Toast.LENGTH_SHORT).show());
                         return;
                     }
 
@@ -613,7 +638,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     private void analyzeWithAI() {
         if (fullCloses.isEmpty() || fullCloses.size() < 2) {
-            Toast.makeText(requireContext(), "טען נתוני גרף קודם", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), "Load chart data first", Toast.LENGTH_SHORT).show();
             return;
         }
         showCustomAIDialog();
@@ -627,12 +652,12 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         TextView   tvResponse= dialogView.findViewById(R.id.tv_response);
         Button     btnSend   = dialogView.findViewById(R.id.btn_send);
         android.widget.EditText etQuestion = dialogView.findViewById(R.id.et_question);
-        tvHint.setText("דוגמאות: 'מה דעתך על השקעה קצרת טווח?' או 'האם לקנות עכשיו?'");
-        AlertDialog dialog = builder.setView(dialogView).setNegativeButton("ביטול", null).create();
+        tvHint.setText("Examples: 'What do you think about a short-term investment?' or 'Should I buy now?'");
+        AlertDialog dialog = builder.setView(dialogView).setNegativeButton("Cancel", null).create();
         btnSend.setOnClickListener(vv -> {
             String question = etQuestion.getText().toString().trim();
             if (question.isEmpty()) {
-                Toast.makeText(requireContext(), "הקלד שאלה", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Type a question", Toast.LENGTH_SHORT).show();
                 return;
             }
             sendQuestionToAI(question, tvResponse, progress, etQuestion, dialog);
@@ -644,7 +669,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                                   android.widget.EditText etQuestion, AlertDialog dialog) {
         progressBar.setVisibility(View.VISIBLE);
         etQuestion.setEnabled(false);
-        String context = String.format(Locale.US, "מניה: %s | מחיר: $%.2f | טווח: %s | %d נקודות",
+        String context = String.format(Locale.US, "Stock: %s | Price: $%.2f | Range: %s | %d data points",
                 symbol, lastPrice, interval, fullCloses.size());
         llmService.askQuestion(symbol, question, context, fullCloses, new LLMService.AnalysisCallback() {
             @Override public void onAnalysisReceived(String analysis) {
@@ -662,7 +687,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 getActivity().runOnUiThread(() -> {
                     progressBar.setVisibility(View.GONE);
                     etQuestion.setEnabled(true);
-                    tvResponse.setText("\u274C שגיאה: " + error);
+                    tvResponse.setText("\u274C Error: " + error);
                     tvResponse.setVisibility(View.VISIBLE);
                 });
             }
@@ -687,9 +712,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         hideKeyboard();
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // חיפוש הצעות — Finnhub /search
-    // ─────────────────────────────────────────────────────────────────
     private void scheduleSymbolSearch(String q) {
         if (pendingSearch != null) searchHandler.removeCallbacks(pendingSearch);
         latestQuery = q;
@@ -727,7 +749,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                             String exchange = o.optString("displaySymbol","").trim();
                             if (sym.isEmpty()) continue;
 
-                            // סנן רק מניות, ETF ו-ETP — הסר warrants, funds אחרים
                             boolean allowed = type.equals("Common Stock")
                                     || type.equals("ETF")
                                     || type.equals("ETP")
@@ -735,7 +756,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                                     || type.isEmpty();
                             if (!allowed) continue;
 
-                            // הסר סימבולים עם תווים מוזרים (warrants, options)
                             if (sym.contains(".") && sym.length() > 5) continue;
                             if (sym.length() > 6) continue;
 
@@ -745,7 +765,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
                     if (getActivity() == null) return;
                     getActivity().runOnUiThread(() -> {
-                        // בדוק שהquery עדיין רלוונטי
                         if (!query.equals(latestQuery) || isManualSelection) return;
                         if (suggestionAdapter == null) return;
 
@@ -755,7 +774,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                         }
                         suggestionAdapter.notifyDataSetChanged();
 
-                        // פתח dropdown רק אם יש focus ויש תוצאות
                         if (tickerInput != null && tickerInput.hasFocus() && !list.isEmpty()) {
                             tickerInput.post(() -> {
                                 if (tickerInput.hasFocus()) {

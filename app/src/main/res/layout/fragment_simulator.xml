@@ -15,7 +15,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="סימולטור השקעה"
+            android:text="Investment Simulator"
             android:textColor="?attr/colorOnBackground"
             android:textSize="26sp"
             android:textStyle="bold" />
@@ -24,7 +24,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="חשב כמה היית מרוויח/מפסיד עם הטריידים הסגורים שלך"
+            android:text="Calculate how much you would have earned or lost with your closed trades"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="14sp" />
 
@@ -46,7 +46,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="💵 סכום השקעה ($)"
+                    android:text="&#x1F4B5; Investment Amount ($)"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="15sp"
                     android:textStyle="bold"
@@ -55,7 +55,7 @@
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="לדוגמא: 10000"
+                    android:hint="e.g. 10000"
                     style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etSimAmount"
@@ -68,7 +68,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="🧠 מצב חישוב"
+                    android:text="&#x1F9E0; Calculation Mode"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="15sp"
                     android:textStyle="bold"
@@ -85,7 +85,7 @@
                         android:id="@+id/rbSequential"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="🔁 רציף – טרייד אחר טרייד, הסכום מצטבר"
+                        android:text="&#x1F501; Sequential &#x2013; trade after trade, amount compounds"
                         android:textColor="?attr/colorOnSurface"
                         android:textSize="14sp"
                         android:checked="true"
@@ -95,7 +95,7 @@
                         android:id="@+id/rbParallel"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="&#8596; במקביל – הסכום מתחלק שווה בין כל הטריידים"
+                        android:text="&#8596; Parallel &#x2013; amount split equally across all trades"
                         android:textColor="?attr/colorOnSurface"
                         android:textSize="14sp"
                         android:padding="8dp"/>
@@ -108,7 +108,7 @@
                     android:layout_height="52dp"
                     android:layout_marginTop="20dp"
                     android:backgroundTint="?attr/colorPrimary"
-                    android:text="&#9654; הפעל סימולטור"
+                    android:text="&#9654; Run Simulator"
                     android:textAllCaps="false"
                     android:textColor="@color/white"
                     android:textSize="16sp"
@@ -143,7 +143,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="📊 תוצאות הסימולציה"
+                    android:text="&#x1F4CA; Simulation Results"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="16sp"
                     android:textStyle="bold"
@@ -156,7 +156,7 @@
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="15sp"
                     android:lineSpacingExtra="6dp"
-                    android:text="הזן סכום ובחר מצב חישוב, לאחר מכן לחץ הפעל." />
+                    android:text="Enter an amount and select a calculation mode, then press Run." />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
