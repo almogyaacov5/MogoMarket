@@ -29,7 +29,6 @@ import java.util.Locale;
 
 public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.ViewHolder> {
 
-    // ─── Listener interface (as WatchlistFragment expects) ───
     public interface OnWatchStockClickListener {
         void onStockClick(String symbol);
         void onStockDelete(String symbol);
@@ -39,8 +38,8 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
 
     private static final String API_KEY = "d0omel1r01qua2guc4ggd0omel1r01qua2guc4h0";
 
-    private final List<StockWatchData> masterList   = new ArrayList<>();
-    private final List<StockWatchData> displayList  = new ArrayList<>();
+    private final List<StockWatchData> masterList  = new ArrayList<>();
+    private final List<StockWatchData> displayList = new ArrayList<>();
     private final OnWatchStockClickListener listener;
 
     private String currentSearch = "";
@@ -50,27 +49,21 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         this.listener = listener;
     }
 
-    // ─── Public API used by WatchlistFragment ───
-
-    /** עדכון הרשימה המלאה מ-Firebase */
     public void updateData(List<StockWatchData> fresh) {
         masterList.clear();
         if (fresh != null) masterList.addAll(fresh);
         applyFilterAndSearch();
     }
 
-    /** רענן מחירים מ-Finnhub */
     public void refresh() {
         notifyDataSetChanged();
     }
 
-    /** סינון חיפוש */
     public void setSearch(String query) {
         currentSearch = query == null ? "" : query.toLowerCase().trim();
         applyFilterAndSearch();
     }
 
-    /** מיין: "default" / "gain" / "loss" / "alpha" */
     public void setFilter(String filter) {
         currentFilter = filter == null ? "default" : filter;
         applyFilterAndSearch();
@@ -78,16 +71,14 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
 
     private void applyFilterAndSearch() {
         List<StockWatchData> result = new ArrayList<>();
-
         for (StockWatchData s : masterList) {
             if (!currentSearch.isEmpty() && !s.symbol.toLowerCase().contains(currentSearch)) continue;
             switch (currentFilter) {
-                case "gain":  if (s.dayChange <  0) continue; break;
-                case "loss":  if (s.dayChange >= 0) continue; break;
+                case "gain": if (s.dayChange <  0) continue; break;
+                case "loss": if (s.dayChange >= 0) continue; break;
             }
             result.add(s);
         }
-
         if ("alpha".equals(currentFilter)) {
             Collections.sort(result, (a, b) -> a.symbol.compareToIgnoreCase(b.symbol));
         } else if ("gain".equals(currentFilter)) {
@@ -95,13 +86,10 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         } else if ("loss".equals(currentFilter)) {
             Collections.sort(result, (a, b) -> Float.compare(a.dayChange, b.dayChange));
         }
-
         displayList.clear();
         displayList.addAll(result);
         notifyDataSetChanged();
     }
-
-    // ─── RecyclerView ───
 
     @NonNull @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -124,7 +112,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         holder.symbolText.setText(stock.symbol);
         holder.symbolText.setTextColor(textPrimary);
 
-        // הצג מידי אם יש מחיר זמני (transient)
         if (stock.currentPrice > 0) {
             holder.priceText.setText(String.format(Locale.US, "$%.2f", stock.currentPrice));
             holder.priceText.setTextColor(colorPrimary);
@@ -135,7 +122,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             holder.dayChangeText.setText("");
         }
 
-        // התראה
         if (stock.alertEnabled && stock.alertTargetPrice > 0) {
             holder.alertText.setText(String.format(Locale.US, "\uD83D\uDD14 $%.2f", stock.alertTargetPrice));
             holder.alertText.setTextColor(colorPrimary);
@@ -144,7 +130,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             holder.alertText.setTextColor(textSecondary);
         }
 
-        // Fetch מחיר חי
         fetchQuote(stock.symbol, new QuoteCallback() {
             @Override
             public void onQuoteReceived(float price, float dayChange) {
@@ -155,7 +140,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                     holder.priceText.setTextColor(colorPrimary);
                 });
                 holder.dayChangeText.post(() ->
-                    bindChange(holder.dayChangeText, dayChange, colorGain, colorLoss));
+                        bindChange(holder.dayChangeText, dayChange, colorGain, colorLoss));
                 processAlert(stock, price, ctx);
             }
             @Override
@@ -171,7 +156,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             }
         });
 
-        // Clicks
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onStockClick(stock.symbol);
         });
@@ -183,20 +167,18 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
 
     @Override public int getItemCount() { return displayList.size(); }
 
-    // ─── עזר UI ───
-
-    /** מציג ▲ +X.XX% או ▼ -X.XX% בצבע נכון */
+    /**
+     * ▲ +X.XX% כשעולה  |  ▼ -X.XX% כשיורד (מינוס מפורש)
+     */
     private void bindChange(TextView tv, float change, int colorGain, int colorLoss) {
         if (change >= 0) {
             tv.setText(String.format(Locale.US, "\u25b2 +%.2f%%", change));
             tv.setTextColor(colorGain);
         } else {
-            tv.setText(String.format(Locale.US, "\u25bc %.2f%%", change)); // change כבר שלילי
+            tv.setText(String.format(Locale.US, "\u25bc -%.2f%%", Math.abs(change)));
             tv.setTextColor(colorLoss);
         }
     }
-
-    // ─── Alert ───
 
     private void processAlert(StockWatchData stock, float price, Context ctx) {
         if (!stock.alertEnabled || stock.alertTargetPrice <= 0 || stock.alertTriggered) return;
@@ -239,8 +221,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         }
     }
 
-    // ─── Finnhub fetch ───
-
     private void fetchQuote(String symbol, QuoteCallback callback) {
         new Thread(() -> {
             try {
@@ -254,9 +234,9 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                 String line;
                 while ((line = br.readLine()) != null) sb.append(line);
                 br.close();
-                JSONObject obj = new JSONObject(sb.toString());
+                JSONObject obj  = new JSONObject(sb.toString());
                 float price     = (float) obj.getDouble("c");
-                float dayChange = (float) obj.getDouble("dp"); // % change (can be negative)
+                float dayChange = (float) obj.getDouble("dp");
                 callback.onQuoteReceived(price, dayChange);
             } catch (Exception e) {
                 callback.onError(e);
@@ -268,8 +248,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         void onQuoteReceived(float price, float dayChange);
         void onError(Exception e);
     }
-
-    // ─── ViewHolder ───
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView symbolText, priceText, dayChangeText, alertText;
