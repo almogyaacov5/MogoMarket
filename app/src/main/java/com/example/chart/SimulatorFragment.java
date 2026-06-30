@@ -53,6 +53,9 @@ public class SimulatorFragment extends Fragment {
 
         progress.setVisibility(View.GONE);
         tvResult.setText("");
+        tvResult.setVisibility(View.GONE);
+
+        tvInfo.setText("לחץ 'הפעל סימולטור', הכנס סכום השקעה ובחר מצב חישוב (רציף / במקביל).");
 
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) {
@@ -68,9 +71,12 @@ public class SimulatorFragment extends Fragment {
         return v;
     }
 
+    // ─── שלב 1: טעינת טריידים סגורים מ-Firebase ───
     private void runFlow() {
         setLoading(true);
+        tvResult.setVisibility(View.GONE);
         tvResult.setText("");
+        tvInfo.setText("טוען טריידים סגורים...");
 
         closedTradesRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -78,120 +84,163 @@ public class SimulatorFragment extends Fragment {
                 List<StockData> trades = new ArrayList<>();
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     StockData data = ds.getValue(StockData.class);
-                    if (data != null) trades.add(data);
+                    // כולל רק טריידים עם מחיר קנייה ומכירה תקפים
+                    if (data != null && data.buyPrice > 0 && data.sellPrice > 0) {
+                        trades.add(data);
+                    }
                 }
                 setLoading(false);
 
                 if (trades.isEmpty()) {
+                    tvInfo.setText("לא נמצאו טריידים סגורים עם נתונים תקינים.\nסגור טרייד עם מחיר קנייה ומכירה כדי להשתמש בסימולטור.");
                     Toast.makeText(getContext(), "אין טריידים סגורים לסימולציה", Toast.LENGTH_SHORT).show();
                     return;
                 }
 
-                askAmountThenMode(trades);
+                tvInfo.setText("נמצאו " + trades.size() + " טריידים סגורים.");
+                askAmount(trades);
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 setLoading(false);
-                Toast.makeText(getContext(), "שגיאה בטעינת הטריידים הסגורים", Toast.LENGTH_SHORT).show();
+                tvInfo.setText("שגיאה בטעינת הטריידים הסגורים.");
+                Toast.makeText(getContext(), "שגיאה: " + error.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    private void askAmountThenMode(List<StockData> trades) {
+    // ─── שלב 2: בקשת סכום השקעה ───
+    private void askAmount(List<StockData> trades) {
         if (getContext() == null) return;
+
         EditText input = new EditText(requireContext());
-        input.setHint("לדוגמא: 1000");
+        input.setHint("לדוגמא: 10000");
         input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
 
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("סימולטור")
-                .setMessage("כמה כסף להשקיע? (אותו סכום בסיס לסימולציה)")
+                .setTitle("\uD83D\uDCB0 סכום השקעה")
+                .setMessage("כמה כסף תרצה להשקיע? (בדולרים)")
                 .setView(input)
-                .setPositiveButton("המשך", (dialog, which) -> {
-                    double amount = parseDouble(input.getText().toString().trim());
+                .setPositiveButton("המשך \u2192", (dialog, which) -> {
+                    String raw = input.getText().toString().trim();
+                    double amount = parseAmount(raw);
                     if (amount <= 0) {
                         Toast.makeText(getContext(), "אנא הזן סכום גדול מ-0", Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    askModeAndSimulate(trades, amount);
+                    askMode(trades, amount);
                 })
                 .setNegativeButton("ביטול", null)
                 .show();
     }
 
-    private void askModeAndSimulate(List<StockData> trades, double amount) {
+    // ─── שלב 3: בחירת מצב חישוב ───
+    private void askMode(List<StockData> trades, double amount) {
         if (getContext() == null) return;
-        String[] options = new String[]{
-                "רציף (טרייד אחרי טרייד, הסכום מצטבר)",
-                "חלוקה שווה (הסכום מתחלק בין כל הטריידים)"
-        };
 
+        String[] options = {
+                "\uD83D\uDD01 רציף – כל טרייד מקבל את כל הסכום שנצבר",
+                "\u2194\uFE0F במקביל – הסכום מתחלק שווה בין כל הטריידים"
+        };
         final int[] chosen = {0};
 
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("איך לחשב?")
-                .setSingleChoiceItems(options, 0, (dialog, which) -> chosen[0] = which)
-                .setPositiveButton("חשב", (dialog, which) -> {
+                .setTitle("\uD83E\uDDE0 אופן חישוב")
+                .setMessage(String.format(Locale.US,
+                        "סכום: $%,.2f  |  טריידים: %d\n\n"
+                        + "רציף: כל רווח/הפסד מצטבר לסכום הבא.\n"
+                        + "במקביל: כל הטריידים מתבצעים בו-זמנית עם חלק שווה.",
+                        amount, trades.size()))
+                .setSingleChoiceItems(options, 0, (d, which) -> chosen[0] = which)
+                .setPositiveButton("\u2795 חשב", (dialog, which) -> {
                     Mode mode = (chosen[0] == 0) ? Mode.SEQUENTIAL : Mode.SPLIT_EQUAL;
                     SimulationResult result = simulate(trades, amount, mode);
-                    showResult(result, mode);
+                    displayResult(result, mode, amount, trades);
                 })
-                .setNegativeButton("ביטול", null)
+                .setNegativeButton("חזור", null)
                 .show();
     }
 
-    private void showResult(SimulationResult r, Mode mode) {
-        String modeText = (mode == Mode.SEQUENTIAL) ? "רציף" : "חלוקה שווה";
-        String text = String.format(Locale.US,
-                "מצב: %s\nטריידים: %d\nסכום התחלה: %.2f\nסכום סופי: %.2f\nתשואה: %.2f%%",
-                modeText, r.tradeCount, r.startAmount, r.finalAmount, r.percent);
-        tvResult.setText(text);
-        tvInfo.setText("הסימולציה חושבה על בסיס הטריידים הסגורים הקיימים.");
-    }
+    // ─── שלב 4: הצגת תוצאות ───
+    private void displayResult(SimulationResult r, Mode mode, double originalAmount, List<StockData> trades) {
+        if (tvResult == null || tvInfo == null) return;
 
-    private static class SimulationResult {
-        final double startAmount;
-        final double finalAmount;
-        final double percent;
-        final int tradeCount;
+        String modeLabel = (mode == Mode.SEQUENTIAL)
+                ? "\uD83D\uDD01 רציף (טרייד אחרי טרייד)"
+                : "\u2194\uFE0F במקביל (חלוקה שווה)";
 
-        SimulationResult(double startAmount, double finalAmount, int tradeCount) {
-            this.startAmount = startAmount;
-            this.finalAmount = finalAmount;
-            this.tradeCount  = tradeCount;
-            this.percent     = (startAmount == 0) ? 0 : ((finalAmount - startAmount) / startAmount) * 100.0;
+        double diff    = r.finalAmount - r.startAmount;
+        boolean profit = diff >= 0;
+        String sign    = profit ? "+" : "";
+        String emoji   = profit ? "\uD83D\uDCC8 רווח" : "\uD83D\uDCC9 הפסד";
+
+        // פירוט הטריידים
+        StringBuilder tradesDetail = new StringBuilder();
+        for (StockData t : trades) {
+            double pct = (t.buyPrice > 0) ? ((t.sellPrice - t.buyPrice) / t.buyPrice) * 100.0 : 0.0;
+            String pctSign = pct >= 0 ? "+" : "";
+            tradesDetail.append(String.format(Locale.US,
+                    "  • %s: $%.2f \u2192 $%.2f (%s%.1f%%)\n",
+                    t.symbol != null ? t.symbol : "?",
+                    t.buyPrice, t.sellPrice, pctSign, pct));
         }
+
+        String text = String.format(Locale.US,
+                "%s\n"
+                + "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
+                + "\uD83D\uDCB5 סכום התחלתי:  $%,.2f\n"
+                + "\uD83D\uDCB0 סכום סופי:      $%,.2f\n"
+                + "%s:  %s$%,.2f\n"
+                + "\uD83D\uDCC9 תשואה כוללת:  %s%.2f%%\n"
+                + "\uD83D\uDCCA מס' טריידים:  %d\n"
+                + "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
+                + "פירוט טריידים:\n%s",
+                modeLabel,
+                r.startAmount,
+                r.finalAmount,
+                emoji, sign, Math.abs(diff),
+                sign, r.percent,
+                r.tradeCount,
+                tradesDetail.toString());
+
+        tvResult.setText(text);
+        tvResult.setTextColor(profit
+                ? android.graphics.Color.parseColor("#00C896")
+                : android.graphics.Color.parseColor("#FF4D4D"));
+        tvResult.setVisibility(View.VISIBLE);
+        tvInfo.setText("\u2705 הסימולציה הושלמה על בסיס " + r.tradeCount + " טריידים סגורים.");
     }
 
+    // ─── חישוב סימולציה ───
     private SimulationResult simulate(List<StockData> trades, double startAmount, Mode mode) {
         int n = trades.size();
         if (n == 0) return new SimulationResult(startAmount, startAmount, 0);
 
         if (mode == Mode.SEQUENTIAL) {
+            // רציף: הרווח/הפסד של כל טרייד מצטבר לסכום הכולל
             double pot = startAmount;
             for (StockData t : trades) {
-                double r = safeReturn(returnFractionFromTrade(t));
-                pot = pot * (1.0 + r);
+                double ret = safeReturn(returnFraction(t));
+                pot = pot * (1.0 + ret);
             }
             return new SimulationResult(startAmount, pot, n);
         } else {
-            double per = startAmount / n;
-            double sum = 0.0;
+            // במקביל: הסכום מתחלק שווה, כל טרייד עובד על חלקו
+            double perTrade = startAmount / n;
+            double total    = 0.0;
             for (StockData t : trades) {
-                double r = safeReturn(returnFractionFromTrade(t));
-                sum += per * (1.0 + r);
+                double ret = safeReturn(returnFraction(t));
+                total += perTrade * (1.0 + ret);
             }
-            return new SimulationResult(startAmount, sum, n);
+            return new SimulationResult(startAmount, total, n);
         }
     }
 
-    private double returnFractionFromTrade(StockData t) {
-        if (t == null) return 0.0;
-        double buy  = t.buyPrice;
-        double sell = t.sellPrice;
-        if (buy <= 0 || sell <= 0) return 0.0;
-        return (sell - buy) / buy;
+    /** חישוב שיעור התשואה של טרייד: (מכירה - קנייה) / קנייה */
+    private double returnFraction(StockData t) {
+        if (t == null || t.buyPrice <= 0 || t.sellPrice <= 0) return 0.0;
+        return (t.sellPrice - t.buyPrice) / t.buyPrice;
     }
 
     private static double safeReturn(double r) {
@@ -200,14 +249,31 @@ public class SimulatorFragment extends Fragment {
         return r;
     }
 
+    private static class SimulationResult {
+        final double startAmount;
+        final double finalAmount;
+        final double percent;
+        final int    tradeCount;
+
+        SimulationResult(double startAmount, double finalAmount, int tradeCount) {
+            this.startAmount = startAmount;
+            this.finalAmount = finalAmount;
+            this.tradeCount  = tradeCount;
+            this.percent     = (startAmount == 0) ? 0
+                    : ((finalAmount - startAmount) / startAmount) * 100.0;
+        }
+    }
+
     private void setLoading(boolean loading) {
         if (progress != null) progress.setVisibility(loading ? View.VISIBLE : View.GONE);
         if (btnRun   != null) btnRun.setEnabled(!loading);
     }
 
-    private static double parseDouble(String s) {
+    private static double parseAmount(String s) {
         try {
             if (s == null || s.isEmpty()) return 0.0;
+            // תמיכה בפסיק אנגלי כמפריד אלפים
+            s = s.replace(",", "");
             return Double.parseDouble(s);
         } catch (Exception e) {
             return 0.0;

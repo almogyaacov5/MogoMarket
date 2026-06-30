@@ -13,6 +13,8 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.json.JSONObject;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,12 +38,11 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
 
     public static final String ALERT_CHANNEL_ID = "stock_alert_channel";
 
-    // originalList - עותק עצמאי, לא reference לרשימה של Fragment
     private final List<StockWatchData> originalList = new ArrayList<>();
     private final List<StockWatchData> displayList  = new ArrayList<>();
     private final OnWatchStockClickListener listener;
     private final OkHttpClient httpClient = new OkHttpClient();
-    private final String API_KEY = "0518811f0d394fa39842a8024a25c049";
+    private static final String API_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
 
     private String currentFilter = "default";
     private String currentSearch = "";
@@ -50,7 +51,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
         this.listener = listener;
     }
 
-    /** מחליף את כל הנתונים - קורא לזה מה-Fragment כש-Firebase מתעדכן */
     public void updateData(List<StockWatchData> newData) {
         originalList.clear();
         originalList.addAll(newData);
@@ -128,35 +128,30 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
         if (stock.currentPrice != 0f) {
             holder.priceText.setText(String.format(Locale.US, "$%.2f", stock.currentPrice));
             holder.priceText.setTextColor(colorPrimary);
-            String arrow = stock.dayChange >= 0 ? "▲" : "▼";
-            holder.dayChangeText.setText(String.format(Locale.US, "%s %.2f%%", arrow, Math.abs(stock.dayChange)));
-            holder.dayChangeText.setTextColor(stock.dayChange >= 0 ? colorGain : colorLoss);
+            setDayChangeText(holder.dayChangeText, stock.dayChange, colorGain, colorLoss);
         } else {
             holder.priceText.setText("...");
             holder.priceText.setTextColor(textSecondary);
             holder.dayChangeText.setText("");
         }
 
-        fetchStockData(stock.symbol, new StockDataCallback() {
+        fetchQuote(stock.symbol, new QuoteCallback() {
             @Override
-            public void onDataReceived(float price, float dayChange) {
+            public void onQuoteReceived(float price, float dayChange) {
                 stock.currentPrice = price;
                 stock.dayChange    = dayChange;
                 holder.priceText.post(() -> {
                     holder.priceText.setText(String.format(Locale.US, "$%.2f", price));
                     holder.priceText.setTextColor(colorPrimary);
                 });
-                holder.dayChangeText.post(() -> {
-                    String arrow = dayChange >= 0 ? "▲" : "▼";
-                    holder.dayChangeText.setText(String.format(Locale.US, "%s %.2f%%", arrow, Math.abs(dayChange)));
-                    holder.dayChangeText.setTextColor(dayChange >= 0 ? colorGain : colorLoss);
-                });
+                holder.dayChangeText.post(() ->
+                        setDayChangeText(holder.dayChangeText, dayChange, colorGain, colorLoss));
                 processAlert(stock, price, ctx);
             }
             @Override
             public void onError(Exception e) {
-                holder.priceText.post(() -> { holder.priceText.setText("$—"); holder.priceText.setTextColor(textSecondary); });
-                holder.dayChangeText.post(() -> { holder.dayChangeText.setText("—"); holder.dayChangeText.setTextColor(textSecondary); });
+                holder.priceText.post(() -> { holder.priceText.setText("$\u2014"); holder.priceText.setTextColor(textSecondary); });
+                holder.dayChangeText.post(() -> { holder.dayChangeText.setText("\u2014"); holder.dayChangeText.setTextColor(textSecondary); });
             }
         });
 
@@ -165,15 +160,31 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
         holder.alertButton.setOnClickListener(v -> listener.onSetPriceAlert(stock));
     }
 
+    /**
+     * מציג שינוי יומי:
+     * עלייה:  ▲ +3.50%
+     * ירידה:  ▼ -3.50%   (מינוס מפורש + חץ למטה)
+     */
+    private void setDayChangeText(TextView tv, float dayChange, int colorGain, int colorLoss) {
+        if (dayChange >= 0) {
+            tv.setText(String.format(Locale.US, "\u25b2 +%.2f%%", dayChange));
+            tv.setTextColor(colorGain);
+        } else {
+            // dayChange שלילי – מציג ▼ -X.XX% (המינוס מגיע מהערך עצמו)
+            tv.setText(String.format(Locale.US, "\u25bc %.2f%%", dayChange));
+            tv.setTextColor(colorLoss);
+        }
+    }
+
     @Override
     public int getItemCount() { return displayList.size(); }
 
     private void updateAlertText(WatchViewHolder holder, StockWatchData stock, int colorPrimary, int textSecondary) {
         if (stock.alertEnabled && stock.alertTargetPrice > 0f) {
-            holder.alertText.setText(String.format(Locale.US, "🔔 $%.2f", stock.alertTargetPrice));
+            holder.alertText.setText(String.format(Locale.US, "\uD83D\uDD14 $%.2f", stock.alertTargetPrice));
             holder.alertText.setTextColor(colorPrimary);
         } else {
-            holder.alertText.setText("🔕 Off");
+            holder.alertText.setText("\uD83D\uDD15 Off");
             holder.alertText.setTextColor(textSecondary);
         }
     }
@@ -193,7 +204,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
     private void showPriceAlertNotification(Context context, String symbol, float targetPrice, float currentPrice) {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, ALERT_CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
-                .setContentTitle("🚨 Stock Alert: " + symbol)
+                .setContentTitle("\uD83D\uDCC8 Stock Alert: " + symbol)
                 .setContentText(String.format(Locale.US, "Price crossed $%.2f (now $%.2f)", targetPrice, currentPrice))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true);
@@ -203,6 +214,32 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
                         == android.content.pm.PackageManager.PERMISSION_GRANTED) {
             manager.notify(symbol.hashCode(), builder.build());
         }
+    }
+
+    private void fetchQuote(String symbol, QuoteCallback callback) {
+        String url = "https://finnhub.io/api/v1/quote?symbol=" + symbol + "&token=" + API_KEY;
+        httpClient.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
+            @Override public void onFailure(@NonNull Call call, @NonNull IOException e) { callback.onError(e); }
+            @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                try {
+                    JSONObject obj = new JSONObject(response.body().string());
+                    float price     = (float) obj.getDouble("c");
+                    float dayChange = (float) obj.getDouble("dp");
+                    if (price == 0f) { callback.onError(new Exception("price=0")); return; }
+                    callback.onQuoteReceived(price, dayChange);
+                } catch (Exception e) { callback.onError(e); }
+            }
+        });
+    }
+
+    public interface QuoteCallback {
+        void onQuoteReceived(float price, float dayChange);
+        void onError(Exception e);
+    }
+
+    public interface StockDataCallback {
+        void onDataReceived(float price, float dayChange);
+        void onError(Exception e);
     }
 
     static class WatchViewHolder extends RecyclerView.ViewHolder {
@@ -217,34 +254,5 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.Watc
             deleteButton  = itemView.findViewById(R.id.btnDeleteStock);
             alertButton   = itemView.findViewById(R.id.btnSetAlert);
         }
-    }
-
-    private void fetchStockData(String symbol, StockDataCallback callback) {
-        String url = "https://api.twelvedata.com/time_series?symbol=" + symbol
-                + "&interval=1day&apikey=" + API_KEY + "&outputsize=2";
-        httpClient.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
-            @Override public void onFailure(@NonNull Call call, @NonNull IOException e) { callback.onError(e); }
-            @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                try {
-                    String body = response.body().string();
-                    org.json.JSONObject json = new org.json.JSONObject(body);
-                    if (json.has("values")) {
-                        org.json.JSONArray arr = json.getJSONArray("values");
-                        if (arr.length() >= 2) {
-                            float last = Float.parseFloat(arr.getJSONObject(0).getString("close"));
-                            float prev = Float.parseFloat(arr.getJSONObject(1).getString("close"));
-                            callback.onDataReceived(last, (last - prev) / prev * 100f);
-                            return;
-                        }
-                    }
-                    callback.onError(new Exception("No data"));
-                } catch (Exception e) { callback.onError(e); }
-            }
-        });
-    }
-
-    public interface StockDataCallback {
-        void onDataReceived(float price, float dayChange);
-        void onError(Exception e);
     }
 }
