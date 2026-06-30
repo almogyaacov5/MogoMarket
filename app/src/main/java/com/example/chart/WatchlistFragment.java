@@ -3,6 +3,7 @@ package com.example.chart;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.Editable;
@@ -37,9 +38,11 @@ import java.util.List;
 
 public class WatchlistFragment extends Fragment {
 
-    private static final String ALERT_CHANNEL_ID = "stock_price_alerts";
+    private static final String ALERT_CHANNEL_ID  = "stock_price_alerts";
+    private static final String PREFS_NAME        = "app_prefs";
+    public  static final String KEY_WATCHLIST_NAV = "watchlist_navigate_to_chart";
 
-    private WatchlistAdapter adapter;
+    private WatchlistAdapter  adapter;
     private DatabaseReference watchlistRef;
 
     @Override
@@ -60,12 +63,12 @@ public class WatchlistFragment extends Fragment {
                 .getReference("users").child(user.getUid()).child("watchlist-stocks");
 
         adapter = new WatchlistAdapter(new WatchlistAdapter.OnWatchStockClickListener() {
-            @Override public void onStockClick(String symbol)       { openChart(symbol); }
+            @Override public void onStockClick(String symbol)       { handleStockClick(symbol); }
             @Override public void onStockDelete(String symbol)      { deleteStock(symbol); }
             @Override public void onSetPriceAlert(StockWatchData s) { showPriceAlertDialog(s); }
             @Override public void onAlertStateChanged(String sym, boolean t) {
                 if (watchlistRef != null)
-                    watchlistRef.child(sym).child("alertTriggered").setValue(t);
+                    watchlistRef.child(sym.replace(":", "_")).child("alertTriggered").setValue(t);
             }
         });
 
@@ -81,7 +84,6 @@ public class WatchlistFragment extends Fragment {
             addStockBtn.setOnClickListener(view -> {
                 if (stockInput == null) return;
                 String raw    = stockInput.getText().toString().trim();
-                // קריפטו (BINANCE:BTCUSDT) - שמור כמות שהוא; מניה - toUpperCase
                 String symbol = raw.contains(":")
                         ? raw.trim()
                         : raw.toUpperCase();
@@ -89,7 +91,6 @@ public class WatchlistFragment extends Fragment {
                     Toast.makeText(getContext(), "הזן סימבול", Toast.LENGTH_SHORT).show();
                     return;
                 }
-                // Firebase לא מאפשר ':' במפתח - מחליפים ב-'_'
                 String firebaseKey = symbol.replace(":", "_");
                 StockWatchData stock = new StockWatchData(symbol, 0f, 0f);
                 watchlistRef.child(firebaseKey).setValue(stock);
@@ -97,9 +98,8 @@ public class WatchlistFragment extends Fragment {
             });
         }
 
-        if (btnRefresh != null) {
+        if (btnRefresh != null)
             btnRefresh.setOnClickListener(view -> adapter.refresh());
-        }
 
         TextInputEditText searchInput = v.findViewById(R.id.searchInput);
         if (searchInput != null) {
@@ -124,7 +124,6 @@ public class WatchlistFragment extends Fragment {
             });
         }
 
-        // Firebase listener
         watchlistRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -132,14 +131,10 @@ public class WatchlistFragment extends Fragment {
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     StockWatchData data = ds.getValue(StockWatchData.class);
                     if (data == null) continue;
-
-                    // אם symbol לא נשמר כשדה ב-Firebase, נקח אותו מהמפתח
-                    // מחזירים ':' למקום '_' לצורכי קריפטו
                     if (data.symbol == null || data.symbol.isEmpty()) {
                         String key = ds.getKey();
                         data.symbol = (key != null) ? key.replace("_", ":") : "";
                     }
-
                     if (!data.symbol.isEmpty()) fresh.add(data);
                 }
                 adapter.updateData(fresh);
@@ -154,15 +149,36 @@ public class WatchlistFragment extends Fragment {
         return v;
     }
 
-    private void openChart(String symbol) {
+    /**
+     * טיפול בלחיצה על מניה:
+     * אם ההגדרה פעילה — עובר לגרף דרך MainActivity.showChartWithSymbol כדי שהטאב יתעדכן
+     * אם לא — פותח את הגרף בתוך אותו Container (בלי שינוי בטאב)
+     */
+    private void handleStockClick(String symbol) {
         if (!isAdded()) return;
-        ChartFragment chartFragment = new ChartFragment();
-        Bundle args = new Bundle();
-        args.putString("symbol", symbol);
-        chartFragment.setArguments(args);
-        requireActivity().getSupportFragmentManager().beginTransaction()
-                .replace(R.id.fragment_container, chartFragment)
-                .addToBackStack(null).commit();
+        SharedPreferences prefs = requireActivity()
+                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        boolean navigateToChart = prefs.getBoolean(KEY_WATCHLIST_NAV, true);
+
+        if (navigateToChart && getActivity() instanceof MainActivity) {
+            // שינוי טאב + פתיחת גרף
+            ((MainActivity) getActivity()).showChartWithSymbol(symbol);
+        } else {
+            // פתיחת גרף בתוך אותו Container בלי שינוי טאב
+            ChartFragment chartFragment = new ChartFragment();
+            Bundle args = new Bundle();
+            args.putString("symbol", symbol);
+            chartFragment.setArguments(args);
+            requireActivity().getSupportFragmentManager().beginTransaction()
+                    .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
+                    .replace(R.id.fragment_container, chartFragment)
+                    .addToBackStack(null)
+                    .commit();
+        }
+    }
+
+    private void openChart(String symbol) {
+        handleStockClick(symbol);
     }
 
     private void deleteStock(String symbol) {
@@ -185,19 +201,19 @@ public class WatchlistFragment extends Fragment {
                 .setPositiveButton("שמור", (d, w) -> {
                     try {
                         float target = Float.parseFloat(input.getText().toString().trim());
-                        String firebaseKey = stock.symbol.replace(":", "_");
-                        watchlistRef.child(firebaseKey).child("alertTargetPrice").setValue(target);
-                        watchlistRef.child(firebaseKey).child("alertEnabled").setValue(true);
-                        watchlistRef.child(firebaseKey).child("alertTriggered").setValue(false);
+                        String key = stock.symbol.replace(":", "_");
+                        watchlistRef.child(key).child("alertTargetPrice").setValue(target);
+                        watchlistRef.child(key).child("alertEnabled").setValue(true);
+                        watchlistRef.child(key).child("alertTriggered").setValue(false);
                         Toast.makeText(getContext(), "נשמרה התראת מחיר", Toast.LENGTH_SHORT).show();
                     } catch (Exception e) {
                         Toast.makeText(getContext(), "מספר לא תקין", Toast.LENGTH_SHORT).show();
                     }
                 })
                 .setNeutralButton("כבה", (d, w) -> {
-                    String firebaseKey = stock.symbol.replace(":", "_");
-                    watchlistRef.child(firebaseKey).child("alertEnabled").setValue(false);
-                    watchlistRef.child(firebaseKey).child("alertTriggered").setValue(false);
+                    String key = stock.symbol.replace(":", "_");
+                    watchlistRef.child(key).child("alertEnabled").setValue(false);
+                    watchlistRef.child(key).child("alertTriggered").setValue(false);
                     Toast.makeText(getContext(), "ההתראה כובתה", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("ביטול", null).show();

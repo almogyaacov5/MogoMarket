@@ -15,6 +15,7 @@ import androidx.appcompat.app.AppCompatDelegate;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
@@ -34,16 +35,16 @@ public class SettingsFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
 
         View v = inflater.inflate(R.layout.fragment_settings, container, false);
-
         v.setBackgroundColor(requireContext().getColor(R.color.bg_primary));
 
+        SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, 0);
+
+        // ── עיצוב תמה ──────────────────────────────────────────────────────
         btnLightMode  = v.findViewById(R.id.btnLightMode);
         btnDarkMode   = v.findViewById(R.id.btnDarkMode);
         tvThemeStatus = v.findViewById(R.id.tvThemeStatus);
 
-        SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, 0);
         isDark = prefs.getBoolean(KEY_THEME, true);
-
         updateThemeUI(isDark);
 
         btnLightMode.setOnClickListener(view -> {
@@ -64,6 +65,16 @@ public class SettingsFragment extends Fragment {
             }
         });
 
+        // ── Toggle: ניווט לגרף מרשימת מעקב ──────────────────────────────────
+        SwitchMaterial switchWatchlistNav = v.findViewById(R.id.switchWatchlistNav);
+        if (switchWatchlistNav != null) {
+            boolean navEnabled = prefs.getBoolean(WatchlistFragment.KEY_WATCHLIST_NAV, true);
+            switchWatchlistNav.setChecked(navEnabled);
+            switchWatchlistNav.setOnCheckedChangeListener((btn, isChecked) ->
+                    prefs.edit().putBoolean(WatchlistFragment.KEY_WATCHLIST_NAV, isChecked).apply());
+        }
+
+        // ── אימייל + גרסה ───────────────────────────────────────────────────
         TextView tvEmail = v.findViewById(R.id.tvUserEmail);
         if (tvEmail != null) {
             tvEmail.setTextColor(requireContext().getColor(R.color.primary));
@@ -84,6 +95,7 @@ public class SettingsFragment extends Fragment {
             }
         }
 
+        // ── יציאה ──────────────────────────────────────────────────────────
         MaterialButton btnLogout = v.findViewById(R.id.btnSettingsLogout);
         if (btnLogout != null) {
             btnLogout.setBackgroundTintList(
@@ -112,15 +124,14 @@ public class SettingsFragment extends Fragment {
             btnLightMode.setBackgroundResource(R.drawable.bg_theme_btn_unselected);
             setChildTextColors(btnDarkMode,  selectedText);
             setChildTextColors(btnLightMode, unselectedText);
-            tvThemeStatus.setText("\uD83C\uDF19 \u05DE\u05E6\u05D1 \u05DB\u05D4\u05D4 \u05E4\u05E2\u05D9\u05DC");
+            tvThemeStatus.setText("\uD83C\uDF19 מצב כהה פעיל");
             tvThemeStatus.setTextColor(requireContext().getColor(R.color.primary));
         } else {
             btnLightMode.setBackgroundResource(R.drawable.bg_theme_btn_selected);
             btnDarkMode.setBackgroundResource(R.drawable.bg_theme_btn_unselected);
             setChildTextColors(btnLightMode, selectedText);
             setChildTextColors(btnDarkMode,  unselectedText);
-            tvThemeStatus.setText("\u2600\uFE0F \u05DE\u05E6\u05D1 \u05D1\u05D4\u05D9\u05E8 \u05E4\u05E2\u05D9\u05DC");
-            // ✅ תוקן: R.color.gain במקום R.color.colorGain
+            tvThemeStatus.setText("\u2600\uFE0F מצב בהיר פעיל");
             tvThemeStatus.setTextColor(requireContext().getColor(R.color.gain));
         }
     }
@@ -128,9 +139,8 @@ public class SettingsFragment extends Fragment {
     private void setChildTextColors(LinearLayout layout, int color) {
         for (int i = 0; i < layout.getChildCount(); i++) {
             View child = layout.getChildAt(i);
-            if (child instanceof TextView) {
+            if (child instanceof TextView)
                 ((TextView) child).setTextColor(color);
-            }
         }
     }
 }
