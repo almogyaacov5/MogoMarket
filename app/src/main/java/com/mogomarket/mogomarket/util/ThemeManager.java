@@ -1,4 +1,4 @@
-package com.example.mogomarket.util;
+package com.mogomarket.mogomarket.util;
 
 import android.app.Activity;
 import android.content.Context;

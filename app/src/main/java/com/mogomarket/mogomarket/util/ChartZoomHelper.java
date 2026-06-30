@@ -1,6 +1,5 @@
-package com.example.mogomarket.util;
+package com.mogomarket.mogomarket.util;
 
-import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Color;
 import android.view.View;
