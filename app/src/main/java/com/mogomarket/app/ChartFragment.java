@@ -30,7 +30,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatDelegate;
 import androidx.fragment.app.Fragment;
 
 import com.mogomarket.app.TradingMarkerView;
@@ -128,7 +127,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private LineChart lineChart;
     private AutoCompleteTextView tickerInput;
     private Button btnLoad, btnTimeFrame, btnToggleChart, btnAIAnalysis;
-    private com.google.android.material.button.MaterialButton btnChartRefresh, btnExpandChart, btnExitFullscreen, btnThemeToggle, btnSettings;
+    private com.google.android.material.button.MaterialButton btnChartRefresh, btnExpandChart, btnExitFullscreen, btnSettings;
     private Button btnChartThemeToggle;
 
     private View headerSection;
@@ -179,7 +178,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
     }
 
-    // בדיקה אם הסמבול הוא קריפטו ("BINANCE:BTCUSDT" וכו')
     private boolean isCryptoSymbol(String sym) {
         return sym != null && sym.contains(":");
     }
@@ -203,7 +201,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         btnToggleChart     = v.findViewById(R.id.btnToggleChart);
         btnChartRefresh    = v.findViewById(R.id.btnChartRefresh);
         btnAIAnalysis      = v.findViewById(R.id.btnAIAnalysis);
-        btnThemeToggle     = v.findViewById(R.id.btnThemeToggle);
         btnSettings        = v.findViewById(R.id.btnSettings);
         btnChartThemeToggle = v.findViewById(R.id.btnChartThemeToggle);
 
@@ -249,9 +246,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         return v;
     }
 
-    // ─────────────────────────────────────────────────
-    //  FULLSCREEN
-    // ─────────────────────────────────────────────────
     private void enterFullscreen() {
         if (isFullscreen || chartContainer == null) return;
         isFullscreen = true;
@@ -291,8 +285,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private int dpToPx(int dp) {
         return Math.round(dp * getResources().getDisplayMetrics().density);
     }
-
-    // ─────────────────────────────────────────────────
 
     private void applyTheme() {
         int bgColor   = isDarkTheme ? DARK_BG       : LIGHT_BG;
@@ -423,18 +415,15 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         if (btnLoad != null) {
             btnLoad.setOnClickListener(v -> {
                 String u = tickerInput == null ? "" : tickerInput.getText().toString().trim();
-                Log.d("ChartFragment", "OPEN clicked, text='" + u + "'");
                 if (!u.isEmpty()) openChartFromInput(u);
                 hideKeyboard();
                 if (tickerInput != null) tickerInput.clearFocus();
             });
         }
 
-        // IME action — לחיצת Enter/Search במקלדת
         if (tickerInput != null) {
             tickerInput.setOnEditorActionListener((tv, actionId, event) -> {
                 String u = tv.getText().toString().trim();
-                Log.d("ChartFragment", "IME action, text='" + u + "'");
                 if (!u.isEmpty()) openChartFromInput(u);
                 hideKeyboard();
                 return true;
@@ -487,14 +476,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
         if (btnExpandChart    != null) btnExpandChart.setOnClickListener(v -> enterFullscreen());
         if (btnExitFullscreen != null) btnExitFullscreen.setOnClickListener(v -> exitFullscreen());
-
-        if (btnThemeToggle != null) {
-            btnThemeToggle.setOnClickListener(v -> {
-                isDarkTheme = !isDarkTheme;
-                AppCompatDelegate.setDefaultNightMode(
-                        isDarkTheme ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO);
-            });
-        }
     }
 
     private void setupAutoComplete() {
@@ -595,9 +576,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.invalidate();
     }
 
-    // ─────────────────────────────────────────────────
-    //  fetchStockData — מניפה לפי סוג הסמבול
-    // ─────────────────────────────────────────────────
     private void fetchStockData(String symbol, String interval) {
         if (isCryptoSymbol(symbol)) {
             fetchCryptoData(symbol, interval);
@@ -606,9 +584,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
     }
 
-    // ─────────────────────────────────────────────────
-    //  Yahoo Finance — מניות רגילות
-    // ─────────────────────────────────────────────────
     private String[] intervalToYahoo(String interval) {
         switch (interval) {
             case "1min":   return new String[]{"1m",  "1d"};
@@ -685,25 +660,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         });
     }
 
-    // ─────────────────────────────────────────────────
-    //  Finnhub Crypto Candle API
-    // ─────────────────────────────────────────────────
-    private String intervalToFinnhubResolution(String interval) {
-        switch (interval) {
-            case "1min":   return "1";
-            case "5min":   return "5";
-            case "15min":  return "15";
-            case "30min":  return "30";
-            case "1h":     return "60";
-            case "1week":  return "W";
-            case "1month": return "M";
-            default:       return "D";
-        }
-    }
-
-    // ─────────────────────────────────────────────────
-//  Binance API — קריפטו (חינמי, ללא מפתח)
-// ─────────────────────────────────────────────────
     private String intervalToBinance(String interval) {
         switch (interval) {
             case "1min":   return "1m";
@@ -721,7 +677,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private void fetchCryptoData(String symbol, String interval) {
         String pair = symbol.contains(":") ? symbol.substring(symbol.indexOf(':') + 1) : symbol;
         String binanceInterval = intervalToBinance(interval);
-
         String url = "https://api.binance.com/api/v3/klines?symbol=" + pair
                 + "&interval=" + binanceInterval
                 + "&limit=365";
@@ -788,9 +743,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         });
     }
 
-    // ─────────────────────────────────────────────────
-    //  helper: עדכון UI לאחר טעינת נתונים
-    // ─────────────────────────────────────────────────
     private void postChartUpdate(String sym, List<CandleEntry> entries, float lc, float pc) {
         currentEntries.clear();
         currentEntries.addAll(entries);
@@ -901,9 +853,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         hideKeyboard();
     }
 
-    // ─────────────────────────────────────────────────
-    //  Finnhub Search — מניות + קריפטו
-    // ─────────────────────────────────────────────────
     private void scheduleSymbolSearch(String q) {
         if (pendingSearch != null) searchHandler.removeCallbacks(pendingSearch);
         latestQuery = q;
@@ -936,15 +885,11 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
                             if (sym.isEmpty()) continue;
 
-                            // אפשר מניות אמריקאיות + קריפטו
                             boolean isStock  = "Common Stock".equals(type);
                             boolean isCrypto = "Crypto".equals(type);
                             if (!isStock && !isCrypto) continue;
 
-                            // סנן מניות זרות (סימבול עם נקודה = בורסה זרה כמו NVDA.MX, NVDA.SW)
                             if (isStock && sym.contains(".")) continue;
-
-                            // קריפטו: הצג רק BINANCE:XXXUSDT
                             if (isCrypto && !sym.startsWith("BINANCE:")) continue;
                             if (isCrypto && !sym.endsWith("USDT")) continue;
 
