@@ -283,7 +283,7 @@ public class WatchlistFragment extends Fragment {
                             if (!isStock && !isCrypto) continue;
 
                             // סנן מניות זרות (סימבול עם נקודה = בורסה זרה כמו NVDA.MX, NVDA.SW)
-                            if (isStock && sym.contains(".")) continue;
+                            if (isStock && sym.contains(".")) continue;+
 
                             // סנן crypto שאינו מ-Binance או לא מסתיים ב-USDT
                             if (isCrypto && !sym.startsWith("BINANCE:")) continue;

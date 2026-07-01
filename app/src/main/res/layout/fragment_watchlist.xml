@@ -59,24 +59,24 @@
                 android:gravity="center_vertical">
 
                 <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
                     android:layout_marginEnd="10dp"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_weight="1"
                     android:hint="Add symbol (e.g. AAPL)">
 
                     <AutoCompleteTextView
                         android:id="@+id/stockAutoInput"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="textCapCharacters"
-                        android:imeOptions="actionDone"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textColorHint="?attr/colorOnSurfaceVariant"
+                        android:layout_height="50dp"
                         android:completionThreshold="1"
                         android:dropDownVerticalOffset="2dp"
-                        android:popupBackground="?attr/colorSurface" />
+                        android:imeOptions="actionDone"
+                        android:inputType="textCapCharacters"
+                        android:popupBackground="?attr/colorSurface"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textColorHint="?attr/colorOnSurfaceVariant" />
 
                 </com.google.android.material.textfield.TextInputLayout>
 
