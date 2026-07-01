@@ -11,6 +11,10 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 
@@ -31,6 +35,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Edge-to-Edge support for Android 15+
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         boolean isDarkMode = prefs.getBoolean(KEY_THEME, true);
         AppCompatDelegate.setDefaultNightMode(
@@ -38,6 +45,13 @@ public class MainActivity extends AppCompatActivity {
                            : AppCompatDelegate.MODE_NIGHT_NO);
 
         setContentView(R.layout.activity_main);
+
+        // Apply window insets padding to avoid overlap with system bars
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.fragment_container), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
 
         if (getSupportActionBar() != null) getSupportActionBar().hide();
 
@@ -130,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
         }
     }
-    
+
     // — Public helper so any fragment can open Settings ——————————
     public void openSettings() {
         getSupportFragmentManager()
