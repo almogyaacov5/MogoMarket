@@ -39,7 +39,7 @@ public class SettingsFragment extends Fragment {
 
         SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, 0);
 
-        // ── עיצוב תמא ─────────────────────────────────────────────────────
+        // ── Theme ──────────────────────────────────────────────────────────────
         btnLightMode  = v.findViewById(R.id.btnLightMode);
         btnDarkMode   = v.findViewById(R.id.btnDarkMode);
         tvThemeStatus = v.findViewById(R.id.tvThemeStatus);
@@ -65,7 +65,7 @@ public class SettingsFragment extends Fragment {
             }
         });
 
-        // ── Toggle: ניווט לגרף מרשימת מעקב ──────────────────────────────────
+        // ── Toggle: Watchlist → Chart navigation ───────────────────────────────
         SwitchMaterial switchWatchlistNav = v.findViewById(R.id.switchWatchlistNav);
         if (switchWatchlistNav != null) {
             boolean navEnabled = prefs.getBoolean(WatchlistFragment.KEY_WATCHLIST_NAV, true);
@@ -74,7 +74,7 @@ public class SettingsFragment extends Fragment {
                     prefs.edit().putBoolean(WatchlistFragment.KEY_WATCHLIST_NAV, isChecked).apply());
         }
 
-        // ── Toggle: הורדת מקלדת בהוספת מניה לרשימת מעקב ───────────────────
+        // ── Toggle: Hide keyboard after adding stock ────────────────────────────
         SwitchMaterial switchHideKeyboard = v.findViewById(R.id.switchHideKeyboardOnAdd);
         if (switchHideKeyboard != null) {
             boolean hideKb = prefs.getBoolean(WatchlistFragment.KEY_WATCHLIST_HIDE_KB, true);
@@ -83,7 +83,7 @@ public class SettingsFragment extends Fragment {
                     prefs.edit().putBoolean(WatchlistFragment.KEY_WATCHLIST_HIDE_KB, isChecked).apply());
         }
 
-        // ── אימייל + גרסא ─────────────────────────────────────────────────
+        // ── Email + Version ────────────────────────────────────────────────────
         TextView tvEmail = v.findViewById(R.id.tvUserEmail);
         if (tvEmail != null) {
             tvEmail.setTextColor(requireContext().getColor(R.color.primary));
@@ -104,7 +104,7 @@ public class SettingsFragment extends Fragment {
             }
         }
 
-        // ── יציאה ──────────────────────────────────────────────────────
+        // ── Logout ─────────────────────────────────────────────────────────────
         MaterialButton btnLogout = v.findViewById(R.id.btnSettingsLogout);
         if (btnLogout != null) {
             btnLogout.setBackgroundTintList(
@@ -133,14 +133,14 @@ public class SettingsFragment extends Fragment {
             btnLightMode.setBackgroundResource(R.drawable.bg_theme_btn_unselected);
             setChildTextColors(btnDarkMode,  selectedText);
             setChildTextColors(btnLightMode, unselectedText);
-            tvThemeStatus.setText("\uD83C\uDF19 מצב כהה פעיל");
+            tvThemeStatus.setText("\uD83C\uDF19 Dark mode active");
             tvThemeStatus.setTextColor(requireContext().getColor(R.color.primary));
         } else {
             btnLightMode.setBackgroundResource(R.drawable.bg_theme_btn_selected);
             btnDarkMode.setBackgroundResource(R.drawable.bg_theme_btn_unselected);
             setChildTextColors(btnLightMode, selectedText);
             setChildTextColors(btnDarkMode,  unselectedText);
-            tvThemeStatus.setText("\u2600\uFE0F מצב בהיר פעיל");
+            tvThemeStatus.setText("\u2600\uFE0F Light mode active");
             tvThemeStatus.setTextColor(requireContext().getColor(R.color.gain));
         }
     }

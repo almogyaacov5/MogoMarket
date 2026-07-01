@@ -25,7 +25,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="הגדרות האפליקציה"
+            android:text="App preferences and account"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="14sp" />
 
@@ -135,7 +135,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="&#127912;  Appearance / מראה"
+                    android:text="&#127912;  Appearance"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="16sp"
                     android:textStyle="bold"
@@ -166,14 +166,14 @@
                             android:id="@+id/tvThemeStatus"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="מצב כהה פעיל"
+                            android:text="Dark mode active"
                             android:textSize="12sp"
                             android:textStyle="bold"
                             android:layout_marginTop="2dp" />
 
                     </LinearLayout>
 
-                    <!-- כפתור Toggle ויזואלי -->
+                    <!-- Theme Toggle Button -->
                     <LinearLayout
                         android:id="@+id/layoutThemeToggle"
                         android:layout_width="120dp"
@@ -260,13 +260,13 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="&#127987;  Navigation / ניווט"
+                    android:text="&#127987;  Navigation"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="16sp"
                     android:textStyle="bold"
                     android:layout_marginBottom="14dp" />
 
-                <!-- Watchlist → Chart Toggle -->
+                <!-- Watchlist -> Chart Toggle -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -283,7 +283,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="לחיצה על מניה עוברת לגרף"
+                            android:text="Tap stock opens Chart tab"
                             android:textColor="?attr/colorOnSurface"
                             android:textSize="15sp"
                             android:textStyle="bold" />
@@ -291,7 +291,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="לחיצה על מניה ברשימת המעקב תעבור לטאב הגרף"
+                            android:text="Tapping a stock in the watchlist navigates to the Chart tab"
                             android:textColor="?attr/colorOnSurfaceVariant"
                             android:textSize="12sp"
                             android:layout_marginTop="2dp" />
@@ -329,7 +329,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="הורד מקלדת בהוספת מניה"
+                            android:text="Hide keyboard after adding stock"
                             android:textColor="?attr/colorOnSurface"
                             android:textSize="15sp"
                             android:textStyle="bold" />
@@ -337,7 +337,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="המקלדת תרד אוטומטית לאחר הוספת מניה לרשימת המעקב"
+                            android:text="Keyboard dismisses automatically after adding a stock to the watchlist"
                             android:textColor="?attr/colorOnSurfaceVariant"
                             android:textSize="12sp"
                             android:layout_marginTop="2dp" />
@@ -374,7 +374,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="&#128100;  Account / חשבון"
+                    android:text="&#128100;  Account"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="16sp"
                     android:textStyle="bold"
@@ -417,7 +417,7 @@
                     android:id="@+id/btnSettingsLogout"
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
-                    android:text="Log Out / התנתקות"
+                    android:text="Log Out"
                     android:textAllCaps="false"
                     android:textColor="@color/white"
                     app:backgroundTint="@color/colorLoss" />
@@ -445,7 +445,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="&#8505;&#65039;  App Info / מידע"
+                    android:text="&#8505;&#65039;  App Info"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="16sp"
                     android:textStyle="bold"

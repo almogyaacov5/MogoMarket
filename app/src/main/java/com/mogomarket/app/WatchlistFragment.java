@@ -64,7 +64,6 @@ public class WatchlistFragment extends Fragment {
     private static final String FINNHUB_KEY        = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
     private static final long   SEARCH_DEBOUNCE_MS = 300;
 
-    // מינימום זמן בין רענונים אוטומטיים (5 דקות) - מונע קריאות API מיותרות
     private static final long   AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000L;
     private long                lastRefreshTime = 0L;
 
@@ -159,7 +158,7 @@ public class WatchlistFragment extends Fragment {
 
         if (btnRefresh != null)
             btnRefresh.setOnClickListener(view -> {
-                lastRefreshTime = 0L; // אפס זמן כדי לאפשר רענון ידני תמיד
+                lastRefreshTime = 0L;
                 adapter.refresh();
             });
 
@@ -211,14 +210,6 @@ public class WatchlistFragment extends Fragment {
         return v;
     }
 
-    /**
-     * נקרא בכל פעם שהפרגמנט חוזר לפוקוס:
-     * - כניסה ראשונה לאפליקציה
-     * - חזרה מפרגמנט אחר (גרף, הגדרות וכו')
-     * - חזרה מהביתה / מאפליקציה אחרת
-     *
-     * מרענן מחירים רק אם עברו יותר מ-5 דקות מהרענון האחרון.
-     */
     @Override
     public void onResume() {
         super.onResume();
@@ -305,7 +296,6 @@ public class WatchlistFragment extends Fragment {
                             String type = o.optString("type",        "");
                             if (sym.isEmpty()) continue;
 
-                            // סנן מניות זרות מוקדם - חוסך מקום ברשימה
                             if (sym.contains(".")) continue;
 
                             boolean isStock  = "Common Stock".equals(type);
@@ -351,18 +341,14 @@ public class WatchlistFragment extends Fragment {
                 .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         boolean navigateToChart = prefs.getBoolean(KEY_WATCHLIST_NAV, true);
 
-        if (navigateToChart && getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).showChartWithSymbol(symbol);
+        if (navigateToChart) {
+            // Switch ON  → navigate to Chart tab via MainActivity
+            if (getActivity() instanceof MainActivity) {
+                ((MainActivity) getActivity()).showChartWithSymbol(symbol);
+            }
         } else {
-            ChartFragment chartFragment = new ChartFragment();
-            Bundle args = new Bundle();
-            args.putString("symbol", symbol);
-            chartFragment.setArguments(args);
-            requireActivity().getSupportFragmentManager().beginTransaction()
-                    .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
-                    .replace(R.id.fragment_container, chartFragment)
-                    .addToBackStack(null)
-                    .commit();
+            // Switch OFF → do nothing (stay on watchlist)
+            // You can show a toast or simply ignore the click
         }
     }
 
