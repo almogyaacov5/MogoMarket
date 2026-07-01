@@ -268,7 +268,8 @@ public class WatchlistFragment extends Fragment {
                         JSONObject json   = new JSONObject(response.body().string());
                         JSONArray  result = json.optJSONArray("result");
                         if (result == null) return;
-                        for (int i = 0; i < result.length() && i < 50; i++) {
+                        // עוברים על כל התוצאות (ללא הגבלה מוקדמת) כדי לאסוף מספיק תוצאות תקינות
+                        for (int i = 0; i < result.length(); i++) {
                             JSONObject o = result.optJSONObject(i);
                             if (o == null) continue;
                             String sym  = o.optString("symbol",      "").trim();
@@ -276,14 +277,14 @@ public class WatchlistFragment extends Fragment {
                             String type = o.optString("type",        "");
                             if (sym.isEmpty()) continue;
 
+                            // סנן מניות זרות מוקדם (לפני כל בדיקה אחרת) - חוסך מקום ברשימה
+                            if (sym.contains(".")) continue;
+
                             boolean isStock  = "Common Stock".equals(type);
                             boolean isCrypto = "Crypto".equals(type);
 
                             // סנן רק מניות ו-Crypto
                             if (!isStock && !isCrypto) continue;
-
-                            // סנן מניות זרות (סימבול עם נקודה = בורסה זרה כמו NVDA.MX, NVDA.SW)
-                            if (isStock && sym.contains(".")) continue;
 
                             // סנן crypto שאינו מ-Binance או לא מסתיים ב-USDT
                             if (isCrypto && !sym.startsWith("BINANCE:")) continue;
@@ -291,6 +292,9 @@ public class WatchlistFragment extends Fragment {
 
                             String exchange = isCrypto ? "Crypto" : "US";
                             list.add(new ChartFragment.StockSuggestion(sym, name, exchange));
+
+                            // הצג עד 15 תוצאות נקיות
+                            if (list.size() >= 15) break;
                         }
                     } catch (Exception ignored) {}
                     if (getActivity() == null) return;
