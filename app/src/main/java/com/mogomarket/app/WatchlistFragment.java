@@ -56,13 +56,17 @@ import okhttp3.Response;
 
 public class WatchlistFragment extends Fragment {
 
-    private static final String ALERT_CHANNEL_ID  = "stock_price_alerts";
-    private static final String PREFS_NAME        = "app_prefs";
-    public  static final String KEY_WATCHLIST_NAV = "watchlist_navigate_to_chart";
+    private static final String ALERT_CHANNEL_ID      = "stock_price_alerts";
+    private static final String PREFS_NAME            = "app_prefs";
+    public  static final String KEY_WATCHLIST_NAV     = "watchlist_navigate_to_chart";
     public  static final String KEY_WATCHLIST_HIDE_KB = "watchlist_hide_keyboard_on_add";
 
-    private static final String FINNHUB_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
+    private static final String FINNHUB_KEY        = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
     private static final long   SEARCH_DEBOUNCE_MS = 300;
+
+    // מינימום זמן בין רענונים אוטומטיים (5 דקות) - מונע קריאות API מיותרות
+    private static final long   AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000L;
+    private long                lastRefreshTime = 0L;
 
     private WatchlistAdapter  adapter;
     private DatabaseReference watchlistRef;
@@ -70,10 +74,12 @@ public class WatchlistFragment extends Fragment {
     private final OkHttpClient httpClient    = new OkHttpClient();
     private final Handler      searchHandler = new Handler(Looper.getMainLooper());
     private Runnable           pendingSearch;
-    private String             latestQuery   = "";
+    private String             latestQuery       = "";
     private boolean            isManualSelection = false;
 
     private ArrayAdapter<ChartFragment.StockSuggestion> suggestionAdapter;
+
+    // ─── Lifecycle ───────────────────────────────────────────────────────────────
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -152,7 +158,10 @@ public class WatchlistFragment extends Fragment {
         }
 
         if (btnRefresh != null)
-            btnRefresh.setOnClickListener(view -> adapter.refresh());
+            btnRefresh.setOnClickListener(view -> {
+                lastRefreshTime = 0L; // אפס זמן כדי לאפשר רענון ידני תמיד
+                adapter.refresh();
+            });
 
         com.google.android.material.textfield.TextInputEditText searchInput = v.findViewById(R.id.searchInput);
         if (searchInput != null) {
@@ -202,7 +211,27 @@ public class WatchlistFragment extends Fragment {
         return v;
     }
 
-    // ─── AutoComplete ────────────────────────────────────────────────────────────────────
+    /**
+     * נקרא בכל פעם שהפרגמנט חוזר לפוקוס:
+     * - כניסה ראשונה לאפליקציה
+     * - חזרה מפרגמנט אחר (גרף, הגדרות וכו')
+     * - חזרה מהביתה / מאפליקציה אחרת
+     *
+     * מרענן מחירים רק אם עברו יותר מ-5 דקות מהרענון האחרון.
+     */
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (adapter == null) return;
+        long now = System.currentTimeMillis();
+        if (now - lastRefreshTime >= AUTO_REFRESH_INTERVAL_MS) {
+            lastRefreshTime = now;
+            adapter.refresh();
+        }
+    }
+
+    // ─── AutoComplete ────────────────────────────────────────────────────────────
+
     private void setupAutoComplete(AutoCompleteTextView input) {
         suggestionAdapter = new ArrayAdapter<ChartFragment.StockSuggestion>(
                 requireContext(),
@@ -268,7 +297,6 @@ public class WatchlistFragment extends Fragment {
                         JSONObject json   = new JSONObject(response.body().string());
                         JSONArray  result = json.optJSONArray("result");
                         if (result == null) return;
-                        // עוברים על כל התוצאות (ללא הגבלה מוקדמת) כדי לאסוף מספיק תוצאות תקינות
                         for (int i = 0; i < result.length(); i++) {
                             JSONObject o = result.optJSONObject(i);
                             if (o == null) continue;
@@ -277,23 +305,20 @@ public class WatchlistFragment extends Fragment {
                             String type = o.optString("type",        "");
                             if (sym.isEmpty()) continue;
 
-                            // סנן מניות זרות מוקדם (לפני כל בדיקה אחרת) - חוסך מקום ברשימה
+                            // סנן מניות זרות מוקדם - חוסך מקום ברשימה
                             if (sym.contains(".")) continue;
 
                             boolean isStock  = "Common Stock".equals(type);
                             boolean isCrypto = "Crypto".equals(type);
 
-                            // סנן רק מניות ו-Crypto
                             if (!isStock && !isCrypto) continue;
 
-                            // סנן crypto שאינו מ-Binance או לא מסתיים ב-USDT
                             if (isCrypto && !sym.startsWith("BINANCE:")) continue;
                             if (isCrypto && !sym.endsWith("USDT")) continue;
 
                             String exchange = isCrypto ? "Crypto" : "US";
                             list.add(new ChartFragment.StockSuggestion(sym, name, exchange));
 
-                            // הצג עד 15 תוצאות נקיות
                             if (list.size() >= 15) break;
                         }
                     } catch (Exception ignored) {}
@@ -318,7 +343,7 @@ public class WatchlistFragment extends Fragment {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────────
+    // ─── Stock actions ───────────────────────────────────────────────────────────
 
     private void handleStockClick(String symbol) {
         if (!isAdded()) return;
@@ -378,6 +403,8 @@ public class WatchlistFragment extends Fragment {
                 })
                 .setNegativeButton("ביטול", null).show();
     }
+
+    // ─── Helpers ─────────────────────────────────────────────────────────────────
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
