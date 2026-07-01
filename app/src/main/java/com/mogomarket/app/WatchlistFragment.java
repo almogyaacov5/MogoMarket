@@ -106,7 +106,6 @@ public class WatchlistFragment extends Fragment {
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(adapter);
 
-        // ------- AutoComplete input -------
         AutoCompleteTextView autoInput = v.findViewById(R.id.stockAutoInput);
         if (autoInput != null) {
             setupAutoComplete(autoInput);
@@ -144,7 +143,6 @@ public class WatchlistFragment extends Fragment {
 
                 if (autoInput != null) autoInput.setText("");
 
-                // ---- הורדת מקלדת לפי הגדרת המשתמש ----
                 SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
                 boolean hideKb = prefs.getBoolean(KEY_WATCHLIST_HIDE_KB, true);
                 if (hideKb) hideKeyboard();
@@ -156,7 +154,6 @@ public class WatchlistFragment extends Fragment {
         if (btnRefresh != null)
             btnRefresh.setOnClickListener(view -> adapter.refresh());
 
-        // חיפוש בתוך הרשימה הקיימת
         com.google.android.material.textfield.TextInputEditText searchInput = v.findViewById(R.id.searchInput);
         if (searchInput != null) {
             searchInput.addTextChangedListener(new TextWatcher() {
@@ -205,7 +202,7 @@ public class WatchlistFragment extends Fragment {
         return v;
     }
 
-    // ─── AutoComplete (כמו בגרף) ────────────────────────────────────────
+    // ─── AutoComplete ────────────────────────────────────────────────────────
     private void setupAutoComplete(AutoCompleteTextView input) {
         suggestionAdapter = new ArrayAdapter<ChartFragment.StockSuggestion>(
                 requireContext(),
@@ -271,18 +268,27 @@ public class WatchlistFragment extends Fragment {
                         JSONObject json   = new JSONObject(response.body().string());
                         JSONArray  result = json.optJSONArray("result");
                         if (result == null) return;
-                        for (int i = 0; i < result.length() && i < 25; i++) {
+                        for (int i = 0; i < result.length() && i < 50; i++) {
                             JSONObject o = result.optJSONObject(i);
                             if (o == null) continue;
                             String sym  = o.optString("symbol",      "").trim();
                             String name = o.optString("description", "");
                             String type = o.optString("type",        "");
                             if (sym.isEmpty()) continue;
+
                             boolean isStock  = "Common Stock".equals(type);
                             boolean isCrypto = "Crypto".equals(type);
+
+                            // סנן רק מניות ו-Crypto
                             if (!isStock && !isCrypto) continue;
+
+                            // סנן מניות זרות (סימבול עם נקודה = בורסה זרה כמו NVDA.MX, NVDA.SW)
+                            if (isStock && sym.contains(".")) continue;
+
+                            // סנן crypto שאינו מ-Binance או לא מסתיים ב-USDT
                             if (isCrypto && !sym.startsWith("BINANCE:")) continue;
                             if (isCrypto && !sym.endsWith("USDT")) continue;
+
                             String exchange = isCrypto ? "Crypto" : "US";
                             list.add(new ChartFragment.StockSuggestion(sym, name, exchange));
                         }
@@ -308,7 +314,7 @@ public class WatchlistFragment extends Fragment {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
 
     private void handleStockClick(String symbol) {
         if (!isAdded()) return;
