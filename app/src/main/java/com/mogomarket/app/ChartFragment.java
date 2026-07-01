@@ -522,7 +522,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         tickerInput.setOnItemClickListener((parent, view, position, id) -> {
             StockSuggestion sel = suggestionAdapter.getItem(position);
             if (sel == null || sel.symbol == null || sel.symbol.trim().isEmpty()) return;
-            // קריפטו: שמור כברייס (BINANCE:BTCUSDT) — לא upper-case לשתי חלקי
             String picked = isCryptoSymbol(sel.symbol)
                     ? sel.symbol.trim()
                     : sel.symbol.trim().toUpperCase(Locale.US);
@@ -720,11 +719,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     }
 
     private void fetchCryptoData(String symbol, String interval) {
-        // symbol = "BINANCE:BTCUSDT" → נוציא רק "BTCUSDT"
         String pair = symbol.contains(":") ? symbol.substring(symbol.indexOf(':') + 1) : symbol;
         String binanceInterval = intervalToBinance(interval);
 
-        // Binance מחזיר מקסימום 1000 נרות
         String url = "https://api.binance.com/api/v3/klines?symbol=" + pair
                 + "&interval=" + binanceInterval
                 + "&limit=365";
@@ -751,7 +748,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     int size = klines.length();
                     if (size == 0) return;
 
-                    // פורמט תאריך לפי interval
                     SimpleDateFormat sdf;
                     switch (binanceInterval) {
                         case "1m": case "5m": case "15m": case "30m": case "1h":
@@ -769,7 +765,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
                     for (int i = 0; i < size; i++) {
                         JSONArray k = klines.getJSONArray(i);
-                        // Binance kline: [openTime, open, high, low, close, volume, ...]
                         long openTime = k.getLong(0);
                         float o = (float) k.getDouble(1);
                         float h = (float) k.getDouble(2);
@@ -815,7 +810,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 changeText.setTextColor(fCh >= 0 ? COLOR_GAIN : COLOR_LOSS);
             }
             if (timeFrameText != null) timeFrameText.setText("Timeframe: " + interval);
-            // סמבול קריפטו: הוצא BINANCE: מהתצוגה
             String displaySym = isCryptoSymbol(sym)
                     ? sym.substring(sym.indexOf(':') + 1)
                     : sym;
@@ -879,20 +873,17 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         String q = userInput.trim();
         if (q.isEmpty()) return;
 
-        // בדיקה במיפוי קריפטו לפני הכל
         String upper = q.toUpperCase(Locale.US);
         if (CRYPTO_MAP.containsKey(upper)) {
             setSymbolAndLoad(CRYPTO_MAP.get(upper));
             return;
         }
 
-        // קריפטו בפורמט Finnhub (כבר עם נקודותיים) — BINANCE:BTCUSDT
         if (isCryptoSymbol(q)) {
             setSymbolAndLoad(q.trim());
             return;
         }
 
-        // טיקר רגיל ללא רווחים
         if (q.matches("^[A-Za-z0-9./-]{1,20}$") && !q.contains(" ")) {
             setSymbolAndLoad(q.toUpperCase(Locale.US));
             return;
@@ -949,6 +940,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                             boolean isStock  = "Common Stock".equals(type);
                             boolean isCrypto = "Crypto".equals(type);
                             if (!isStock && !isCrypto) continue;
+
+                            // סנן מניות זרות (סימבול עם נקודה = בורסה זרה כמו NVDA.MX, NVDA.SW)
+                            if (isStock && sym.contains(".")) continue;
 
                             // קריפטו: הצג רק BINANCE:XXXUSDT
                             if (isCrypto && !sym.startsWith("BINANCE:")) continue;
