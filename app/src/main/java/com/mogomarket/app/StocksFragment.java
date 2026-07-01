@@ -7,8 +7,8 @@ import android.view.inputmethod.InputMethodManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
@@ -42,7 +42,7 @@ import okhttp3.Response;
 public class StocksFragment extends Fragment implements StocksAdapter.OnStockClickListener {
 
     private RecyclerView stocksRecyclerView;
-    private EditText stockInput;
+    private AutoCompleteTextView stockInput;   // שונה מ-EditText ל-AutoCompleteTextView
     private Button addStockBtn;
     private ImageButton btnRefreshAll;
     private StocksAdapter adapter;
@@ -57,7 +57,7 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
         View view = inflater.inflate(R.layout.fragment_watchlist, container, false);
 
         stocksRecyclerView = view.findViewById(R.id.watchlistRecyclerView);
-        stockInput         = view.findViewById(R.id.stockInput);
+        stockInput         = view.findViewById(R.id.stockAutoInput);  // ID חדש
         addStockBtn        = view.findViewById(R.id.addStockBtn);
         btnRefreshAll      = view.findViewById(R.id.btnRefreshWatchlist);
 
@@ -69,26 +69,30 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
 
         loadStocks();
 
-        btnRefreshAll.setOnClickListener(v -> reloadAllStocks());
+        if (btnRefreshAll != null)
+            btnRefreshAll.setOnClickListener(v -> reloadAllStocks());
 
-        addStockBtn.setOnClickListener(v -> {
-            String symbol = stockInput.getText().toString().trim().toUpperCase();
-            if (!symbol.isEmpty()) {
-                stocksRef.child(symbol).setValue(true);
-                stockInput.setText("");
-                stockInput.clearFocus();
-                hideKeyboard();
-            }
-        });
+        if (addStockBtn != null)
+            addStockBtn.setOnClickListener(v -> {
+                if (stockInput == null) return;
+                String symbol = stockInput.getText().toString().trim().toUpperCase();
+                if (!symbol.isEmpty()) {
+                    stocksRef.child(symbol).setValue(true);
+                    stockInput.setText("");
+                    stockInput.clearFocus();
+                    hideKeyboard();
+                }
+            });
 
-        stockInput.setOnEditorActionListener((v, actionId, event) -> {
-            if (actionId == EditorInfo.IME_ACTION_DONE) {
-                stockInput.clearFocus();
-                hideKeyboard();
-                return true;
-            }
-            return false;
-        });
+        if (stockInput != null)
+            stockInput.setOnEditorActionListener((v, actionId, event) -> {
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    stockInput.clearFocus();
+                    hideKeyboard();
+                    return true;
+                }
+                return false;
+            });
 
         return view;
     }
@@ -136,7 +140,7 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
 
     private void fetchStockInfo(String symbol) {
         long toTime   = System.currentTimeMillis() / 1000L;
-        long fromTime = toTime - (3L * 24 * 60 * 60); // 3 days back
+        long fromTime = toTime - (3L * 24 * 60 * 60);
 
         String url = "https://finnhub.io/api/v1/stock/candle?symbol=" + symbol
                 + "&resolution=D&from=" + fromTime
@@ -158,8 +162,8 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
                     JSONArray closes = json.getJSONArray("c");
                     if (closes.length() < 2) return;
 
-                    float lastPrice    = (float) closes.getDouble(closes.length() - 1);
-                    float prevPrice    = (float) closes.getDouble(closes.length() - 2);
+                    float lastPrice     = (float) closes.getDouble(closes.length() - 1);
+                    float prevPrice     = (float) closes.getDouble(closes.length() - 2);
                     float changePercent = (lastPrice - prevPrice) / prevPrice * 100;
 
                     StockData data = new StockData(symbol, lastPrice, changePercent);
@@ -185,7 +189,6 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
         Toast.makeText(getContext(), "המניה הוסרה מהרשימה", Toast.LENGTH_SHORT).show();
     }
 
-    // ב-StocksFragment אין עריכת פרטי מניה - מימוש ריק
     @Override
     public void onStockEdit(StockData updatedStock, String oldSymbol) {
         // פרגמנט זה הוא legacy - עריכה לא רלוונטית כאן
