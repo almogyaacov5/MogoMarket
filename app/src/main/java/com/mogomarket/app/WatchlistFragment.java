@@ -6,12 +6,17 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -24,7 +29,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.ChipGroup;
-import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -33,18 +38,42 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class WatchlistFragment extends Fragment {
 
     private static final String ALERT_CHANNEL_ID  = "stock_price_alerts";
     private static final String PREFS_NAME        = "app_prefs";
     public  static final String KEY_WATCHLIST_NAV = "watchlist_navigate_to_chart";
+    public  static final String KEY_WATCHLIST_HIDE_KB = "watchlist_hide_keyboard_on_add";
+
+    private static final String FINNHUB_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
+    private static final long   SEARCH_DEBOUNCE_MS = 300;
 
     private WatchlistAdapter  adapter;
     private DatabaseReference watchlistRef;
+
+    private final OkHttpClient httpClient    = new OkHttpClient();
+    private final Handler      searchHandler = new Handler(Looper.getMainLooper());
+    private Runnable           pendingSearch;
+    private String             latestQuery   = "";
+    private boolean            isManualSelection = false;
+
+    private ArrayAdapter<ChartFragment.StockSuggestion> suggestionAdapter;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -77,39 +106,54 @@ public class WatchlistFragment extends Fragment {
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(adapter);
 
-        TextInputEditText stockInput = v.findViewById(R.id.stockInput);
-        MaterialButton   addStockBtn = v.findViewById(R.id.addStockBtn);
-        MaterialButton   btnRefresh  = v.findViewById(R.id.btnRefreshWatchlist);
+        // ------- AutoComplete input -------
+        // נסה למצוא AutoCompleteTextView; אם אין — השתמש ב-TextInputEditText הישן
+        AutoCompleteTextView autoInput = v.findViewById(R.id.stockAutoInput);
+        if (autoInput != null) {
+            setupAutoComplete(autoInput);
+        }
+
+        MaterialButton addStockBtn = v.findViewById(R.id.addStockBtn);
+        MaterialButton btnRefresh  = v.findViewById(R.id.btnRefreshWatchlist);
 
         if (addStockBtn != null) {
             addStockBtn.setOnClickListener(view -> {
-                if (stockInput == null) return;
-                String raw = stockInput.getText().toString().trim();
+                String raw = "";
+                if (autoInput != null) {
+                    raw = autoInput.getText().toString().trim();
+                } else {
+                    // fallback ל-TextInputEditText הישן
+                    com.google.android.material.textfield.TextInputEditText oldInput =
+                            v.findViewById(R.id.stockInput);
+                    if (oldInput != null) raw = oldInput.getText().toString().trim();
+                }
+
                 if (raw.isEmpty()) {
                     Toast.makeText(getContext(), "הזן סימבול", Toast.LENGTH_SHORT).show();
                     return;
                 }
 
-                // בדוק אם זה קריפטו במיפוי
-                String upperRaw = raw.toUpperCase(Locale.US);
+                String upperRaw    = raw.toUpperCase(Locale.US);
                 String cryptoMapped = CryptoHelper.CRYPTO_MAP.get(upperRaw);
-
                 String symbol;
                 if (cryptoMapped != null) {
-                    // BTC נהפך ל-BINANCE:BTCUSDT
                     symbol = cryptoMapped;
                 } else if (raw.contains(":")) {
-                    // כבר בפורמט BINANCE:XXXUSDT
                     symbol = raw.trim();
                 } else {
-                    // מניה רגילה
-                    symbol = raw.toUpperCase(Locale.US);
+                    symbol = upperRaw;
                 }
 
                 String firebaseKey = symbol.replace(":", "_");
                 StockWatchData stock = new StockWatchData(symbol, 0f, 0f);
                 watchlistRef.child(firebaseKey).setValue(stock);
-                stockInput.setText("");
+
+                if (autoInput != null) autoInput.setText("");
+                // ---- הורדת מקלדת לפי הגדרת המשתמש ----
+                SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+                boolean hideKb = prefs.getBoolean(KEY_WATCHLIST_HIDE_KB, true);
+                if (hideKb) hideKeyboard();
+
                 Toast.makeText(getContext(), symbol + " נוסף!", Toast.LENGTH_SHORT).show();
             });
         }
@@ -117,7 +161,8 @@ public class WatchlistFragment extends Fragment {
         if (btnRefresh != null)
             btnRefresh.setOnClickListener(view -> adapter.refresh());
 
-        TextInputEditText searchInput = v.findViewById(R.id.searchInput);
+        // חיפוש בתוך הרשימה הקיימת
+        com.google.android.material.textfield.TextInputEditText searchInput = v.findViewById(R.id.searchInput);
         if (searchInput != null) {
             searchInput.addTextChangedListener(new TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
@@ -149,7 +194,6 @@ public class WatchlistFragment extends Fragment {
                     if (data == null) continue;
                     if (data.symbol == null || data.symbol.isEmpty()) {
                         String key = ds.getKey();
-                        // key: BINANCE_BTCUSDT -> symbol: BINANCE:BTCUSDT
                         data.symbol = (key != null) ? key.replace("_", ":") : "";
                     }
                     if (!data.symbol.isEmpty()) fresh.add(data);
@@ -165,6 +209,113 @@ public class WatchlistFragment extends Fragment {
 
         return v;
     }
+
+    // ─── AutoComplete (כמו בגרף) ───────────────────────────────────────────
+    private void setupAutoComplete(AutoCompleteTextView input) {
+        suggestionAdapter = new ArrayAdapter<ChartFragment.StockSuggestion>(
+                requireContext(),
+                android.R.layout.simple_dropdown_item_1line,
+                new ArrayList<>()) {
+            @Override
+            public android.widget.Filter getFilter() {
+                return new android.widget.Filter() {
+                    @Override protected FilterResults performFiltering(CharSequence c) {
+                        FilterResults r = new FilterResults();
+                        r.values = new ArrayList<>(); r.count = 0; return r;
+                    }
+                    @Override protected void publishResults(CharSequence c, FilterResults r) {}
+                };
+            }
+        };
+
+        input.setAdapter(suggestionAdapter);
+        input.setThreshold(1);
+
+        // לחיצה על הצעה מהרשימה
+        input.setOnItemClickListener((parent, view, position, id) -> {
+            ChartFragment.StockSuggestion sel = suggestionAdapter.getItem(position);
+            if (sel == null || sel.symbol == null || sel.symbol.trim().isEmpty()) return;
+            String picked = sel.symbol.contains(":")
+                    ? sel.symbol.trim()
+                    : sel.symbol.trim().toUpperCase(Locale.US);
+            isManualSelection = true;
+            input.setText(picked);
+            input.setSelection(picked.length());
+            input.dismissDropDown();
+            clearSuggestions();
+            isManualSelection = false;
+        });
+
+        // הקלדה → חיפוש Finnhub
+        input.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
+            @Override public void afterTextChanged(Editable s) {}
+            @Override public void onTextChanged(CharSequence s, int st, int b, int c) {
+                if (isManualSelection) return;
+                scheduleSymbolSearch(s == null ? "" : s.toString().trim(), input);
+            }
+        });
+    }
+
+    private void scheduleSymbolSearch(String q, AutoCompleteTextView input) {
+        if (pendingSearch != null) searchHandler.removeCallbacks(pendingSearch);
+        latestQuery = q;
+        if (q.length() < 1) { clearSuggestions(); return; }
+        pendingSearch = () -> fetchSymbolSuggestions(q, input);
+        searchHandler.postDelayed(pendingSearch, SEARCH_DEBOUNCE_MS);
+    }
+
+    private void fetchSymbolSuggestions(final String query, AutoCompleteTextView input) {
+        try {
+            String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name());
+            String url = "https://finnhub.io/api/v1/search?q=" + encoded + "&token=" + FINNHUB_KEY;
+            httpClient.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
+                @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {}
+                @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                    if (!response.isSuccessful() || response.body() == null) return;
+                    ArrayList<ChartFragment.StockSuggestion> list = new ArrayList<>();
+                    try {
+                        JSONObject json   = new JSONObject(response.body().string());
+                        JSONArray  result = json.optJSONArray("result");
+                        if (result == null) return;
+                        for (int i = 0; i < result.length() && i < 25; i++) {
+                            JSONObject o    = result.optJSONObject(i);
+                            if (o == null) continue;
+                            String sym      = o.optString("symbol",      "").trim();
+                            String name     = o.optString("description", "");
+                            String type     = o.optString("type",        "");
+                            if (sym.isEmpty()) continue;
+                            boolean isStock  = "Common Stock".equals(type);
+                            boolean isCrypto = "Crypto".equals(type);
+                            if (!isStock && !isCrypto) continue;
+                            if (isCrypto && !sym.startsWith("BINANCE:")) continue;
+                            if (isCrypto && !sym.endsWith("USDT")) continue;
+                            String exchange = isCrypto ? "Crypto" : "US";
+                            list.add(new ChartFragment.StockSuggestion(sym, name, exchange));
+                        }
+                    } catch (Exception ignored) {}
+                    if (getActivity() == null) return;
+                    getActivity().runOnUiThread(() -> {
+                        if (!query.equals(latestQuery) || suggestionAdapter == null) return;
+                        suggestionAdapter.clear();
+                        suggestionAdapter.addAll(list);
+                        suggestionAdapter.notifyDataSetChanged();
+                        if (input.hasFocus() && suggestionAdapter.getCount() > 0)
+                            input.showDropDown();
+                    });
+                }
+            });
+        } catch (Exception ignored) {}
+    }
+
+    private void clearSuggestions() {
+        if (suggestionAdapter != null) {
+            suggestionAdapter.clear();
+            suggestionAdapter.notifyDataSetChanged();
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
 
     private void handleStockClick(String symbol) {
         if (!isAdded()) return;
@@ -233,6 +384,17 @@ public class WatchlistFragment extends Fragment {
             NotificationManager nm = (NotificationManager)
                     requireContext().getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) nm.createNotificationChannel(channel);
+        }
+    }
+
+    private void hideKeyboard() {
+        if (getActivity() == null) return;
+        View view = getActivity().getCurrentFocus();
+        if (view == null) view = getView();
+        if (view != null) {
+            InputMethodManager imm = (InputMethodManager)
+                    getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
         }
     }
 }

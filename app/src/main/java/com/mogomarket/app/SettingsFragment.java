@@ -39,7 +39,7 @@ public class SettingsFragment extends Fragment {
 
         SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, 0);
 
-        // ── עיצוב תמה ──────────────────────────────────────────────────────
+        // ── עיצוב תמא ─────────────────────────────────────────────────────
         btnLightMode  = v.findViewById(R.id.btnLightMode);
         btnDarkMode   = v.findViewById(R.id.btnDarkMode);
         tvThemeStatus = v.findViewById(R.id.tvThemeStatus);
@@ -74,7 +74,16 @@ public class SettingsFragment extends Fragment {
                     prefs.edit().putBoolean(WatchlistFragment.KEY_WATCHLIST_NAV, isChecked).apply());
         }
 
-        // ── אימייל + גרסה ───────────────────────────────────────────────────
+        // ── Toggle: הורדת מקלדת בהוספת מניה לרשימת מעקב ───────────────────
+        SwitchMaterial switchHideKeyboard = v.findViewById(R.id.switchHideKeyboardOnAdd);
+        if (switchHideKeyboard != null) {
+            boolean hideKb = prefs.getBoolean(WatchlistFragment.KEY_WATCHLIST_HIDE_KB, true);
+            switchHideKeyboard.setChecked(hideKb);
+            switchHideKeyboard.setOnCheckedChangeListener((btn, isChecked) ->
+                    prefs.edit().putBoolean(WatchlistFragment.KEY_WATCHLIST_HIDE_KB, isChecked).apply());
+        }
+
+        // ── אימייל + גרסא ─────────────────────────────────────────────────
         TextView tvEmail = v.findViewById(R.id.tvUserEmail);
         if (tvEmail != null) {
             tvEmail.setTextColor(requireContext().getColor(R.color.primary));
@@ -95,7 +104,7 @@ public class SettingsFragment extends Fragment {
             }
         }
 
-        // ── יציאה ──────────────────────────────────────────────────────────
+        // ── יציאה ──────────────────────────────────────────────────────
         MaterialButton btnLogout = v.findViewById(R.id.btnSettingsLogout);
         if (btnLogout != null) {
             btnLogout.setBackgroundTintList(
