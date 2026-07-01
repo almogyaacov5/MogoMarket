@@ -241,7 +241,7 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- Navigation Settings Card -->
+        <!-- Navigation + Keyboard Settings Card -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -271,7 +271,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="16dp">
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -299,6 +300,52 @@
 
                     <com.google.android.material.switchmaterial.SwitchMaterial
                         android:id="@+id/switchWatchlistNav"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true" />
+
+                </LinearLayout>
+
+                <!-- Divider -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginBottom="16dp"
+                    android:background="@color/colorDivider" />
+
+                <!-- Hide Keyboard on Add Toggle -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="הורד מקלדת בהוספת מניה"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="המקלדת תרד אוטומטית לאחר הוספת מניה לרשימת המעקב"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textSize="12sp"
+                            android:layout_marginTop="2dp" />
+
+                    </LinearLayout>
+
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/switchHideKeyboardOnAdd"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:checked="true" />

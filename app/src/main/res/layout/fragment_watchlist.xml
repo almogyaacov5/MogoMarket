@@ -50,7 +50,7 @@
 
             </LinearLayout>
 
-            <!-- Add Stock Row -->
+            <!-- Add Stock Row with AutoComplete -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -66,14 +66,18 @@
                     style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     android:hint="Add symbol (e.g. AAPL)">
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/stockInput"
+                    <AutoCompleteTextView
+                        android:id="@+id/stockAutoInput"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="textCapCharacters"
                         android:imeOptions="actionDone"
                         android:textColor="?attr/colorOnSurface"
-                        android:textColorHint="?attr/colorOnSurfaceVariant" />
+                        android:textColorHint="?attr/colorOnSurfaceVariant"
+                        android:completionThreshold="1"
+                        android:dropDownVerticalOffset="2dp"
+                        android:popupBackground="?attr/colorSurface" />
+
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.button.MaterialButton
