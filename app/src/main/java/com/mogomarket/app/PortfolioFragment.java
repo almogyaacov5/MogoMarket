@@ -43,6 +43,8 @@ public class PortfolioFragment extends Fragment {
     private MaterialButton btnAddStockToPortfolio;
     private TextView tvTotalPnl;
     private TextView tvOpenCount;
+    private TextView tvDailyPnl;
+    private TextView tvDailyPct;
 
     private List<StockData> stocksList;
     private StocksAdapter adapter;
@@ -65,6 +67,8 @@ public class PortfolioFragment extends Fragment {
         btnRefreshPortfolio    = v.findViewById(R.id.btnRefreshPortfolio);
         tvTotalPnl             = v.findViewById(R.id.tvTotalPnl);
         tvOpenCount            = v.findViewById(R.id.tvOpenCount);
+        tvDailyPnl             = v.findViewById(R.id.tvDailyPnl);
+        tvDailyPct             = v.findViewById(R.id.tvDailyPct);
 
         stocksList = new ArrayList<>();
 
@@ -89,7 +93,6 @@ public class PortfolioFragment extends Fragment {
 
             @Override
             public void onStockDelete(String symbol, double sellPrice) {
-                // Firebase key: BINANCE:BTCUSDT -> BINANCE_BTCUSDT
                 String firebaseKey = symbol.replace(":", "_");
                 portfolioRef.child(firebaseKey).get().addOnSuccessListener(snapshot -> {
                     if (snapshot.exists()) {
@@ -124,7 +127,6 @@ public class PortfolioFragment extends Fragment {
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     StockData data = ds.getValue(StockData.class);
                     if (data == null) continue;
-                    // שחזור Firebase key ל-symbol: BINANCE_BTCUSDT -> BINANCE:BTCUSDT
                     if (data.symbol == null || data.symbol.isEmpty()) {
                         String key = ds.getKey();
                         if (key != null) data.symbol = key.replace("_BINANCE", ":BINANCE")
@@ -164,6 +166,8 @@ public class PortfolioFragment extends Fragment {
         }
         if (stocksList.isEmpty()) {
             if (tvTotalPnl != null) tvTotalPnl.setText("$0.00");
+            if (tvDailyPnl != null) tvDailyPnl.setText("$0.00");
+            if (tvDailyPct != null) tvDailyPct.setText("+0.00%");
             return;
         }
 
@@ -173,67 +177,108 @@ public class PortfolioFragment extends Fragment {
         }
         if (withAmount.isEmpty()) {
             if (tvTotalPnl != null) tvTotalPnl.setText("N/A");
+            if (tvDailyPnl != null) tvDailyPnl.setText("N/A");
+            if (tvDailyPct != null) tvDailyPct.setText("-");
             return;
         }
 
-        final double[] totalPnl = {0.0};
+        final double[] totalPnl  = {0.0};
+        final double[] dailyPnl  = {0.0};
+        final double[] totalInvested = {0.0};
         final AtomicInteger remaining = new AtomicInteger(withAmount.size());
 
         for (StockData stock : withAmount) {
+            totalInvested[0] += stock.tradeAmount;
+
             if (CryptoHelper.isCryptoSymbol(stock.symbol)) {
-                // Binance ticker
+                // Binance 24hr ticker
                 String pair = CryptoHelper.getPair(stock.symbol);
-                String url  = "https://api.binance.com/api/v3/ticker/price?symbol=" + pair;
+                String url  = "https://api.binance.com/api/v3/ticker/24hr?symbol=" + pair;
                 httpClient.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
                     @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                        if (remaining.decrementAndGet() == 0) showTotalPnl(totalPnl[0]);
+                        if (remaining.decrementAndGet() == 0)
+                            showSummary(totalPnl[0], dailyPnl[0], totalInvested[0]);
                     }
                     @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                         try {
                             JSONObject obj = new JSONObject(response.body().string());
-                            float price = (float) obj.getDouble("price");
-                            if (price > 0 && stock.buyPrice != 0f) {
-                                float pct = (price - stock.buyPrice) / stock.buyPrice * 100f;
-                                double pnl = stock.tradeAmount * (pct / 100.0);
-                                synchronized (totalPnl) { totalPnl[0] += pnl; }
+                            float currentPrice       = (float) obj.getDouble("lastPrice");
+                            float dailyChangePct     = (float) obj.getDouble("priceChangePercent");
+                            if (currentPrice > 0 && stock.buyPrice != 0f) {
+                                float totalPct = (currentPrice - stock.buyPrice) / stock.buyPrice * 100f;
+                                double pnl     = stock.tradeAmount * (totalPct / 100.0);
+                                // רווח/הפסד יומי: dailyChangePct הוא % שינוי ב-24ש על המחיר
+                                // הסכום שהושקע * dailyChangePct / 100 = רווח יומי על ההשקעה הנוכחית
+                                double dPnl    = stock.tradeAmount * (1 + totalPct / 100.0) * (dailyChangePct / 100.0);
+                                synchronized (totalPnl) {
+                                    totalPnl[0] += pnl;
+                                    dailyPnl[0] += dPnl;
+                                }
                             }
                         } catch (Exception ignored) {}
-                        if (remaining.decrementAndGet() == 0) showTotalPnl(totalPnl[0]);
+                        if (remaining.decrementAndGet() == 0)
+                            showSummary(totalPnl[0], dailyPnl[0], totalInvested[0]);
                     }
                 });
             } else {
-                // Finnhub /quote
+                // Finnhub /quote  c=current d=change dp=change%
                 String url = "https://finnhub.io/api/v1/quote?symbol=" + stock.symbol + "&token=" + FINNHUB_KEY;
                 httpClient.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
                     @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                        if (remaining.decrementAndGet() == 0) showTotalPnl(totalPnl[0]);
+                        if (remaining.decrementAndGet() == 0)
+                            showSummary(totalPnl[0], dailyPnl[0], totalInvested[0]);
                     }
                     @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                         try {
                             JSONObject obj = new JSONObject(response.body().string());
-                            float price = (float) obj.getDouble("c");
-                            if (price > 0 && stock.buyPrice != 0f) {
-                                float pct = (price - stock.buyPrice) / stock.buyPrice * 100f;
-                                double pnl = stock.tradeAmount * (pct / 100.0);
-                                synchronized (totalPnl) { totalPnl[0] += pnl; }
+                            float currentPrice   = (float) obj.getDouble("c");  // current
+                            float dailyChangePct = (float) obj.getDouble("dp"); // daily % change
+                            if (currentPrice > 0 && stock.buyPrice != 0f) {
+                                float totalPct = (currentPrice - stock.buyPrice) / stock.buyPrice * 100f;
+                                double pnl     = stock.tradeAmount * (totalPct / 100.0);
+                                double dPnl    = stock.tradeAmount * (1 + totalPct / 100.0) * (dailyChangePct / 100.0);
+                                synchronized (totalPnl) {
+                                    totalPnl[0] += pnl;
+                                    dailyPnl[0] += dPnl;
+                                }
                             }
                         } catch (Exception ignored) {}
-                        if (remaining.decrementAndGet() == 0) showTotalPnl(totalPnl[0]);
+                        if (remaining.decrementAndGet() == 0)
+                            showSummary(totalPnl[0], dailyPnl[0], totalInvested[0]);
                     }
                 });
             }
         }
     }
 
-    private void showTotalPnl(double pnl) {
-        if (getActivity() == null || tvTotalPnl == null) return;
+    private void showSummary(double totalPnl, double dailyPnl, double totalInvested) {
+        if (getActivity() == null) return;
         getActivity().runOnUiThread(() -> {
-            String sign = pnl >= 0 ? "+" : "";
-            tvTotalPnl.setText(String.format(Locale.US, "%s$%.2f", sign, pnl));
             try {
                 int colorGain = requireContext().getColor(R.color.gain);
                 int colorLoss = requireContext().getColor(R.color.loss);
-                tvTotalPnl.setTextColor(pnl >= 0 ? colorGain : colorLoss);
+
+                // Total P&L
+                if (tvTotalPnl != null) {
+                    String sign = totalPnl >= 0 ? "+" : "";
+                    tvTotalPnl.setText(String.format(Locale.US, "%s$%.2f", sign, totalPnl));
+                    tvTotalPnl.setTextColor(totalPnl >= 0 ? colorGain : colorLoss);
+                }
+
+                // Daily P&L amount
+                if (tvDailyPnl != null) {
+                    String sign = dailyPnl >= 0 ? "+" : "";
+                    tvDailyPnl.setText(String.format(Locale.US, "%s$%.2f", sign, dailyPnl));
+                    tvDailyPnl.setTextColor(dailyPnl >= 0 ? colorGain : colorLoss);
+                }
+
+                // Daily P&L percent (relative to total invested)
+                if (tvDailyPct != null && totalInvested > 0) {
+                    double dailyPct = (dailyPnl / totalInvested) * 100.0;
+                    String pctSign  = dailyPct >= 0 ? "+" : "";
+                    tvDailyPct.setText(String.format(Locale.US, "%s%.2f%%", pctSign, dailyPct));
+                    tvDailyPct.setTextColor(dailyPct >= 0 ? colorGain : colorLoss);
+                }
             } catch (Exception ignored) {}
         });
     }

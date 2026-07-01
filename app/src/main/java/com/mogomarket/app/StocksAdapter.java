@@ -73,7 +73,6 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
 
         String sym = (stock.symbol != null) ? stock.symbol.trim() : "?";
 
-        // תצוגה: קריפטו -> קצר שם (למשל "BTC"), מניה -> כרגיל
         String displaySym = CryptoHelper.isCryptoSymbol(sym)
                 ? CryptoHelper.getShortName(sym)
                 : sym;
@@ -101,7 +100,6 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         holder.changePercentDetailText.setText("...");
         holder.pnlDollarText.setText("-");
 
-        // לוגו: לקריפטו אין לוגו מפינהב, למניות טוען
         if (!CryptoHelper.isCryptoSymbol(sym)) {
             holder.stockLogoBackground.setImageBitmap(null);
             String logoUrl = "https://static2.finnhub.io/file/publicdatany/finnhubimage/stock_logo/" + sym + ".png";
@@ -117,7 +115,6 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
             holder.stockLogoBackground.setImageBitmap(null);
         }
 
-        // שליפת מחיר: קריפטו -> Binance, מניה -> Finnhub
         if (CryptoHelper.isCryptoSymbol(sym)) {
             fetchCryptoQuote(sym, stock, holder, colorGain, colorLoss, textPrimary, textSecondary, colorNeutral);
         } else {
@@ -138,7 +135,6 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
                                   int colorGain, int colorLoss, int textPrimary,
                                   int textSecondary, int colorNeutral) {
         String pair = CryptoHelper.getPair(symbol);
-        // מחיר נוכחי + שינוי 24ש מ-Binance
         String urlTicker = "https://api.binance.com/api/v3/ticker/24hr?symbol=" + pair;
         client.newCall(new Request.Builder().url(urlTicker).build()).enqueue(new Callback() {
             @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
@@ -149,7 +145,7 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
             @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 try {
                     JSONObject obj = new JSONObject(response.body().string());
-                    float currentPrice      = (float) obj.getDouble("lastPrice");
+                    float currentPrice       = (float) obj.getDouble("lastPrice");
                     float dailyChangePercent = (float) obj.getDouble("priceChangePercent");
                     if (currentPrice == 0f) return;
                     updateHolderWithPrices(holder, stock, currentPrice, dailyChangePercent,
@@ -184,7 +180,7 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         });
     }
 
-    // ========================= עדכון ה-UI בויזואל =========================
+    // ========================= עדכון ה-UI =========================
 
     private void updateHolderWithPrices(StockViewHolder holder, StockData stock,
                                         float currentPrice, float dailyChangePercent,
@@ -192,8 +188,15 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
                                         int textPrimary, int textSecondary, int colorNeutral) {
         float totalChangePercent = (stock.buyPrice != 0f)
                 ? ((currentPrice - stock.buyPrice) / stock.buyPrice * 100f) : 0f;
+
+        // רווח/הפסד כולל בדולרים (מהכניסה)
         double pnlDollar = (stock.tradeAmount > 0)
                 ? stock.tradeAmount * (totalChangePercent / 100.0) : 0;
+
+        // רווח/הפסד יומי בדולרים:
+        // שווי נוכחי של ההשקעה * dailyChangePct / 100
+        double currentValue    = (stock.tradeAmount > 0) ? stock.tradeAmount * (1 + totalChangePercent / 100.0) : 0;
+        double dailyPnlDollar  = (stock.tradeAmount > 0) ? currentValue * (dailyChangePercent / 100.0) : 0;
 
         int gainLossColor      = totalChangePercent >= 0 ? colorGain : colorLoss;
         int dailyGainLossColor = dailyChangePercent >= 0 ? colorGain : colorLoss;
@@ -205,16 +208,31 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
             holder.currentPriceText.setText(String.format(Locale.US, "$%.2f", currentPrice));
             holder.currentPriceText.setTextColor(textPrimary);
         });
+
+        // שורה 1: אחוז יומי + דולרים יומיים
         holder.changePercentText.post(() -> {
-            holder.changePercentText.setText(
-                    String.format(Locale.US, "%s%.2f%% Today", dailySign, Math.abs(dailyChangePercent)));
+            String dailyDollarSign = dailyPnlDollar >= 0 ? "+" : "-";
+            String dailyText;
+            if (stock.tradeAmount > 0) {
+                dailyText = String.format(Locale.US, "%s%.2f%% (%s$%.2f) Today",
+                        dailySign, Math.abs(dailyChangePercent),
+                        dailyDollarSign, Math.abs(dailyPnlDollar));
+            } else {
+                dailyText = String.format(Locale.US, "%s%.2f%% Today",
+                        dailySign, Math.abs(dailyChangePercent));
+            }
+            holder.changePercentText.setText(dailyText);
             holder.changePercentText.setTextColor(dailyGainLossColor);
         });
+
+        // שורה 2: אחוז כולל vs כניסה
         holder.changePercentDetailText.post(() -> {
             holder.changePercentDetailText.setText(
                     String.format(Locale.US, "%s%.2f%% vs Entry", totalSign, Math.abs(totalChangePercent)));
             holder.changePercentDetailText.setTextColor(gainLossColor);
         });
+
+        // PnL בדולרים (כולל)
         if (stock.tradeAmount > 0) {
             holder.pnlDollarText.post(() -> {
                 String sign = pnlDollar >= 0 ? "+" : "-";
@@ -278,7 +296,6 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
 
         builder.setPositiveButton("Save", (dialog, which) -> {
             String rawSym = etSymbol.getText().toString().trim();
-            // אם קריפטו שומר פורמט BINANCE:XXX, אחרת uppercase
             String newSymbol = CryptoHelper.isCryptoSymbol(rawSym)
                     ? rawSym.trim()
                     : rawSym.toUpperCase(Locale.US);
