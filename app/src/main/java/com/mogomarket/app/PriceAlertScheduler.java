@@ -5,6 +5,7 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
+import android.provider.Settings;
 
 /**
  * מחלקת עזר לתזמון בדיקות מחיר תקופתיות עם AlarmManager.
@@ -27,8 +28,19 @@ public class PriceAlertScheduler {
         PendingIntent pendingIntent = buildPendingIntent(context);
         long triggerAtMillis = System.currentTimeMillis() + INTERVAL_MS;
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            // setExactAndAllowWhileIdle — מדויק גם במצב Doze (חיסכון בסוללה)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Android 12+ — חובה לבדוק הרשאה לפני Exact Alarm
+            if (alarmManager.canScheduleExactAlarms()) {
+                alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
+            } else {
+                // מפנה את המשתמש להגדרות הרשאה
+                Intent permIntent = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
+                permIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(permIntent);
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // Android 6–11 — setExactAndAllowWhileIdle ללא צורך בהרשאה
             alarmManager.setExactAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
         } else {
