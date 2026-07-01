@@ -107,7 +107,6 @@ public class WatchlistFragment extends Fragment {
         recyclerView.setAdapter(adapter);
 
         // ------- AutoComplete input -------
-        // נסה למצוא AutoCompleteTextView; אם אין — השתמש ב-TextInputEditText הישן
         AutoCompleteTextView autoInput = v.findViewById(R.id.stockAutoInput);
         if (autoInput != null) {
             setupAutoComplete(autoInput);
@@ -121,11 +120,6 @@ public class WatchlistFragment extends Fragment {
                 String raw = "";
                 if (autoInput != null) {
                     raw = autoInput.getText().toString().trim();
-                } else {
-                    // fallback ל-TextInputEditText הישן
-                    com.google.android.material.textfield.TextInputEditText oldInput =
-                            v.findViewById(R.id.stockInput);
-                    if (oldInput != null) raw = oldInput.getText().toString().trim();
                 }
 
                 if (raw.isEmpty()) {
@@ -133,7 +127,7 @@ public class WatchlistFragment extends Fragment {
                     return;
                 }
 
-                String upperRaw    = raw.toUpperCase(Locale.US);
+                String upperRaw     = raw.toUpperCase(Locale.US);
                 String cryptoMapped = CryptoHelper.CRYPTO_MAP.get(upperRaw);
                 String symbol;
                 if (cryptoMapped != null) {
@@ -149,6 +143,7 @@ public class WatchlistFragment extends Fragment {
                 watchlistRef.child(firebaseKey).setValue(stock);
 
                 if (autoInput != null) autoInput.setText("");
+
                 // ---- הורדת מקלדת לפי הגדרת המשתמש ----
                 SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
                 boolean hideKb = prefs.getBoolean(KEY_WATCHLIST_HIDE_KB, true);
@@ -210,7 +205,7 @@ public class WatchlistFragment extends Fragment {
         return v;
     }
 
-    // ─── AutoComplete (כמו בגרף) ───────────────────────────────────────────
+    // ─── AutoComplete (כמו בגרף) ────────────────────────────────────────
     private void setupAutoComplete(AutoCompleteTextView input) {
         suggestionAdapter = new ArrayAdapter<ChartFragment.StockSuggestion>(
                 requireContext(),
@@ -231,7 +226,6 @@ public class WatchlistFragment extends Fragment {
         input.setAdapter(suggestionAdapter);
         input.setThreshold(1);
 
-        // לחיצה על הצעה מהרשימה
         input.setOnItemClickListener((parent, view, position, id) -> {
             ChartFragment.StockSuggestion sel = suggestionAdapter.getItem(position);
             if (sel == null || sel.symbol == null || sel.symbol.trim().isEmpty()) return;
@@ -246,7 +240,6 @@ public class WatchlistFragment extends Fragment {
             isManualSelection = false;
         });
 
-        // הקלדה → חיפוש Finnhub
         input.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
             @Override public void afterTextChanged(Editable s) {}
@@ -279,11 +272,11 @@ public class WatchlistFragment extends Fragment {
                         JSONArray  result = json.optJSONArray("result");
                         if (result == null) return;
                         for (int i = 0; i < result.length() && i < 25; i++) {
-                            JSONObject o    = result.optJSONObject(i);
+                            JSONObject o = result.optJSONObject(i);
                             if (o == null) continue;
-                            String sym      = o.optString("symbol",      "").trim();
-                            String name     = o.optString("description", "");
-                            String type     = o.optString("type",        "");
+                            String sym  = o.optString("symbol",      "").trim();
+                            String name = o.optString("description", "");
+                            String type = o.optString("type",        "");
                             if (sym.isEmpty()) continue;
                             boolean isStock  = "Common Stock".equals(type);
                             boolean isCrypto = "Crypto".equals(type);
@@ -315,7 +308,7 @@ public class WatchlistFragment extends Fragment {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────────
 
     private void handleStockClick(String symbol) {
         if (!isAdded()) return;
