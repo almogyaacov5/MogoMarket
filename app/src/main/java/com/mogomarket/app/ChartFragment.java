@@ -98,7 +98,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private static final int COLOR_FILL     = 0xFF1C6DD0;
     private static final int COLOR_PORTFOLIO = 0xFFFFB300;
 
-    // Double-tap detection for fullscreen
     private static final long DOUBLE_TAP_TIMEOUT_MS = 350;
     private long lastTapTime = 0;
 
@@ -141,6 +140,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private boolean isPortfolioMode = false;
     private boolean isCrosshairActive = false;
 
+    // Timeframe button references
+    private com.google.android.material.button.MaterialButton btnTF1D, btnTF1W, btnTF1M, btnTF3M, btnTF1Y;
+    private com.google.android.material.button.MaterialButton activeTFButton = null;
+
     private ViewGroup.LayoutParams chartOriginalParams;
 
     private CandleStickChart candleStickChart;
@@ -162,7 +165,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private TextView timeFrameText, tickerText, priceText, changeText, currentPriceDisplay;
     private ProgressBar progressAI;
 
-    // Crosshair info bar views
     private LinearLayout crosshairInfoBar;
     private TextView crosshairPrice;
     private TextView crosshairDate;
@@ -233,7 +235,13 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         btnTickerSelect    = v.findViewById(R.id.btnTickerSelect);
         btnPortfolioChart  = v.findViewById(R.id.btnPortfolioChart);
 
-        // Crosshair info bar
+        // Timeframe buttons
+        btnTF1D = v.findViewById(R.id.btnTF1D);
+        btnTF1W = v.findViewById(R.id.btnTF1W);
+        btnTF1M = v.findViewById(R.id.btnTF1M);
+        btnTF3M = v.findViewById(R.id.btnTF3M);
+        btnTF1Y = v.findViewById(R.id.btnTF1Y);
+
         crosshairInfoBar   = v.findViewById(R.id.crosshairInfoBar);
         crosshairPrice     = v.findViewById(R.id.crosshairPrice);
         crosshairDate      = v.findViewById(R.id.crosshairDate);
@@ -263,8 +271,13 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         if (progressAI          != null) progressAI.setVisibility(View.GONE);
         if (currentPriceDisplay != null) currentPriceDisplay.setVisibility(View.GONE);
 
-        if (getArguments() != null && getArguments().containsKey("symbol")) {
-            symbol = getArguments().getString("symbol", symbol);
+        if (getArguments() != null) {
+            if (getArguments().containsKey("symbol")) {
+                symbol = getArguments().getString("symbol", symbol);
+            }
+            if (getArguments().getBoolean("portfolioMode", false)) {
+                isPortfolioMode = true;
+            }
         }
 
         updateTickerButtonLabel();
@@ -274,10 +287,59 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         setupCandleChartStyle();
         setupLineChartStyle();
         setupClickListeners();
+        setupTimeFrameButtons();
         setupChartGestures();
-        fetchStockData(symbol, interval);
+
+        // אם נכנסנו במצב פורטפוליו - טוען מיד
+        if (isPortfolioMode) {
+            loadPortfolioChart();
+        } else {
+            fetchStockData(symbol, interval);
+        }
+
         updateChartThemeToggleLabel();
+        // סמן כפתור 1D כברירת מחדל
+        setActiveTFButton(btnTF1D);
         return v;
+    }
+
+    // ─── Timeframe buttons setup ──────────────────────────────────────────────
+
+    private void setupTimeFrameButtons() {
+        // Mapping: button → Yahoo interval string
+        // intervalToYahoo maps these to actual Yahoo params
+        if (btnTF1D != null) btnTF1D.setOnClickListener(v -> onTFSelected("5min",  btnTF1D));
+        if (btnTF1W != null) btnTF1W.setOnClickListener(v -> onTFSelected("60min", btnTF1W));
+        if (btnTF1M != null) btnTF1M.setOnClickListener(v -> onTFSelected("1day",  btnTF1M));
+        if (btnTF3M != null) btnTF3M.setOnClickListener(v -> onTFSelected("1day",  btnTF3M));
+        if (btnTF1Y != null) btnTF1Y.setOnClickListener(v -> onTFSelected("1week", btnTF1Y));
+    }
+
+    private void onTFSelected(String newInterval, com.google.android.material.button.MaterialButton btn) {
+        interval = newInterval;
+        setActiveTFButton(btn);
+        isPortfolioMode = false;
+        hideCrosshairInfo();
+        fetchStockData(symbol, interval);
+    }
+
+    /** מסמן כפתור טיים-פריים כפעיל (Tonal) ומחזיר שאר ל-Outlined */
+    private void setActiveTFButton(com.google.android.material.button.MaterialButton selected) {
+        com.google.android.material.button.MaterialButton[] allTF =
+                { btnTF1D, btnTF1W, btnTF1M, btnTF3M, btnTF1Y };
+        for (com.google.android.material.button.MaterialButton b : allTF) {
+            if (b == null) continue;
+            if (b == selected) {
+                b.setBackgroundTintList(
+                    android.content.res.ColorStateList.valueOf(
+                        isDarkTheme ? 0xFF4DA3FF : 0xFF1565C0));
+                b.setTextColor(0xFFFFFFFF);
+            } else {
+                b.setBackgroundTintList(null);
+                b.setTextColor(isDarkTheme ? DARK_TEXT_SEC : LIGHT_TEXT_SEC);
+            }
+        }
+        activeTFButton = selected;
     }
 
     @Override
@@ -299,8 +361,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
     }
 
-    // ─── Crosshair info bar helpers ───────────────────────────────────────────
-
     private void showCrosshairInfo(float price, String date) {
         if (crosshairInfoBar == null) return;
         isCrosshairActive = true;
@@ -317,80 +377,51 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         if (crosshairInfoBar == null) return;
         isCrosshairActive = false;
         crosshairInfoBar.setVisibility(View.GONE);
-        // Clear all highlights
         if (candleStickChart != null) candleStickChart.highlightValue(null);
         if (lineChart        != null) lineChart.highlightValue(null);
     }
 
-    // ─── Chart gesture setup (long-press = show crosshair, single tap = hide) ─
-
     private void setupChartGestures() {
         OnChartGestureListener gestureListener = new OnChartGestureListener() {
-            @Override
-            public void onChartGestureStart(MotionEvent me, ChartTouchListener.ChartGesture lastPerformedGesture) {}
-
-            @Override
-            public void onChartGestureEnd(MotionEvent me, ChartTouchListener.ChartGesture lastPerformedGesture) {}
-
-            @Override
-            public void onChartLongPressed(MotionEvent me) {
-                // Long press: enable highlight at touched position
+            @Override public void onChartGestureStart(MotionEvent me, ChartTouchListener.ChartGesture lastPerformedGesture) {}
+            @Override public void onChartGestureEnd(MotionEvent me, ChartTouchListener.ChartGesture lastPerformedGesture) {}
+            @Override public void onChartLongPressed(MotionEvent me) {
                 if (candleStickChart != null && candleStickChart.getVisibility() == View.VISIBLE) {
                     com.github.mikephil.charting.highlight.Highlight h =
                             candleStickChart.getHighlightByTouchPoint(me.getX(), me.getY());
-                    if (h != null) {
-                        isCrosshairActive = true;
-                        candleStickChart.highlightValue(h);
-                    }
+                    if (h != null) { isCrosshairActive = true; candleStickChart.highlightValue(h); }
                 } else if (lineChart != null && lineChart.getVisibility() == View.VISIBLE) {
                     com.github.mikephil.charting.highlight.Highlight h =
                             lineChart.getHighlightByTouchPoint(me.getX(), me.getY());
-                    if (h != null) {
-                        isCrosshairActive = true;
-                        lineChart.highlightValue(h);
-                    }
+                    if (h != null) { isCrosshairActive = true; lineChart.highlightValue(h); }
                 }
             }
-
-            @Override
-            public void onChartDoubleTapped(MotionEvent me) {
-                // Double tap: toggle fullscreen
-                if (isFullscreen) exitFullscreen();
-                else              enterFullscreen();
+            @Override public void onChartDoubleTapped(MotionEvent me) {
+                if (isFullscreen) exitFullscreen(); else enterFullscreen();
             }
-
-            @Override
-            public void onChartSingleTapped(MotionEvent me) {
-                // Single tap: dismiss crosshair if active
-                if (isCrosshairActive) {
-                    hideCrosshairInfo();
-                }
+            @Override public void onChartSingleTapped(MotionEvent me) {
+                if (isCrosshairActive) hideCrosshairInfo();
             }
-
-            @Override
-            public void onChartFling(MotionEvent me1, MotionEvent me2, float velocityX, float velocityY) {}
-
-            @Override
-            public void onChartScale(MotionEvent me, float scaleX, float scaleY) {}
-
-            @Override
-            public void onChartTranslate(MotionEvent me, float dX, float dY) {}
+            @Override public void onChartFling(MotionEvent me1, MotionEvent me2, float velocityX, float velocityY) {}
+            @Override public void onChartScale(MotionEvent me, float scaleX, float scaleY) {}
+            @Override public void onChartTranslate(MotionEvent me, float dX, float dY) {}
         };
-
         if (candleStickChart != null) candleStickChart.setOnChartGestureListener(gestureListener);
         if (lineChart        != null) lineChart.setOnChartGestureListener(gestureListener);
     }
 
-    /** Keeps ticker button label in sync with current symbol */
     private void updateTickerButtonLabel() {
         if (btnTickerSelect == null) return;
+        if (isPortfolioMode) {
+            btnTickerSelect.setText("\uD83D\uDCCA Portfolio");
+            return;
+        }
         String display = isCryptoSymbol(symbol)
                 ? symbol.substring(symbol.indexOf(':') + 1)
                 : symbol;
         btnTickerSelect.setText(display);
     }
 
-    /** Show dialog to type a new ticker */
     private void showTickerInputDialog() {
         if (getContext() == null) return;
         EditText et = new EditText(getContext());
@@ -409,7 +440,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 .show();
     }
 
-    // ─── Portfolio chart ─────────────────────────────────────────────────────
+    // ─── Portfolio chart ──────────────────────────────────────────────────────
 
     private void loadPortfolioChart() {
         com.google.firebase.auth.FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
@@ -417,8 +448,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             Toast.makeText(requireContext(), "Login required", Toast.LENGTH_SHORT).show();
             return;
         }
+        // קורא מ-portfolio-stocks (כמו PortfolioFragment)
         DatabaseReference portfolioRef = FirebaseDatabase.getInstance()
-                .getReference("users").child(user.getUid()).child("portfolio");
+                .getReference("users").child(user.getUid()).child("portfolio-stocks");
 
         portfolioRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -428,17 +460,16 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 List<Float>  avgBuys = new ArrayList<>();
 
                 for (DataSnapshot child : snapshot.getChildren()) {
-                    String sym = child.getKey();
+                    StockData data = child.getValue(StockData.class);
+                    if (data == null) continue;
+                    String sym = data.symbol;
+                    if (sym == null || sym.isEmpty()) {
+                        sym = child.getKey();
+                        if (sym != null) sym = sym.replace("_", ":");
+                    }
                     if (sym == null) continue;
-                    sym = sym.replace("_", ":");
-                    float qty    = 0f;
-                    float avgBuy = 0f;
-                    try {
-                        Object qObj = child.child("quantity").getValue();
-                        Object bObj = child.child("avgBuyPrice").getValue();
-                        if (qObj != null) qty    = ((Number) qObj).floatValue();
-                        if (bObj != null) avgBuy = ((Number) bObj).floatValue();
-                    } catch (Exception ignored) {}
+                    float qty    = data.quantity > 0   ? data.quantity   : 0f;
+                    float avgBuy = data.buyPrice > 0   ? data.buyPrice   : 0f;
                     if (qty > 0 && avgBuy > 0) {
                         symbols.add(sym);
                         qtys.add(qty);
@@ -451,7 +482,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                             "No portfolio stocks found", Toast.LENGTH_SHORT).show();
                     return;
                 }
-
                 fetchPortfolioHistory(symbols, qtys, avgBuys);
             }
             @Override public void onCancelled(@NonNull DatabaseError error) {}
@@ -551,7 +581,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             lineChart.animateX(400);
             lineChart.invalidate();
 
-            if (btnTickerSelect != null) btnTickerSelect.setText("\uD83D\uDCCA Portfolio");
+            updateTickerButtonLabel();
             if (priceText != null) {
                 float lastVal = entries.isEmpty() ? 0f : entries.get(entries.size()-1).getY();
                 priceText.setText(String.format(Locale.US, "%.2f%%", lastVal));
@@ -655,7 +685,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         candleStickChart.setDoubleTapToZoomEnabled(false);
         candleStickChart.setDragDecelerationEnabled(true);
         candleStickChart.setDragDecelerationFrictionCoef(0.92f);
-        // Highlight only via long-press; single tap dismisses
         candleStickChart.setHighlightPerTapEnabled(false);
         candleStickChart.setHighlightPerDragEnabled(true);
         candleStickChart.setExtraTopOffset(12f);
@@ -698,7 +727,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.setDoubleTapToZoomEnabled(false);
         lineChart.setDragDecelerationEnabled(true);
         lineChart.setDragDecelerationFrictionCoef(0.92f);
-        // Highlight only via long-press; single tap dismisses
         lineChart.setHighlightPerTapEnabled(false);
         lineChart.setHighlightPerDragEnabled(true);
         lineChart.setExtraTopOffset(12f);
@@ -737,22 +765,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             });
         }
 
-        if (btnTimeFrame != null) {
-            btnTimeFrame.setOnClickListener(v -> {
-                TimeFrameFragment dialog = new TimeFrameFragment();
-                dialog.show(getChildFragmentManager(), "timeframe");
-            });
-        }
-
-        com.google.android.material.button.MaterialButton selectTF = getView() != null
-                ? getView().findViewById(R.id.btnSelectTimeFrame) : null;
-        if (selectTF != null) {
-            selectTF.setOnClickListener(v -> {
-                TimeFrameFragment dialog = new TimeFrameFragment();
-                dialog.show(getChildFragmentManager(), "timeframe");
-            });
-        }
-
         if (btnToggleChart != null) {
             btnToggleChart.setOnClickListener(v -> {
                 isPortfolioMode = false;
@@ -768,10 +780,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 }
                 fetchStockData(symbol, interval);
             });
-        }
-
-        if (btnPortfolioChart != null) {
-            btnPortfolioChart.setOnClickListener(v -> loadPortfolioChart());
         }
 
         if (btnAIAnalysis != null) btnAIAnalysis.setOnClickListener(v -> analyzeWithAI());
@@ -859,17 +867,25 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
     }
 
+    /**
+     * ממפה interval פנימי → [yahooInterval, yahooRange]
+     * 1D  = 5min candles, range 1d
+     * 1W  = 60min candles, range 5d
+     * 1M  = 1day candles,  range 1mo
+     * 3M  = 1day candles,  range 3mo
+     * 1Y  = 1wk candles,   range 1y
+     */
     private String[] intervalToYahoo(String interval) {
         switch (interval) {
             case "1min":   return new String[]{"1m",  "1d"};
-            case "5min":   return new String[]{"5m",  "5d"};
-            case "15min":  return new String[]{"15m", "1mo"};
+            case "5min":   return new String[]{"5m",  "1d"};
+            case "15min":  return new String[]{"15m", "5d"};
             case "30min":  return new String[]{"30m", "1mo"};
             case "60min":
-            case "1h":     return new String[]{"1h",  "3mo"};
-            case "1week":  return new String[]{"1wk", "5y"};
-            case "1month": return new String[]{"1mo", "10y"};
-            default:       return new String[]{"1d",  "1y"};
+            case "1h":     return new String[]{"1h",  "5d"};
+            case "1week":  return new String[]{"1wk", "1y"};
+            case "1month": return new String[]{"1mo", "5y"};
+            default:       return new String[]{"1d",  "1mo"};
         }
     }
 
@@ -880,7 +896,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             case "1mo":
                 return new SimpleDateFormat("yyyy-MM", Locale.US);
             default:
-                return new SimpleDateFormat("MM/dd/yyyy", Locale.US);
+                return new SimpleDateFormat("MM/dd/yy", Locale.US);
         }
     }
 
@@ -952,8 +968,12 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private void fetchCryptoData(String symbol, String interval) {
         String pair = symbol.contains(":") ? symbol.substring(symbol.indexOf(':') + 1) : symbol;
         String binanceInterval = intervalToBinance(interval);
+        // limit מותאם לטיים-פריים
+        int limit = 200;
+        if (interval.equals("5min"))  limit = 288; // 1 יום
+        if (interval.equals("60min")) limit = 120; // 5 ימים
         String url = "https://api.binance.com/api/v3/klines?symbol=" + pair
-                + "&interval=" + binanceInterval + "&limit=365";
+                + "&interval=" + binanceInterval + "&limit=" + limit;
 
         Request req = new Request.Builder().url(url)
                 .header("User-Agent", "Mozilla/5.0").build();
@@ -970,7 +990,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     if (arr.length() == 0) return;
                     fullCloses.clear(); dateLabels.clear();
                     List<CandleEntry> entries = new ArrayList<>();
-                    SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy", Locale.US);
+                    boolean isIntraday = interval.equals("5min") || interval.equals("60min");
+                    SimpleDateFormat sdf = isIntraday
+                            ? new SimpleDateFormat("MM/dd HH:mm", Locale.US)
+                            : new SimpleDateFormat("MM/dd/yy", Locale.US);
                     float lc = 0f, pc = 0f; int vc = 0;
                     for (int i = 0; i < arr.length(); i++) {
                         JSONArray bar = arr.getJSONArray(i);
@@ -1023,6 +1046,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         String upper = raw.toUpperCase(Locale.US).trim();
         String cryptoSym = CRYPTO_MAP.get(upper);
         symbol = (cryptoSym != null) ? cryptoSym : upper;
+        isPortfolioMode = false;
         updateTickerButtonLabel();
         hideCrosshairInfo();
         fetchStockData(symbol, interval);
@@ -1072,7 +1096,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 if (getActivity() != null) getActivity().runOnUiThread(() -> {
                     if (progressAI   != null) progressAI.setVisibility(View.GONE);
                     if (btnAIAnalysis != null) btnAIAnalysis.setEnabled(true);
-                    Toast.makeText(requireContext(), "AI error: " + error, Toast.LENGTH_LONG).show();
+                    Toast.makeText(requireContext(), "AI error: " + error, Toast.LENGTH_SHORT).show();
                 });
             }
         });

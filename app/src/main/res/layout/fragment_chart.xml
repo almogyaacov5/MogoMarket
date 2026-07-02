@@ -24,6 +24,28 @@
         android:text=""
         android:visibility="gone" />
 
+    <!-- Hidden backward-compat IDs -->
+    <Button
+        android:id="@+id/btnChartThemeToggle"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        android:minWidth="0dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnExpandChart"
+        style="@style/Widget.Material3.Button.IconButton"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        android:contentDescription="Fullscreen" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnSelectTimeFrame"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+
     <!-- ===== HEADER CARD ===== -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/headerSection"
@@ -141,7 +163,7 @@
                 android:background="?attr/colorSurface"
                 android:visibility="gone" />
 
-            <!-- Crosshair info bar – fixed at top of chart, shown while highlight is active -->
+            <!-- Crosshair info bar -->
             <LinearLayout
                 android:id="@+id/crosshairInfoBar"
                 android:layout_width="wrap_content"
@@ -180,7 +202,7 @@
 
             </LinearLayout>
 
-            <!-- Exit fullscreen button (shown only in fullscreen mode) -->
+            <!-- Exit fullscreen button -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnExitFullscreen"
                 style="@style/Widget.Material3.Button.IconButton"
@@ -215,18 +237,71 @@
             android:orientation="vertical"
             android:padding="6dp">
 
-            <!-- Row 1: time frame selector -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnSelectTimeFrame"
-                style="@style/Widget.Material3.Button.TonalButton"
+            <!-- Row 1: Timeframe buttons -->
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="36dp"
-                android:text="⏱ Select Timeframe"
-                android:textAllCaps="false"
-                android:textSize="12sp"
-                android:layout_marginBottom="4dp" />
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginBottom="4dp">
 
-            <!-- Row 2: all action buttons in one line -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTF1D"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="0dp"
+                    android:layout_height="34dp"
+                    android:layout_weight="1"
+                    android:text="1D"
+                    android:textSize="11sp"
+                    android:textAllCaps="false"
+                    android:layout_marginEnd="2dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTF1W"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="34dp"
+                    android:layout_weight="1"
+                    android:text="1W"
+                    android:textSize="11sp"
+                    android:textAllCaps="false"
+                    android:layout_marginEnd="2dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTF1M"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="34dp"
+                    android:layout_weight="1"
+                    android:text="1M"
+                    android:textSize="11sp"
+                    android:textAllCaps="false"
+                    android:layout_marginEnd="2dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTF3M"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="34dp"
+                    android:layout_weight="1"
+                    android:text="3M"
+                    android:textSize="11sp"
+                    android:textAllCaps="false"
+                    android:layout_marginEnd="2dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTF1Y"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="34dp"
+                    android:layout_weight="1"
+                    android:text="1Y"
+                    android:textSize="11sp"
+                    android:textAllCaps="false" />
+
+            </LinearLayout>
+
+            <!-- Row 2: action buttons -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -234,24 +309,7 @@
                 android:gravity="center_vertical"
                 android:layoutDirection="ltr">
 
-                <!-- Hidden views for backward compat -->
-                <Button
-                    android:id="@+id/btnChartThemeToggle"
-                    android:layout_width="0dp"
-                    android:layout_height="0dp"
-                    android:visibility="gone"
-                    android:minWidth="0dp" />
-
-                <!-- Hidden btnExpandChart for backward compat -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnExpandChart"
-                    style="@style/Widget.Material3.Button.IconButton"
-                    android:layout_width="0dp"
-                    android:layout_height="0dp"
-                    android:visibility="gone"
-                    android:contentDescription="Fullscreen" />
-
-                <!-- Ticker button - first in the row -->
+                <!-- Ticker button -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnTickerSelect"
                     style="@style/Widget.Material3.Button.TonalButton"
@@ -283,16 +341,12 @@
                     android:textAllCaps="false"
                     android:textSize="12sp" />
 
+                <!-- Hidden btnPortfolioChart kept for backward compat -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnPortfolioChart"
-                    style="@style/Widget.Material3.Button.TonalButton"
                     android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="40dp"
-                    android:text="📊"
-                    android:layout_marginStart="4dp"
-                    android:textAllCaps="false"
-                    android:textSize="16sp" />
+                    android:layout_height="0dp"
+                    android:visibility="gone" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnAIAnalysis"
@@ -317,7 +371,7 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Hidden bottom bar kept for backward compat - zero height -->
+    <!-- Hidden bottom bar kept for backward compat -->
     <View
         android:id="@+id/bottomBar"
         android:layout_width="match_parent"
