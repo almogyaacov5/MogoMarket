@@ -465,8 +465,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                         if (sym != null) sym = sym.replace("_", ":");
                     }
                     if (sym == null) continue;
-                    float qty    = data.quantity > 0   ? data.quantity   : 0f;
-                    float avgBuy = data.buyPrice > 0   ? data.buyPrice   : 0f;
+                    float avgBuy = data.buyPrice > 0 ? data.buyPrice : 0f;
+                    float qty    = (avgBuy > 0 && data.tradeAmount > 0)
+                            ? (float)(data.tradeAmount / avgBuy)
+                            : 0f;
                     if (qty > 0 && avgBuy > 0) {
                         symbols.add(sym);
                         qtys.add(qty);
