@@ -59,7 +59,8 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
 
     private String currentSearch = "";
     private String currentFilter = "default";
-    // ascending = true → sort ascending, false → descending (for chipSortOrder)
+    // ascending = true  → מהעולה ביותר לירודה ביותר (% גבוה קודם)
+    // ascending = false → מהירודה ביותר לעולה ביותר (% נמוך קודם)
     private boolean sortAscending = true;
 
     public WatchlistAdapter(OnWatchStockClickListener listener) {
@@ -115,7 +116,9 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         List<StockWatchData> result = new ArrayList<>();
         for (StockWatchData s : masterList) {
             if (s == null || s.symbol == null) continue;
+            // סינון לפי חיפוש
             if (!currentSearch.isEmpty() && !s.symbol.toLowerCase().contains(currentSearch)) continue;
+            // סינון לפי filter (gain/loss מסננים, order וalpha לא מסננים)
             switch (currentFilter) {
                 case "gain": if (s.dayChange <  0) continue; break;
                 case "loss": if (s.dayChange >= 0) continue; break;
@@ -123,7 +126,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             result.add(s);
         }
 
-        // Apply sort
+        // מיון לפי filter
         switch (currentFilter) {
             case "alpha":
                 if (sortAscending)
@@ -131,19 +134,28 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                 else
                     Collections.sort(result, (a, b) -> b.symbol.compareToIgnoreCase(a.symbol));
                 break;
+
             case "gain":
-                if (sortAscending)
-                    Collections.sort(result, (a, b) -> Float.compare(a.dayChange, b.dayChange));
-                else
-                    Collections.sort(result, (a, b) -> Float.compare(b.dayChange, a.dayChange));
+                // gain: מסנן רק עולות, ממיין מהגבוה לנמוך
+                Collections.sort(result, (a, b) -> Float.compare(b.dayChange, a.dayChange));
                 break;
+
             case "loss":
+                // loss: מסנן רק יורדות, ממיין מהנמוך לגבוה (הכי שלילי קודם)
+                Collections.sort(result, (a, b) -> Float.compare(a.dayChange, b.dayChange));
+                break;
+
+            case "order":
+                // order: מציג את כל המניות, ממיין לפי % שינוי
+                // sortAscending=true  → עולה ביותר קודם (% גבוה → נמוך)
+                // sortAscending=false → יורדת ביותר קודם (% נמוך → גבוה)
                 if (sortAscending)
                     Collections.sort(result, (a, b) -> Float.compare(b.dayChange, a.dayChange));
                 else
                     Collections.sort(result, (a, b) -> Float.compare(a.dayChange, b.dayChange));
                 break;
-            // "default" → keep masterList order (user drag order)
+
+            // "default" → שמירת סדר גרירה
         }
 
         displayList.clear();
