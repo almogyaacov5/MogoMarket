@@ -322,16 +322,6 @@
                 android:textSize="12sp" />
 
             <!-- Portfolio chart button -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnPortfolioChartView"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="40dp"
-                android:layout_marginStart="4dp"
-                android:layout_weight="1"
-                android:text="📊"
-                android:textAllCaps="false"
-                android:textSize="14sp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnAIAnalysis"
