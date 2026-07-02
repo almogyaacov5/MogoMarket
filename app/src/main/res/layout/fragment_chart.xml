@@ -51,20 +51,6 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <!-- Ticker Button: shows current symbol, tap to change -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnTickerSelect"
-                    style="@style/Widget.Material3.Button.TonalButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="34dp"
-                    android:text="SPY"
-                    android:textStyle="bold"
-                    android:textSize="14sp"
-                    android:textAllCaps="false"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    android:minWidth="0dp" />
-
                 <!-- Hidden tickerText kept for backward compat -->
                 <TextView
                     android:id="@+id/tickerText"
@@ -94,7 +80,7 @@
                     android:letterSpacing="0.02"/>
             </LinearLayout>
 
-            <!-- change + timeframe row -->
+            <!-- change row -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -192,7 +178,19 @@
             android:orientation="vertical"
             android:padding="6dp">
 
-            <!-- Row 1: time frame selector (now at bottom) -->
+            <!-- Row 0: Ticker selector (full width, at top of controls) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnTickerSelect"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="36dp"
+                android:text="SPY"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:textAllCaps="false"
+                android:layout_marginBottom="4dp" />
+
+            <!-- Row 1: time frame selector -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSelectTimeFrame"
                 style="@style/Widget.Material3.Button.TonalButton"
