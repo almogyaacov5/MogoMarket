@@ -95,6 +95,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private static final int COLOR_FILL     = 0xFF1C6DD0;
     private static final int COLOR_PORTFOLIO = 0xFFFFB300;
 
+    // Double-tap detection
+    private static final long DOUBLE_TAP_TIMEOUT_MS = 350;
+    private long lastTapTime = 0;
+
     static final Map<String, String> CRYPTO_MAP = new HashMap<>();
     static {
         CRYPTO_MAP.put("BTC",      "BINANCE:BTCUSDT");
@@ -202,7 +206,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_chart, container, false);
 
-        // Read theme from SharedPreferences (so Settings page changes are respected)
         SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         isDarkTheme = prefs.getBoolean(KEY_THEME, true);
         isChartDark = isDarkTheme;
@@ -257,6 +260,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         setupCandleChartStyle();
         setupLineChartStyle();
         setupClickListeners();
+        setupDoubleTapFullscreen();
         fetchStockData(symbol, interval);
         updateChartThemeToggleLabel();
         return v;
@@ -265,8 +269,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     @Override
     public void onResume() {
         super.onResume();
-        // Sync theme from SharedPreferences every time fragment becomes visible
-        // (covers the case where user changed theme in Settings)
         if (getActivity() == null) return;
         SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         boolean savedDark = prefs.getBoolean(KEY_THEME, true);
@@ -281,6 +283,28 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             }
             updateChartThemeToggleLabel();
         }
+    }
+
+    /** Double-tap on chart area → toggle fullscreen */
+    private void setupDoubleTapFullscreen() {
+        View.OnTouchListener doubleTapListener = (view, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_UP) {
+                long now = System.currentTimeMillis();
+                if (now - lastTapTime < DOUBLE_TAP_TIMEOUT_MS) {
+                    // Double tap detected
+                    if (isFullscreen) exitFullscreen();
+                    else              enterFullscreen();
+                    lastTapTime = 0;
+                } else {
+                    lastTapTime = now;
+                }
+            }
+            // Return false so the chart still handles its own touch events (pan/zoom)
+            return false;
+        };
+
+        if (candleStickChart != null) candleStickChart.setOnTouchListener(doubleTapListener);
+        if (lineChart        != null) lineChart.setOnTouchListener(doubleTapListener);
     }
 
     /** Keeps ticker button label in sync with current symbol */
@@ -479,7 +503,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
         lp.setMargins(0, 0, 0, 0);
         chartContainer.setLayoutParams(lp);
-        if (btnExpandChart    != null) btnExpandChart.setVisibility(View.GONE);
         if (btnExitFullscreen != null) btnExitFullscreen.setVisibility(View.VISIBLE);
     }
 
@@ -497,8 +520,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
         if (headerSection   != null) headerSection.setVisibility(View.VISIBLE);
         if (controlsSection != null) controlsSection.setVisibility(View.VISIBLE);
-        if (bottomBar       != null) bottomBar.setVisibility(View.VISIBLE);
-        if (btnExpandChart    != null) btnExpandChart.setVisibility(View.VISIBLE);
         if (btnExitFullscreen != null) btnExitFullscreen.setVisibility(View.GONE);
     }
 
@@ -562,7 +583,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         candleStickChart.setDragDecelerationFrictionCoef(0.92f);
         candleStickChart.setHighlightPerTapEnabled(true);
         candleStickChart.setHighlightPerDragEnabled(true);
-        // Extra top offset so % label isn't clipped
         candleStickChart.setExtraTopOffset(12f);
         XAxis xAxis = candleStickChart.getXAxis();
         xAxis.setDrawGridLines(false);
@@ -605,7 +625,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.setDragDecelerationFrictionCoef(0.92f);
         lineChart.setHighlightPerTapEnabled(true);
         lineChart.setHighlightPerDragEnabled(true);
-        // Extra top offset so % label isn't clipped
         lineChart.setExtraTopOffset(12f);
         XAxis xAxis = lineChart.getXAxis();
         xAxis.setDrawGridLines(false);
@@ -685,7 +704,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             btnChartThemeToggle.setOnClickListener(v -> {
                 isChartDark = !isChartDark;
                 isDarkTheme = isChartDark;
-                // Sync to SharedPreferences → Settings page reads same value
                 SharedPreferences prefs = requireActivity()
                         .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
                 prefs.edit().putBoolean(KEY_THEME, isChartDark).apply();
@@ -702,7 +720,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             });
         }
 
-        if (btnExpandChart    != null) btnExpandChart.setOnClickListener(v -> enterFullscreen());
         if (btnExitFullscreen != null) btnExitFullscreen.setOnClickListener(v -> exitFullscreen());
     }
 

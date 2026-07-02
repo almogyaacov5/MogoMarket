@@ -141,7 +141,7 @@
                 android:background="?attr/colorSurface"
                 android:visibility="gone" />
 
-            <!-- Exit fullscreen button -->
+            <!-- Exit fullscreen button (shown only in fullscreen mode) -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnExitFullscreen"
                 style="@style/Widget.Material3.Button.IconButton"
@@ -176,18 +176,6 @@
             android:orientation="vertical"
             android:padding="6dp">
 
-            <!-- Row 0: Ticker selector -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnTickerSelect"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="match_parent"
-                android:layout_height="36dp"
-                android:text="SPY"
-                android:textStyle="bold"
-                android:textSize="14sp"
-                android:textAllCaps="false"
-                android:layout_marginBottom="4dp" />
-
             <!-- Row 1: time frame selector -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSelectTimeFrame"
@@ -199,7 +187,7 @@
                 android:textSize="12sp"
                 android:layout_marginBottom="4dp" />
 
-            <!-- Row 2: action buttons (without theme toggle) -->
+            <!-- Row 2: all action buttons in one line -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -207,7 +195,7 @@
                 android:gravity="center_vertical"
                 android:layoutDirection="ltr">
 
-                <!-- Hidden btnChartThemeToggle for backward compat -->
+                <!-- Hidden views for backward compat -->
                 <Button
                     android:id="@+id/btnChartThemeToggle"
                     android:layout_width="0dp"
@@ -215,11 +203,33 @@
                     android:visibility="gone"
                     android:minWidth="0dp" />
 
+                <!-- Hidden btnExpandChart for backward compat -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnExpandChart"
+                    style="@style/Widget.Material3.Button.IconButton"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:visibility="gone"
+                    android:contentDescription="Fullscreen" />
+
+                <!-- Ticker button - first in the row -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTickerSelect"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:text="SPY"
+                    android:textStyle="bold"
+                    android:textSize="13sp"
+                    android:textAllCaps="false" />
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnChartRefresh"
                     style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
                     android:contentDescription="Refresh"
                     app:icon="@drawable/baseline_refresh_24" />
 
@@ -256,16 +266,6 @@
                     android:layout_marginStart="4dp"
                     android:textAllCaps="false"
                     android:textSize="12sp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnExpandChart"
-                    style="@style/Widget.Material3.Button.IconButton"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
-                    android:contentDescription="Fullscreen"
-                    android:layout_marginStart="4dp"
-                    app:icon="@drawable/baseline_fullscreen_24"
-                    app:iconTint="?attr/colorOnSurfaceVariant" />
 
                 <ProgressBar
                     android:id="@+id/progressAI"
