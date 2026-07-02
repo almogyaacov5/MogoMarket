@@ -137,7 +137,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     private CandleStickChart candleStickChart;
     private LineChart lineChart;
-    // ticker_input kept for fullscreen compat but hidden
     private AutoCompleteTextView tickerInput;
 
     private com.google.android.material.button.MaterialButton btnTickerSelect;
@@ -203,15 +202,15 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_chart, container, false);
 
-        int currentNightMode = getResources().getConfiguration().uiMode
-                & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
-        isDarkTheme = (currentNightMode == android.content.res.Configuration.UI_MODE_NIGHT_YES);
+        // Read theme from SharedPreferences (so Settings page changes are respected)
+        SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        isDarkTheme = prefs.getBoolean(KEY_THEME, true);
         isChartDark = isDarkTheme;
 
         chartRootLayout    = v.findViewById(R.id.chartRootLayout);
         candleStickChart   = v.findViewById(R.id.stock_chart);
         lineChart          = v.findViewById(R.id.line_chart);
-        tickerInput        = null; // removed from layout
+        tickerInput        = null;
         btnLoad            = null;
         btnTimeFrame       = null;
         btnToggleChart     = v.findViewById(R.id.btnToggleChart);
@@ -263,6 +262,27 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         return v;
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Sync theme from SharedPreferences every time fragment becomes visible
+        // (covers the case where user changed theme in Settings)
+        if (getActivity() == null) return;
+        SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        boolean savedDark = prefs.getBoolean(KEY_THEME, true);
+        if (savedDark != isChartDark) {
+            isChartDark = savedDark;
+            isDarkTheme = savedDark;
+            applyTheme();
+            applyChartColors();
+            if (!currentEntries.isEmpty()) {
+                if (isCandleStick) updateCandleChart(currentEntries);
+                else               updateLineChart(currentEntries);
+            }
+            updateChartThemeToggleLabel();
+        }
+    }
+
     /** Keeps ticker button label in sync with current symbol */
     private void updateTickerButtonLabel() {
         if (btnTickerSelect == null) return;
@@ -305,7 +325,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         portfolioRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                // Collect all stocks and their quantities + avg buy price
                 List<String> symbols = new ArrayList<>();
                 List<Float>  qtys    = new ArrayList<>();
                 List<Float>  avgBuys = new ArrayList<>();
@@ -341,10 +360,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         });
     }
 
-    /**
-     * For each stock fetch 1-year daily closes, then compute daily portfolio
-     * value and plot % return vs initial cost.
-     */
     private void fetchPortfolioHistory(List<String> symbols, List<Float> qtys, List<Float> avgBuys) {
         final int total = symbols.size();
         final Map<String, float[]> closesMap = new HashMap<>();
@@ -374,7 +389,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                                             .getJSONArray("quote")
                                             .getJSONObject(0)
                                             .getJSONArray("close");
-                                    JSONArray ts = result.getJSONObject(0).getJSONArray("timestamp");
                                     float[] arr = new float[closes.length()];
                                     for (int j = 0; j < closes.length(); j++)
                                         arr[j] = closes.isNull(j) ? 0f : (float) closes.getDouble(j);
@@ -389,7 +403,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     private void buildPortfolioChart(List<String> symbols, List<Float> qtys,
                                      List<Float> avgBuys, Map<String, float[]> closesMap) {
-        // Find minimum common length
         int minLen = Integer.MAX_VALUE;
         for (String sym : symbols) {
             float[] c = closesMap.get(sym);
@@ -401,14 +414,11 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             return;
         }
 
-        // Compute initial portfolio cost
         float cost = 0f;
         for (int i = 0; i < symbols.size(); i++) cost += qtys.get(i) * avgBuys.get(i);
         if (cost == 0f) return;
 
-        // Build daily portfolio value then % return
         List<Entry> entries = new ArrayList<>();
-        SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yy", Locale.US);
         dateLabels.clear();
         for (int day = 0; day < minLen; day++) {
             float dayVal = 0f;
@@ -419,12 +429,11 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             }
             float pct = ((dayVal - cost) / cost) * 100f;
             entries.add(new Entry(day, pct));
-            dateLabels.add(""); // simplified labels
+            dateLabels.add("");
         }
 
         if (getActivity() != null) getActivity().runOnUiThread(() -> {
             isPortfolioMode = true;
-            // Switch to line chart for portfolio
             isCandleStick = false;
             candleStickChart.setVisibility(View.GONE);
             lineChart.setVisibility(View.VISIBLE);
@@ -444,14 +453,14 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             lineChart.animateX(400);
             lineChart.invalidate();
 
-            if (btnTickerSelect != null) btnTickerSelect.setText("📊 Portfolio");
+            if (btnTickerSelect != null) btnTickerSelect.setText("\uD83D\uDCCA Portfolio");
             if (priceText != null) {
                 float lastVal = entries.isEmpty() ? 0f : entries.get(entries.size()-1).getY();
                 priceText.setText(String.format(Locale.US, "%.2f%%", lastVal));
                 priceText.setTextColor(lastVal >= 0 ? COLOR_GAIN : COLOR_LOSS);
             }
             if (changeText != null) changeText.setText("Total return");
-            if (timeFrameText != null) timeFrameText.setText("Portfolio · 1Y");
+            if (timeFrameText != null) timeFrameText.setText("Portfolio \u00b7 1Y");
             Toast.makeText(requireContext(), "Portfolio chart loaded", Toast.LENGTH_SHORT).show();
         });
     }
@@ -531,7 +540,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     private void updateChartThemeToggleLabel() {
         if (btnChartThemeToggle != null)
-            btnChartThemeToggle.setText(isChartDark ? "\u2600\uFE0F Light Chart" : "\uD83C\uDF19 Dark Chart");
+            btnChartThemeToggle.setText(isChartDark ? "\u2600\uFE0F" : "\uD83C\uDF19");
     }
 
     private void setupCandleChartStyle() {
@@ -553,6 +562,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         candleStickChart.setDragDecelerationFrictionCoef(0.92f);
         candleStickChart.setHighlightPerTapEnabled(true);
         candleStickChart.setHighlightPerDragEnabled(true);
+        // Extra top offset so % label isn't clipped
+        candleStickChart.setExtraTopOffset(12f);
         XAxis xAxis = candleStickChart.getXAxis();
         xAxis.setDrawGridLines(false);
         xAxis.setDrawAxisLine(false);
@@ -594,6 +605,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.setDragDecelerationFrictionCoef(0.92f);
         lineChart.setHighlightPerTapEnabled(true);
         lineChart.setHighlightPerDragEnabled(true);
+        // Extra top offset so % label isn't clipped
+        lineChart.setExtraTopOffset(12f);
         XAxis xAxis = lineChart.getXAxis();
         xAxis.setDrawGridLines(false);
         xAxis.setDrawAxisLine(false);
@@ -617,7 +630,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     }
 
     private void setupClickListeners() {
-        // Ticker button — show dialog to change symbol
         if (btnTickerSelect != null) {
             btnTickerSelect.setOnClickListener(v -> showTickerInputDialog());
         }
@@ -672,13 +684,15 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         if (btnChartThemeToggle != null) {
             btnChartThemeToggle.setOnClickListener(v -> {
                 isChartDark = !isChartDark;
-                // Sync dark/light to SharedPrefs so Settings page stays in sync
+                isDarkTheme = isChartDark;
+                // Sync to SharedPreferences → Settings page reads same value
                 SharedPreferences prefs = requireActivity()
                         .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
                 prefs.edit().putBoolean(KEY_THEME, isChartDark).apply();
                 AppCompatDelegate.setDefaultNightMode(
                         isChartDark ? AppCompatDelegate.MODE_NIGHT_YES
                                     : AppCompatDelegate.MODE_NIGHT_NO);
+                applyTheme();
                 applyChartColors();
                 if (!currentEntries.isEmpty()) {
                     if (isCandleStick) updateCandleChart(currentEntries);
@@ -995,9 +1009,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             String url = "https://finnhub.io/api/v1/search?q=" + encoded + "&token=" + FINNHUB_KEY;
             client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
                 @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {}
-                @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                    // suggestions not shown in new ticker dialog; kept for future use
-                }
+                @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {}
             });
         } catch (Exception ignored) {}
     }

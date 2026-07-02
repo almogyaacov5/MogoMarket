@@ -27,6 +27,7 @@ public class SettingsFragment extends Fragment {
     private LinearLayout btnLightMode, btnDarkMode;
     private TextView tvThemeStatus;
     private boolean isDark;
+    private SharedPreferences prefs;
 
     @Nullable
     @Override
@@ -37,7 +38,7 @@ public class SettingsFragment extends Fragment {
         View v = inflater.inflate(R.layout.fragment_settings, container, false);
         v.setBackgroundColor(requireContext().getColor(R.color.bg_primary));
 
-        SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, 0);
+        prefs = requireActivity().getSharedPreferences(PREFS_NAME, 0);
 
         // ── Theme ──────────────────────────────────────────────────────────────
         btnLightMode  = v.findViewById(R.id.btnLightMode);
@@ -48,21 +49,17 @@ public class SettingsFragment extends Fragment {
         updateThemeUI(isDark);
 
         btnLightMode.setOnClickListener(view -> {
-            if (isDark) {
-                isDark = false;
-                prefs.edit().putBoolean(KEY_THEME, false).apply();
-                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
-                updateThemeUI(false);
-            }
+            isDark = false;
+            prefs.edit().putBoolean(KEY_THEME, false).apply();
+            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+            updateThemeUI(false);
         });
 
         btnDarkMode.setOnClickListener(view -> {
-            if (!isDark) {
-                isDark = true;
-                prefs.edit().putBoolean(KEY_THEME, true).apply();
-                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
-                updateThemeUI(true);
-            }
+            isDark = true;
+            prefs.edit().putBoolean(KEY_THEME, true).apply();
+            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+            updateThemeUI(true);
         });
 
         // ── Toggle: Watchlist → Chart navigation ───────────────────────────────
@@ -120,6 +117,15 @@ public class SettingsFragment extends Fragment {
         }
 
         return v;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Re-read SharedPreferences so if Chart toggled the theme, Settings reflects it
+        if (prefs == null) return;
+        isDark = prefs.getBoolean(KEY_THEME, true);
+        updateThemeUI(isDark);
     }
 
     private void updateThemeUI(boolean dark) {
