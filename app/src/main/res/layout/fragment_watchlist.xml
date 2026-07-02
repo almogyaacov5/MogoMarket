@@ -90,7 +90,7 @@
 
             </LinearLayout>
 
-            <!-- Search Row -->
+            <!-- Search Row with clear X -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/searchLayout"
                 android:layout_width="match_parent"
@@ -98,6 +98,8 @@
                 android:layout_marginTop="10dp"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 app:startIconDrawable="@android:drawable/ic_menu_search"
+                app:endIconMode="clear_text"
+                app:endIconTint="?attr/colorOnSurfaceVariant"
                 android:hint="Search symbol...">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -122,15 +124,9 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     app:singleSelection="true"
-                    app:selectionRequired="true">
+                    app:selectionRequired="false">
 
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chipSortDefault"
-                        style="@style/Widget.Material3.Chip.Filter"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Default"
-                        android:checked="true" />
+                    <!-- No "Default" chip — tapping selected chip resets to default -->
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/chipSortGain"
@@ -152,6 +148,14 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="A–Z" />
+
+                    <!-- Toggle: sort direction ascending / descending -->
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipSortDir"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="↑ Asc" />
 
                 </com.google.android.material.chip.ChipGroup>
             </HorizontalScrollView>
