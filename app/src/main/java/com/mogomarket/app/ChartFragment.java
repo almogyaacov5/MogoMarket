@@ -306,8 +306,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     // ─── Timeframe buttons setup ──────────────────────────────────────────────
 
     private void setupTimeFrameButtons() {
-        // Mapping: button → Yahoo interval string
-        // intervalToYahoo maps these to actual Yahoo params
         if (btnTF1D != null) btnTF1D.setOnClickListener(v -> onTFSelected("5min",  btnTF1D));
         if (btnTF1W != null) btnTF1W.setOnClickListener(v -> onTFSelected("60min", btnTF1W));
         if (btnTF1M != null) btnTF1M.setOnClickListener(v -> onTFSelected("1day",  btnTF1M));
@@ -440,7 +438,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 .show();
     }
 
-    // ─── Portfolio chart ──────────────────────────────────────────────────────
+    // ─── Portfolio chart ──────────────────────────────────────────────
 
     private void loadPortfolioChart() {
         com.google.firebase.auth.FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
@@ -448,7 +446,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             Toast.makeText(requireContext(), "Login required", Toast.LENGTH_SHORT).show();
             return;
         }
-        // קורא מ-portfolio-stocks (כמו PortfolioFragment)
         DatabaseReference portfolioRef = FirebaseDatabase.getInstance()
                 .getReference("users").child(user.getUid()).child("portfolio-stocks");
 
@@ -593,7 +590,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         });
     }
 
-    // ─── Fullscreen ───────────────────────────────────────────────────────────
+    // ─── Fullscreen ─────────────────────────────────────────────────
 
     private void enterFullscreen() {
         if (isFullscreen || chartContainer == null) return;
@@ -687,7 +684,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         candleStickChart.setDragDecelerationFrictionCoef(0.92f);
         candleStickChart.setHighlightPerTapEnabled(false);
         candleStickChart.setHighlightPerDragEnabled(true);
-        candleStickChart.setExtraTopOffset(12f);
+        candleStickChart.setExtraTopOffset(4f);
         XAxis xAxis = candleStickChart.getXAxis();
         xAxis.setDrawGridLines(false);
         xAxis.setDrawAxisLine(false);
@@ -729,7 +726,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.setDragDecelerationFrictionCoef(0.92f);
         lineChart.setHighlightPerTapEnabled(false);
         lineChart.setHighlightPerDragEnabled(true);
-        lineChart.setExtraTopOffset(12f);
+        lineChart.setExtraTopOffset(4f);
         XAxis xAxis = lineChart.getXAxis();
         xAxis.setDrawGridLines(false);
         xAxis.setDrawAxisLine(false);
@@ -779,6 +776,23 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     lineChart.setVisibility(View.VISIBLE);
                 }
                 fetchStockData(symbol, interval);
+            });
+        }
+
+        // Portfolio chart button
+        if (btnPortfolioChart != null) {
+            btnPortfolioChart.setOnClickListener(v -> {
+                if (isPortfolioMode) {
+                    // אם כבר במוד פורטפוליו, חוזרים למנייה הרגילה
+                    isPortfolioMode = false;
+                    isCandleStick = true;
+                    candleStickChart.setVisibility(View.VISIBLE);
+                    lineChart.setVisibility(View.GONE);
+                    updateTickerButtonLabel();
+                    fetchStockData(symbol, interval);
+                } else {
+                    loadPortfolioChart();
+                }
             });
         }
 
@@ -867,14 +881,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
     }
 
-    /**
-     * ממפה interval פנימי → [yahooInterval, yahooRange]
-     * 1D  = 5min candles, range 1d
-     * 1W  = 60min candles, range 5d
-     * 1M  = 1day candles,  range 1mo
-     * 3M  = 1day candles,  range 3mo
-     * 1Y  = 1wk candles,   range 1y
-     */
     private String[] intervalToYahoo(String interval) {
         switch (interval) {
             case "1min":   return new String[]{"1m",  "1d"};
@@ -968,10 +974,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private void fetchCryptoData(String symbol, String interval) {
         String pair = symbol.contains(":") ? symbol.substring(symbol.indexOf(':') + 1) : symbol;
         String binanceInterval = intervalToBinance(interval);
-        // limit מותאם לטיים-פריים
         int limit = 200;
-        if (interval.equals("5min"))  limit = 288; // 1 יום
-        if (interval.equals("60min")) limit = 120; // 5 ימים
+        if (interval.equals("5min"))  limit = 288;
+        if (interval.equals("60min")) limit = 120;
         String url = "https://api.binance.com/api/v3/klines?symbol=" + pair
                 + "&interval=" + binanceInterval + "&limit=" + limit;
 
