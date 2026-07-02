@@ -46,6 +46,40 @@
         android:layout_height="0dp"
         android:visibility="gone" />
 
+    <!-- Hidden TF buttons kept for backward-compat only -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnTF1D"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnTF1W"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnTF1M"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnTF3M"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnTF1Y"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+
+    <!-- Hidden portfolio button kept for backward-compat -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnPortfolioChart"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+
     <!-- ===== HEADER CARD ===== -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/headerSection"
@@ -234,146 +268,77 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="6dp">
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="6dp"
+            android:layoutDirection="ltr">
 
-            <!-- Row 1: Timeframe buttons -->
-            <LinearLayout
-                android:layout_width="match_parent"
+            <!-- Ticker button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnTickerSelect"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="SPY"
+                android:textStyle="bold"
+                android:textSize="13sp"
+                android:textAllCaps="false" />
+
+            <!-- Timeframe picker button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnTimeframePicker"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:text="1D"
+                android:textSize="12sp"
+                android:textAllCaps="false"
+                app:icon="@drawable/ic_nav_chart"
+                app:iconSize="14dp"
+                app:iconGravity="textStart" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnChartRefresh"
+                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center"
-                android:layout_marginBottom="4dp">
+                android:layout_marginStart="4dp"
+                android:contentDescription="Refresh"
+                app:icon="@drawable/baseline_refresh_24" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnTF1D"
-                    style="@style/Widget.Material3.Button.TonalButton"
-                    android:layout_width="0dp"
-                    android:layout_height="34dp"
-                    android:layout_weight="1"
-                    android:text="1D"
-                    android:textSize="11sp"
-                    android:textAllCaps="false"
-                    android:layout_marginEnd="2dp" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnToggleChart"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="4dp"
+                android:layout_weight="1"
+                android:text="Line"
+                android:textAllCaps="false"
+                android:textSize="12sp" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnTF1W"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="34dp"
-                    android:layout_weight="1"
-                    android:text="1W"
-                    android:textSize="11sp"
-                    android:textAllCaps="false"
-                    android:layout_marginEnd="2dp" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAIAnalysis"
+                style="@style/Widget.Material3.Button"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="40dp"
+                android:text="AI ✦"
+                android:backgroundTint="@color/gain"
+                android:layout_marginStart="4dp"
+                android:textAllCaps="false"
+                android:textSize="12sp" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnTF1M"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="34dp"
-                    android:layout_weight="1"
-                    android:text="1M"
-                    android:textSize="11sp"
-                    android:textAllCaps="false"
-                    android:layout_marginEnd="2dp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnTF3M"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="34dp"
-                    android:layout_weight="1"
-                    android:text="3M"
-                    android:textSize="11sp"
-                    android:textAllCaps="false"
-                    android:layout_marginEnd="2dp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnTF1Y"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="34dp"
-                    android:layout_weight="1"
-                    android:text="1Y"
-                    android:textSize="11sp"
-                    android:textAllCaps="false" />
-
-            </LinearLayout>
-
-            <!-- Row 2: action buttons -->
-            <LinearLayout
-                android:layout_width="match_parent"
+            <ProgressBar
+                android:id="@+id/progressAI"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layoutDirection="ltr">
+                android:layout_marginStart="4dp"
+                android:visibility="gone" />
 
-                <!-- Ticker button -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnTickerSelect"
-                    style="@style/Widget.Material3.Button.TonalButton"
-                    android:layout_width="0dp"
-                    android:layout_height="40dp"
-                    android:layout_weight="1"
-                    android:text="SPY"
-                    android:textStyle="bold"
-                    android:textSize="13sp"
-                    android:textAllCaps="false" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnChartRefresh"
-                    style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
-                    android:contentDescription="Refresh"
-                    app:icon="@drawable/baseline_refresh_24" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnToggleChart"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="40dp"
-                    android:layout_marginStart="4dp"
-                    android:layout_weight="1"
-                    android:text="Line"
-                    android:textAllCaps="false"
-                    android:textSize="12sp" />
-
-                <!-- Portfolio Chart button – now visible -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnPortfolioChart"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="40dp"
-                    android:layout_weight="1"
-                    android:layout_marginStart="4dp"
-                    android:text="📊"
-                    android:textSize="16sp"
-                    android:textAllCaps="false"
-                    android:contentDescription="Portfolio chart" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnAIAnalysis"
-                    style="@style/Widget.Material3.Button"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="40dp"
-                    android:text="AI ✦"
-                    android:backgroundTint="@color/gain"
-                    android:layout_marginStart="4dp"
-                    android:textAllCaps="false"
-                    android:textSize="12sp" />
-
-                <ProgressBar
-                    android:id="@+id/progressAI"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
-                    android:visibility="gone" />
-
-            </LinearLayout>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
