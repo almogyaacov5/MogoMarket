@@ -26,7 +26,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="4dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -34,16 +37,28 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
+                <!-- Ticker Button (replaces static tickerText) -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTickerSelect"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="SPY"
+                    android:textStyle="bold"
+                    android:textSize="14sp"
+                    android:textAllCaps="false"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:minWidth="0dp" />
+
+                <!-- Hidden tickerText kept for backward compat -->
                 <TextView
                     android:id="@+id/tickerText"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="-- / --"
-                    android:textSize="20sp"
-                    android:textStyle="bold"
-                    android:textColor="?attr/colorOnSurface"
-                    android:letterSpacing="0.02"/>
+                    android:text=""
+                    android:visibility="gone" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnSettings"
@@ -65,12 +80,14 @@
                     android:letterSpacing="0.02"/>
             </LinearLayout>
 
+            <!-- change + percent row — minimal top padding so % is higher -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginTop="4dp">
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="4dp">
 
                 <TextView
                     android:id="@+id/changeText"
@@ -95,133 +112,7 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- ===== SEARCH ROW ===== -->
-    <LinearLayout
-        android:id="@+id/searchSection"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginStart="12dp"
-        android:layout_marginEnd="12dp"
-        android:layout_marginTop="10dp"
-        android:gravity="center_vertical">
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginEnd="10dp"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            app:startIconDrawable="@android:drawable/ic_menu_search"
-            app:startIconTint="?attr/colorOnSurfaceVariant">
-
-            <androidx.appcompat.widget.AppCompatAutoCompleteTextView
-                android:id="@+id/ticker_input"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:hint="Enter a ticker"
-                android:textColor="?attr/colorOnSurface"
-                android:textColorHint="?attr/colorOnSurfaceVariant"
-                android:textSize="15sp"
-                android:inputType="text"
-                android:singleLine="true"
-                android:imeOptions="actionSearch"
-                android:textDirection="ltr"
-                android:popupBackground="?attr/colorSurface" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnLoad"
-            style="@style/Widget.Material3.Button"
-            android:layout_width="110dp"
-            android:layout_height="48dp"
-            android:text="OPEN"
-            android:textStyle="bold" />
-    </LinearLayout>
-
-    <!-- ===== CONTROLS ROW ===== -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/controlsSection"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
-        android:layout_marginEnd="12dp"
-        android:layout_marginTop="8dp"
-        app:cardCornerRadius="14dp"
-        app:cardElevation="2dp"
-        app:strokeWidth="0dp">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:padding="8dp"
-            android:layoutDirection="ltr">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnChartRefresh"
-                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:contentDescription="Refresh"
-                app:icon="@drawable/baseline_refresh_24" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnSelectTimeFrame"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="40dp"
-                android:text="Timefr"
-                android:layout_marginStart="6dp"
-                android:textAllCaps="false"
-                android:textSize="12sp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnToggleChart"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="40dp"
-                android:layout_marginStart="6dp"
-                android:layout_weight="0.8"
-                android:text="Line"
-                android:textAllCaps="false"
-                android:textSize="12sp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnAIAnalysis"
-                style="@style/Widget.Material3.Button"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="40dp"
-                android:text="AI ✦"
-                android:backgroundTint="@color/gain"
-                android:layout_marginStart="6dp"
-                android:textAllCaps="false"
-                android:textSize="12sp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnExpandChart"
-                style="@style/Widget.Material3.Button.IconButton"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:contentDescription="Fullscreen"
-                android:layout_marginStart="6dp"
-                app:icon="@drawable/baseline_fullscreen_24"
-                app:iconTint="?attr/colorOnSurfaceVariant" />
-
-            <ProgressBar
-                android:id="@+id/progressAI"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
-                android:visibility="gone" />
-
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
-
-    <!-- ===== CHART AREA ===== -->
+    <!-- ===== CHART AREA (weight=1 to fill space) ===== -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/chartContainer"
         android:layout_width="match_parent"
@@ -291,7 +182,6 @@
         android:layout_marginStart="12dp"
         android:layout_marginEnd="12dp"
         android:layout_marginTop="6dp"
-        android:layout_marginBottom="6dp"
         app:cardCornerRadius="12dp"
         app:cardElevation="2dp"
         app:strokeWidth="0dp">
@@ -328,6 +218,100 @@
                 android:textSize="12sp"
                 android:textColor="@color/loss"
                 android:letterSpacing="0.02" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- ===== CONTROLS ROW (BOTTOM) ===== -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/controlsSection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="6dp"
+        app:cardCornerRadius="14dp"
+        app:cardElevation="2dp"
+        app:strokeWidth="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="8dp"
+            android:layoutDirection="ltr">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnChartRefresh"
+                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="Refresh"
+                app:icon="@drawable/baseline_refresh_24" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSelectTimeFrame"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="40dp"
+                android:text="Timefr"
+                android:layout_marginStart="6dp"
+                android:textAllCaps="false"
+                android:textSize="12sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnToggleChart"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="6dp"
+                android:layout_weight="0.8"
+                android:text="Line"
+                android:textAllCaps="false"
+                android:textSize="12sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPortfolioChart"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="0dp"
+                android:layout_weight="0.9"
+                android:layout_height="40dp"
+                android:text="📊 Portfolio"
+                android:layout_marginStart="6dp"
+                android:textAllCaps="false"
+                android:textSize="11sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAIAnalysis"
+                style="@style/Widget.Material3.Button"
+                android:layout_width="0dp"
+                android:layout_weight="0.9"
+                android:layout_height="40dp"
+                android:text="AI ✦"
+                android:backgroundTint="@color/gain"
+                android:layout_marginStart="6dp"
+                android:textAllCaps="false"
+                android:textSize="12sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnExpandChart"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:contentDescription="Fullscreen"
+                android:layout_marginStart="6dp"
+                app:icon="@drawable/baseline_fullscreen_24"
+                app:iconTint="?attr/colorOnSurfaceVariant" />
+
+            <ProgressBar
+                android:id="@+id/progressAI"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:visibility="gone" />
+
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
