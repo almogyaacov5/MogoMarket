@@ -72,6 +72,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -96,14 +97,12 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private static final int COLOR_GAIN     = 0xFF00C896;
     private static final int COLOR_LOSS     = 0xFFFF4D4D;
     private static final int COLOR_FILL     = 0xFF1C6DD0;
+    private static final int COLOR_PORTFOLIO = 0xFFAA44FF;
 
     private static final long DOUBLE_TAP_TIMEOUT_MS = 350;
     private long lastTapTime = 0;
 
-    // Timeframe definitions: label, interval string, Yahoo interval, Yahoo range, Binance interval
-    // Each timeframe always shows 252 candles
     private static final String[][] TIMEFRAMES = {
-        // {label, internalInterval, yahooInterval, yahooRange, binanceInterval}
         {"1m",  "1min",   "1m",  "1d",  "1m"},
         {"5m",  "5min",   "5m",  "5d",  "5m"},
         {"15m", "15min",  "15m", "5d",  "15m"},
@@ -152,11 +151,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private boolean isChartDark;
     private boolean isFullscreen = false;
     private boolean isCrosshairActive = false;
+    private boolean isPortfolioMode = false;
 
-    // Current timeframe index into TIMEFRAMES array (default = "1D" = index 6)
     private int currentTFIndex = 6;
 
-    // Kept for backward compat (not used for display)
     private com.google.android.material.button.MaterialButton btnTF1D, btnTF1W, btnTF1M, btnTF3M, btnTF1Y;
     private com.google.android.material.button.MaterialButton activeTFButton = null;
 
@@ -164,10 +162,12 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     private CandleStickChart candleStickChart;
     private LineChart lineChart;
+    private LineChart portfolioChart;
     private AutoCompleteTextView tickerInput;
 
     private com.google.android.material.button.MaterialButton btnTickerSelect;
     private com.google.android.material.button.MaterialButton btnTimeframePicker;
+    private com.google.android.material.button.MaterialButton btnPortfolioChartView;
     private Button btnLoad, btnTimeFrame, btnToggleChart, btnAIAnalysis;
     private com.google.android.material.button.MaterialButton btnChartRefresh, btnExpandChart,
             btnExitFullscreen, btnSettings;
@@ -199,6 +199,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private final List<CandleEntry> currentEntries = new ArrayList<>();
     private final List<Float> fullCloses = new ArrayList<>();
     private final List<String> dateLabels = new ArrayList<>();
+    private final List<String> portfolioDateLabels = new ArrayList<>();
     private float lastPrice = 0f;
     private boolean isManualSelection = false;
 
@@ -241,6 +242,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         chartRootLayout    = v.findViewById(R.id.chartRootLayout);
         candleStickChart   = v.findViewById(R.id.stock_chart);
         lineChart          = v.findViewById(R.id.line_chart);
+        portfolioChart     = v.findViewById(R.id.portfolio_chart);
         tickerInput        = null;
         btnLoad            = null;
         btnTimeFrame       = null;
@@ -251,8 +253,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         btnChartThemeToggle= v.findViewById(R.id.btnChartThemeToggle);
         btnTickerSelect    = v.findViewById(R.id.btnTickerSelect);
         btnTimeframePicker = v.findViewById(R.id.btnTimeframePicker);
+        btnPortfolioChartView = v.findViewById(R.id.btnPortfolioChartView);
 
-        // Backward-compat TF buttons (hidden)
         btnTF1D = v.findViewById(R.id.btnTF1D);
         btnTF1W = v.findViewById(R.id.btnTF1W);
         btnTF1M = v.findViewById(R.id.btnTF1M);
@@ -292,6 +294,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             if (getArguments().containsKey("symbol")) {
                 symbol = getArguments().getString("symbol", symbol);
             }
+            if (getArguments().getBoolean("portfolioMode", false)) {
+                isPortfolioMode = true;
+            }
         }
 
         updateTickerButtonLabel();
@@ -301,15 +306,242 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         applyTheme();
         setupCandleChartStyle();
         setupLineChartStyle();
+        setupPortfolioChartStyle();
         setupClickListeners();
         setupChartGestures();
 
-        // sync interval from currentTFIndex
         interval = TIMEFRAMES[currentTFIndex][1];
-        fetchStockData(symbol, interval);
+
+        if (isPortfolioMode) {
+            showPortfolioChart();
+        } else {
+            fetchStockData(symbol, interval);
+        }
 
         updateChartThemeToggleLabel();
         return v;
+    }
+
+    // ─── Portfolio Chart ─────────────────────────────────────────────────────
+
+    private void showPortfolioChart() {
+        if (priceText  != null) priceText.setText("Portfolio");
+        if (changeText != null) changeText.setText("Loading...");
+        if (btnTickerSelect != null) btnTickerSelect.setText("PORT");
+
+        // Hide stock charts, show portfolio chart
+        if (candleStickChart != null) candleStickChart.setVisibility(View.GONE);
+        if (lineChart        != null) lineChart.setVisibility(View.GONE);
+        if (portfolioChart   != null) portfolioChart.setVisibility(View.VISIBLE);
+
+        com.google.firebase.auth.FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) return;
+
+        DatabaseReference portfolioRef = FirebaseDatabase.getInstance()
+                .getReference("users").child(user.getUid()).child("portfolio-stocks");
+
+        portfolioRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                List<StockData> stocks = new ArrayList<>();
+                for (DataSnapshot ds : snapshot.getChildren()) {
+                    StockData data = ds.getValue(StockData.class);
+                    if (data == null) continue;
+                    if (data.symbol == null || data.symbol.isEmpty()) {
+                        String key = ds.getKey();
+                        if (key != null) data.symbol = key.replace("_", ":");
+                    }
+                    if (data.tradeAmount > 0 && data.buyPrice > 0) stocks.add(data);
+                }
+                if (stocks.isEmpty()) {
+                    if (getActivity() != null) getActivity().runOnUiThread(() -> {
+                        if (changeText != null) changeText.setText("No portfolio data");
+                    });
+                    return;
+                }
+                fetchPortfolioPriceHistory(stocks);
+            }
+            @Override public void onCancelled(@NonNull DatabaseError error) {}
+        });
+    }
+
+    private void fetchPortfolioPriceHistory(List<StockData> stocks) {
+        // Fetch 1-year daily history for each stock, then compute daily portfolio value
+        AtomicInteger remaining = new AtomicInteger(stocks.size());
+        // Map symbol -> list of (date, close)
+        Map<String, List<float[]>> priceHistory = new HashMap<>();
+        List<String> sharedDates = new ArrayList<>();
+        final boolean[] datesSet = {false};
+
+        for (StockData stock : stocks) {
+            String sym = stock.symbol;
+            boolean isCrypto = isCryptoSymbol(sym);
+
+            if (isCrypto) {
+                String pair = sym.contains(":") ? sym.substring(sym.indexOf(':') + 1) : sym;
+                String url = "https://api.binance.com/api/v3/klines?symbol=" + pair + "&interval=1d&limit=365";
+                client.newCall(new Request.Builder().url(url).header("User-Agent", "Mozilla/5.0").build())
+                        .enqueue(new Callback() {
+                    @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                        if (remaining.decrementAndGet() == 0 && getActivity() != null)
+                            getActivity().runOnUiThread(() -> buildPortfolioChart(stocks, priceHistory, sharedDates));
+                    }
+                    @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                        try {
+                            JSONArray arr = new JSONArray(response.body().string());
+                            List<float[]> closes = new ArrayList<>();
+                            SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yy", Locale.US);
+                            List<String> dates = new ArrayList<>();
+                            for (int i = 0; i < arr.length(); i++) {
+                                JSONArray bar = arr.getJSONArray(i);
+                                float c = (float) Double.parseDouble(bar.getString(4));
+                                long t = bar.getLong(0);
+                                closes.add(new float[]{c});
+                                dates.add(sdf.format(new Date(t)));
+                            }
+                            synchronized (priceHistory) {
+                                priceHistory.put(sym, closes);
+                                if (!datesSet[0] && !dates.isEmpty()) {
+                                    datesSet[0] = true;
+                                    sharedDates.clear();
+                                    sharedDates.addAll(dates);
+                                }
+                            }
+                        } catch (Exception ignored) {}
+                        if (remaining.decrementAndGet() == 0 && getActivity() != null)
+                            getActivity().runOnUiThread(() -> buildPortfolioChart(stocks, priceHistory, sharedDates));
+                    }
+                });
+            } else {
+                String url = "https://query1.finance.yahoo.com/v8/finance/chart/" + sym
+                        + "?interval=1d&range=1y&includePrePost=false";
+                client.newCall(new Request.Builder().url(url).header("User-Agent", "Mozilla/5.0").build())
+                        .enqueue(new Callback() {
+                    @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                        if (remaining.decrementAndGet() == 0 && getActivity() != null)
+                            getActivity().runOnUiThread(() -> buildPortfolioChart(stocks, priceHistory, sharedDates));
+                    }
+                    @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                        try {
+                            JSONObject root = new JSONObject(response.body().string());
+                            JSONArray result = root.getJSONObject("chart").optJSONArray("result");
+                            if (result == null || result.length() == 0) return;
+                            JSONObject item = result.getJSONObject(0);
+                            JSONArray ts  = item.getJSONArray("timestamp");
+                            JSONArray cls = item.getJSONObject("indicators")
+                                    .getJSONArray("quote").getJSONObject(0)
+                                    .getJSONArray("close");
+                            List<float[]> closes = new ArrayList<>();
+                            SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yy", Locale.US);
+                            List<String> dates = new ArrayList<>();
+                            for (int i = 0; i < ts.length(); i++) {
+                                if (cls.isNull(i)) continue;
+                                float c = (float) cls.getDouble(i);
+                                closes.add(new float[]{c});
+                                dates.add(sdf.format(new Date(ts.getLong(i) * 1000L)));
+                            }
+                            synchronized (priceHistory) {
+                                priceHistory.put(sym, closes);
+                                if (!datesSet[0] && !dates.isEmpty()) {
+                                    datesSet[0] = true;
+                                    sharedDates.clear();
+                                    sharedDates.addAll(dates);
+                                }
+                            }
+                        } catch (Exception ignored) {}
+                        if (remaining.decrementAndGet() == 0 && getActivity() != null)
+                            getActivity().runOnUiThread(() -> buildPortfolioChart(stocks, priceHistory, sharedDates));
+                    }
+                });
+            }
+        }
+    }
+
+    private void buildPortfolioChart(List<StockData> stocks,
+                                     Map<String, List<float[]>> priceHistory,
+                                     List<String> dates) {
+        if (dates.isEmpty()) {
+            if (changeText != null) changeText.setText("No price history");
+            return;
+        }
+
+        // Calculate total invested capital
+        double totalInvested = 0;
+        for (StockData s : stocks) totalInvested += s.tradeAmount;
+        if (totalInvested == 0) {
+            if (changeText != null) changeText.setText("No investment data");
+            return;
+        }
+
+        int minLen = Integer.MAX_VALUE;
+        for (StockData s : stocks) {
+            List<float[]> hist = priceHistory.get(s.symbol);
+            if (hist != null) minLen = Math.min(minLen, hist.size());
+        }
+        if (minLen == Integer.MAX_VALUE || minLen == 0) {
+            if (changeText != null) changeText.setText("Insufficient data");
+            return;
+        }
+
+        // For each day, compute weighted portfolio % return vs buy prices
+        List<Entry> entries = new ArrayList<>();
+        portfolioDateLabels.clear();
+
+        for (int day = 0; day < minLen; day++) {
+            double portfolioValue = 0;
+            boolean valid = true;
+            for (StockData s : stocks) {
+                List<float[]> hist = priceHistory.get(s.symbol);
+                if (hist == null || day >= hist.size()) { valid = false; break; }
+                float currentPrice = hist.get(day)[0];
+                if (s.buyPrice <= 0) { valid = false; break; }
+                // value of this position on this day
+                double shares = s.tradeAmount / s.buyPrice;
+                portfolioValue += shares * currentPrice;
+            }
+            if (!valid) continue;
+            float returnPct = (float) ((portfolioValue - totalInvested) / totalInvested * 100.0);
+            entries.add(new Entry(portfolioDateLabels.size(), returnPct));
+            int dateIdx = dates.size() - minLen + day;
+            portfolioDateLabels.add(dateIdx >= 0 && dateIdx < dates.size() ? dates.get(dateIdx) : "");
+        }
+
+        if (entries.isEmpty()) {
+            if (changeText != null) changeText.setText("No data");
+            return;
+        }
+
+        // Draw chart
+        LineDataSet ds = new LineDataSet(entries, "Portfolio Return %");
+        ds.setColor(COLOR_PORTFOLIO);
+        ds.setLineWidth(2.5f);
+        ds.setDrawCircles(false);
+        ds.setDrawValues(false);
+        ds.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+        ds.setHighLightColor(COLOR_PORTFOLIO);
+        ds.setHighlightEnabled(true);
+        ds.enableDashedHighlightLine(10f, 5f, 0f);
+        ds.setDrawFilled(true);
+        ds.setFillColor(COLOR_PORTFOLIO);
+        ds.setFillAlpha(isChartDark ? 50 : 30);
+
+        if (portfolioChart != null) {
+            portfolioChart.setData(new LineData(ds));
+            portfolioChart.animateX(500);
+            portfolioChart.invalidate();
+        }
+
+        // Update header info
+        float lastReturn = entries.get(entries.size() - 1).getY();
+        boolean gain = lastReturn >= 0;
+        if (priceText  != null) {
+            priceText.setText("Portfolio");
+            priceText.setTextColor(gain ? COLOR_GAIN : COLOR_LOSS);
+        }
+        if (changeText != null) {
+            changeText.setText(String.format(Locale.US, "%s%.2f%%", gain ? "+" : "", lastReturn));
+            changeText.setTextColor(gain ? COLOR_GAIN : COLOR_LOSS);
+        }
     }
 
     // ─── Timeframe picker ────────────────────────────────────────────────────
@@ -331,22 +563,20 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     interval = TIMEFRAMES[currentTFIndex][1];
                     updateTimeframePickerLabel();
                     hideCrosshairInfo();
-                    fetchStockData(symbol, interval);
+                    if (!isPortfolioMode) fetchStockData(symbol, interval);
                     dialog.dismiss();
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
     }
 
-    // Not used anymore but kept to satisfy TimeFrameFragment.TimeFrameListener interface
     @Override
     public void onTimeFrameSelected(String tf) {
         interval = tf;
         hideCrosshairInfo();
-        fetchStockData(symbol, interval);
+        if (!isPortfolioMode) fetchStockData(symbol, interval);
     }
 
-    // Kept for backward compat
     private void setActiveTFButton(com.google.android.material.button.MaterialButton selected) {
         activeTFButton = selected;
     }
@@ -374,11 +604,11 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         if (crosshairInfoBar == null) return;
         isCrosshairActive = true;
         if (crosshairPrice != null) {
-            crosshairPrice.setText("$" + String.format(Locale.US, "%.2f", price));
+            crosshairPrice.setText(isPortfolioMode
+                    ? String.format(Locale.US, "%.2f%%", price)
+                    : "$" + String.format(Locale.US, "%.2f", price));
         }
-        if (crosshairDate != null) {
-            crosshairDate.setText(date);
-        }
+        if (crosshairDate != null) crosshairDate.setText(date);
         crosshairInfoBar.setVisibility(View.VISIBLE);
     }
 
@@ -388,6 +618,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         crosshairInfoBar.setVisibility(View.GONE);
         if (candleStickChart != null) candleStickChart.highlightValue(null);
         if (lineChart        != null) lineChart.highlightValue(null);
+        if (portfolioChart   != null) portfolioChart.highlightValue(null);
     }
 
     private void setupChartGestures() {
@@ -395,7 +626,11 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             @Override public void onChartGestureStart(MotionEvent me, ChartTouchListener.ChartGesture lastPerformedGesture) {}
             @Override public void onChartGestureEnd(MotionEvent me, ChartTouchListener.ChartGesture lastPerformedGesture) {}
             @Override public void onChartLongPressed(MotionEvent me) {
-                if (candleStickChart != null && candleStickChart.getVisibility() == View.VISIBLE) {
+                if (portfolioChart != null && portfolioChart.getVisibility() == View.VISIBLE) {
+                    com.github.mikephil.charting.highlight.Highlight h =
+                            portfolioChart.getHighlightByTouchPoint(me.getX(), me.getY());
+                    if (h != null) { isCrosshairActive = true; portfolioChart.highlightValue(h); }
+                } else if (candleStickChart != null && candleStickChart.getVisibility() == View.VISIBLE) {
                     com.github.mikephil.charting.highlight.Highlight h =
                             candleStickChart.getHighlightByTouchPoint(me.getX(), me.getY());
                     if (h != null) { isCrosshairActive = true; candleStickChart.highlightValue(h); }
@@ -417,10 +652,15 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         };
         if (candleStickChart != null) candleStickChart.setOnChartGestureListener(gestureListener);
         if (lineChart        != null) lineChart.setOnChartGestureListener(gestureListener);
+        if (portfolioChart   != null) portfolioChart.setOnChartGestureListener(gestureListener);
     }
 
     private void updateTickerButtonLabel() {
         if (btnTickerSelect == null) return;
+        if (isPortfolioMode) {
+            btnTickerSelect.setText("PORT");
+            return;
+        }
         String display = isCryptoSymbol(symbol)
                 ? symbol.substring(symbol.indexOf(':') + 1)
                 : symbol;
@@ -439,7 +679,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 .setView(et)
                 .setPositiveButton("Open", (d, w) -> {
                     String raw = et.getText().toString().trim();
-                    if (!raw.isEmpty()) openChartFromInput(raw);
+                    if (!raw.isEmpty()) {
+                        isPortfolioMode = false;
+                        openChartFromInput(raw);
+                    }
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
@@ -513,6 +756,12 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             lineChart.getAxisLeft().setTextColor(chartSec);
             lineChart.invalidate();
         }
+        if (portfolioChart != null) {
+            portfolioChart.setBackgroundColor(chartCard);
+            portfolioChart.getXAxis().setTextColor(chartSec);
+            portfolioChart.getAxisLeft().setTextColor(chartSec);
+            portfolioChart.invalidate();
+        }
     }
 
     private void updateChartThemeToggleLabel() {
@@ -539,7 +788,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         candleStickChart.setDragDecelerationFrictionCoef(0.92f);
         candleStickChart.setHighlightPerTapEnabled(false);
         candleStickChart.setHighlightPerDragEnabled(true);
-        candleStickChart.setExtraTopOffset(4f);
+        candleStickChart.setExtraTopOffset(16f);
         XAxis xAxis = candleStickChart.getXAxis();
         xAxis.setDrawGridLines(false);
         xAxis.setDrawAxisLine(false);
@@ -581,7 +830,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.setDragDecelerationFrictionCoef(0.92f);
         lineChart.setHighlightPerTapEnabled(false);
         lineChart.setHighlightPerDragEnabled(true);
-        lineChart.setExtraTopOffset(4f);
+        lineChart.setExtraTopOffset(16f);
         XAxis xAxis = lineChart.getXAxis();
         xAxis.setDrawGridLines(false);
         xAxis.setDrawAxisLine(false);
@@ -604,6 +853,50 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.getAxisRight().setEnabled(false);
     }
 
+    private void setupPortfolioChartStyle() {
+        if (portfolioChart == null) return;
+        int cardColor = isChartDark ? DARK_CARD : LIGHT_CARD;
+        int textSec   = isChartDark ? DARK_TEXT_SEC : LIGHT_TEXT_SEC;
+        portfolioChart.setBackgroundColor(cardColor);
+        portfolioChart.setDrawGridBackground(false);
+        portfolioChart.getDescription().setEnabled(false);
+        portfolioChart.getLegend().setEnabled(false);
+        portfolioChart.setTouchEnabled(true);
+        portfolioChart.setDragEnabled(true);
+        portfolioChart.setScaleEnabled(true);
+        portfolioChart.setPinchZoom(false);
+        portfolioChart.setDoubleTapToZoomEnabled(false);
+        portfolioChart.setHighlightPerTapEnabled(false);
+        portfolioChart.setHighlightPerDragEnabled(true);
+        portfolioChart.setExtraTopOffset(16f);
+        XAxis xAxis = portfolioChart.getXAxis();
+        xAxis.setDrawGridLines(false);
+        xAxis.setDrawAxisLine(false);
+        xAxis.setTextColor(textSec);
+        xAxis.setTextSize(10f);
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setLabelCount(5, true);
+        xAxis.setValueFormatter(new ValueFormatter() {
+            @Override public String getFormattedValue(float value) {
+                int i = (int) value;
+                return (i >= 0 && i < portfolioDateLabels.size()) ? portfolioDateLabels.get(i) : "";
+            }
+        });
+        YAxis leftAxis = portfolioChart.getAxisLeft();
+        leftAxis.setDrawGridLines(false);
+        leftAxis.setDrawAxisLine(false);
+        leftAxis.setTextColor(textSec);
+        leftAxis.setTextSize(10f);
+        leftAxis.setLabelCount(5, false);
+        // Show percentage sign on Y axis
+        leftAxis.setValueFormatter(new ValueFormatter() {
+            @Override public String getFormattedValue(float value) {
+                return String.format(Locale.US, "%.1f%%", value);
+            }
+        });
+        portfolioChart.getAxisRight().setEnabled(false);
+    }
+
     private void setupClickListeners() {
         if (btnTickerSelect != null) {
             btnTickerSelect.setOnClickListener(v -> showTickerInputDialog());
@@ -615,13 +908,29 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
         if (btnChartRefresh != null) {
             btnChartRefresh.setOnClickListener(v -> {
-                fetchStockData(symbol, interval);
+                if (isPortfolioMode) {
+                    showPortfolioChart();
+                } else {
+                    fetchStockData(symbol, interval);
+                }
                 Toast.makeText(requireContext(), "Chart refreshed", Toast.LENGTH_SHORT).show();
             });
         }
 
         if (btnToggleChart != null) {
             btnToggleChart.setOnClickListener(v -> {
+                if (isPortfolioMode) {
+                    // Exit portfolio mode, go back to stock chart
+                    isPortfolioMode = false;
+                    if (portfolioChart   != null) portfolioChart.setVisibility(View.GONE);
+                    isCandleStick = true;
+                    if (candleStickChart != null) candleStickChart.setVisibility(View.VISIBLE);
+                    if (lineChart        != null) lineChart.setVisibility(View.GONE);
+                    btnToggleChart.setText("Line chart");
+                    updateTickerButtonLabel();
+                    fetchStockData(symbol, interval);
+                    return;
+                }
                 isCandleStick = !isCandleStick;
                 if (isCandleStick) {
                     btnToggleChart.setText("Line chart");
@@ -633,6 +942,27 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     lineChart.setVisibility(View.VISIBLE);
                 }
                 fetchStockData(symbol, interval);
+            });
+        }
+
+        if (btnPortfolioChartView != null) {
+            btnPortfolioChartView.setOnClickListener(v -> {
+                isPortfolioMode = !isPortfolioMode;
+                if (isPortfolioMode) {
+                    showPortfolioChart();
+                } else {
+                    // Return to stock chart
+                    if (portfolioChart   != null) portfolioChart.setVisibility(View.GONE);
+                    if (isCandleStick) {
+                        if (candleStickChart != null) candleStickChart.setVisibility(View.VISIBLE);
+                        if (lineChart        != null) lineChart.setVisibility(View.GONE);
+                    } else {
+                        if (candleStickChart != null) candleStickChart.setVisibility(View.GONE);
+                        if (lineChart        != null) lineChart.setVisibility(View.VISIBLE);
+                    }
+                    updateTickerButtonLabel();
+                    fetchStockData(symbol, interval);
+                }
             });
         }
 
@@ -720,7 +1050,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
     }
 
-    // Returns {yahooInterval, yahooRange} for the current timeframe index
     private String[] getYahooParams() {
         String yahooInterval = TIMEFRAMES[currentTFIndex][2];
         String yahooRange    = TIMEFRAMES[currentTFIndex][3];
@@ -772,7 +1101,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     List<CandleEntry> entries = new ArrayList<>();
                     SimpleDateFormat sdf = dateFormatFor(p[0]);
                     float lc = 0f, pc = 0f; int vc = 0;
-                    // Take last 252 candles
                     int startIdx = Math.max(0, size - 252);
                     for (int i = startIdx; i < size; i++) {
                         if (cls.isNull(i)||opens.isNull(i)||highs.isNull(i)||lows.isNull(i)) continue;
@@ -871,6 +1199,15 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         String upper = raw.toUpperCase(Locale.US).trim();
         String cryptoSym = CRYPTO_MAP.get(upper);
         symbol = (cryptoSym != null) ? cryptoSym : upper;
+        // Show correct chart view
+        if (portfolioChart   != null) portfolioChart.setVisibility(View.GONE);
+        if (isCandleStick) {
+            if (candleStickChart != null) candleStickChart.setVisibility(View.VISIBLE);
+            if (lineChart        != null) lineChart.setVisibility(View.GONE);
+        } else {
+            if (candleStickChart != null) candleStickChart.setVisibility(View.GONE);
+            if (lineChart        != null) lineChart.setVisibility(View.VISIBLE);
+        }
         updateTickerButtonLabel();
         hideCrosshairInfo();
         fetchStockData(symbol, interval);

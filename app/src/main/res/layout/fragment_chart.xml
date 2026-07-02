@@ -190,6 +190,14 @@
                 android:background="?attr/colorSurface"
                 android:visibility="gone" />
 
+            <!-- Portfolio Line Chart -->
+            <com.github.mikephil.charting.charts.LineChart
+                android:id="@+id/portfolio_chart"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="?attr/colorSurface"
+                android:visibility="gone" />
+
             <!-- Crosshair info bar -->
             <LinearLayout
                 android:id="@+id/crosshairInfoBar"
@@ -312,6 +320,18 @@
                 android:text="Line"
                 android:textAllCaps="false"
                 android:textSize="12sp" />
+
+            <!-- Portfolio chart button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPortfolioChartView"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="4dp"
+                android:layout_weight="1"
+                android:text="📊"
+                android:textAllCaps="false"
+                android:textSize="14sp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnAIAnalysis"
