@@ -43,6 +43,7 @@ public class PortfolioFragment extends Fragment {
     private MaterialButton btnAddStockToPortfolio;
     private MaterialButton btnPortfolioChart;
     private TextView tvTotalPnl;
+    private TextView tvTotalPct;   // אחוז שינוי כולל של התיק
     private TextView tvOpenCount;
     private TextView tvDailyPnl;
     private TextView tvDailyPct;
@@ -68,6 +69,7 @@ public class PortfolioFragment extends Fragment {
         btnRefreshPortfolio    = v.findViewById(R.id.btnRefreshPortfolio);
         btnPortfolioChart      = v.findViewById(R.id.btnPortfolioChart);
         tvTotalPnl             = v.findViewById(R.id.tvTotalPnl);
+        tvTotalPct             = v.findViewById(R.id.tvTotalPct);
         tvOpenCount            = v.findViewById(R.id.tvOpenCount);
         tvDailyPnl             = v.findViewById(R.id.tvDailyPnl);
         tvDailyPct             = v.findViewById(R.id.tvDailyPct);
@@ -157,7 +159,6 @@ public class PortfolioFragment extends Fragment {
             updateSummary();
         });
 
-        // כפתור גרף תיק - עובר ל-ChartFragment במצב פורטפוליו
         if (btnPortfolioChart != null) {
             btnPortfolioChart.setOnClickListener(view -> {
                 ChartFragment chartFragment = new ChartFragment();
@@ -182,9 +183,10 @@ public class PortfolioFragment extends Fragment {
             tvOpenCount.setText(String.valueOf(stocksList.size()));
         }
         if (stocksList.isEmpty()) {
-            if (tvTotalPnl != null) tvTotalPnl.setText("$0.00");
-            if (tvDailyPnl != null) tvDailyPnl.setText("$0.00");
-            if (tvDailyPct != null) tvDailyPct.setText("+0.00%");
+            if (tvTotalPnl  != null) tvTotalPnl.setText("$0.00");
+            if (tvTotalPct  != null) tvTotalPct.setText("+0.00%");
+            if (tvDailyPnl  != null) tvDailyPnl.setText("$0.00");
+            if (tvDailyPct  != null) tvDailyPct.setText("+0.00%");
             return;
         }
 
@@ -194,13 +196,14 @@ public class PortfolioFragment extends Fragment {
         }
         if (withAmount.isEmpty()) {
             if (tvTotalPnl != null) tvTotalPnl.setText("N/A");
+            if (tvTotalPct != null) tvTotalPct.setText("-");
             if (tvDailyPnl != null) tvDailyPnl.setText("N/A");
             if (tvDailyPct != null) tvDailyPct.setText("-");
             return;
         }
 
-        final double[] totalPnl  = {0.0};
-        final double[] dailyPnl  = {0.0};
+        final double[] totalPnl      = {0.0};
+        final double[] dailyPnl      = {0.0};
         final double[] totalInvested = {0.0};
         final AtomicInteger remaining = new AtomicInteger(withAmount.size());
 
@@ -218,12 +221,12 @@ public class PortfolioFragment extends Fragment {
                     @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                         try {
                             JSONObject obj = new JSONObject(response.body().string());
-                            float currentPrice       = (float) obj.getDouble("lastPrice");
-                            float dailyChangePct     = (float) obj.getDouble("priceChangePercent");
+                            float currentPrice   = (float) obj.getDouble("lastPrice");
+                            float dailyChangePct = (float) obj.getDouble("priceChangePercent");
                             if (currentPrice > 0 && stock.buyPrice != 0f) {
                                 float totalPct = (currentPrice - stock.buyPrice) / stock.buyPrice * 100f;
-                                double pnl     = stock.tradeAmount * (totalPct / 100.0);
-                                double dPnl    = stock.tradeAmount * (1 + totalPct / 100.0) * (dailyChangePct / 100.0);
+                                double pnl  = stock.tradeAmount * (totalPct / 100.0);
+                                double dPnl = stock.tradeAmount * (1 + totalPct / 100.0) * (dailyChangePct / 100.0);
                                 synchronized (totalPnl) {
                                     totalPnl[0] += pnl;
                                     dailyPnl[0] += dPnl;
@@ -248,8 +251,8 @@ public class PortfolioFragment extends Fragment {
                             float dailyChangePct = (float) obj.getDouble("dp");
                             if (currentPrice > 0 && stock.buyPrice != 0f) {
                                 float totalPct = (currentPrice - stock.buyPrice) / stock.buyPrice * 100f;
-                                double pnl     = stock.tradeAmount * (totalPct / 100.0);
-                                double dPnl    = stock.tradeAmount * (1 + totalPct / 100.0) * (dailyChangePct / 100.0);
+                                double pnl  = stock.tradeAmount * (totalPct / 100.0);
+                                double dPnl = stock.tradeAmount * (1 + totalPct / 100.0) * (dailyChangePct / 100.0);
                                 synchronized (totalPnl) {
                                     totalPnl[0] += pnl;
                                     dailyPnl[0] += dPnl;
@@ -271,18 +274,29 @@ public class PortfolioFragment extends Fragment {
                 int colorGain = requireContext().getColor(R.color.gain);
                 int colorLoss = requireContext().getColor(R.color.loss);
 
+                // Total P&L בדולרים
                 if (tvTotalPnl != null) {
                     String sign = totalPnl >= 0 ? "+" : "";
                     tvTotalPnl.setText(String.format(Locale.US, "%s$%.2f", sign, totalPnl));
                     tvTotalPnl.setTextColor(totalPnl >= 0 ? colorGain : colorLoss);
                 }
 
+                // Total P&L באחוזים (pnl / totalInvested)
+                if (tvTotalPct != null && totalInvested > 0) {
+                    double totalPct = (totalPnl / totalInvested) * 100.0;
+                    String pctSign  = totalPct >= 0 ? "+" : "";
+                    tvTotalPct.setText(String.format(Locale.US, "%s%.2f%%", pctSign, totalPct));
+                    tvTotalPct.setTextColor(totalPct >= 0 ? colorGain : colorLoss);
+                }
+
+                // Daily P&L בדולרים
                 if (tvDailyPnl != null) {
                     String sign = dailyPnl >= 0 ? "+" : "";
                     tvDailyPnl.setText(String.format(Locale.US, "%s$%.2f", sign, dailyPnl));
                     tvDailyPnl.setTextColor(dailyPnl >= 0 ? colorGain : colorLoss);
                 }
 
+                // Daily P&L באחוזים
                 if (tvDailyPct != null && totalInvested > 0) {
                     double dailyPct = (dailyPnl / totalInvested) * 100.0;
                     String pctSign  = dailyPct >= 0 ? "+" : "";
