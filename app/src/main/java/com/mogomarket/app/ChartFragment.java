@@ -100,10 +100,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private static final long DOUBLE_TAP_TIMEOUT_MS = 350;
     private long lastTapTime = 0;
 
-    // Timeframe definitions: label, interval string, Yahoo interval, Yahoo range, Binance interval
-    // Each timeframe always shows 252 candles
     private static final String[][] TIMEFRAMES = {
-        // {label, internalInterval, yahooInterval, yahooRange, binanceInterval}
         {"1m",  "1min",   "1m",  "1d",  "1m"},
         {"5m",  "5min",   "5m",  "5d",  "5m"},
         {"15m", "15min",  "15m", "5d",  "15m"},
@@ -153,10 +150,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private boolean isFullscreen = false;
     private boolean isCrosshairActive = false;
 
-    // Current timeframe index into TIMEFRAMES array (default = "1D" = index 6)
     private int currentTFIndex = 6;
 
-    // Kept for backward compat (not used for display)
     private com.google.android.material.button.MaterialButton btnTF1D, btnTF1W, btnTF1M, btnTF3M, btnTF1Y;
     private com.google.android.material.button.MaterialButton activeTFButton = null;
 
@@ -252,7 +247,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         btnTickerSelect    = v.findViewById(R.id.btnTickerSelect);
         btnTimeframePicker = v.findViewById(R.id.btnTimeframePicker);
 
-        // Backward-compat TF buttons (hidden)
         btnTF1D = v.findViewById(R.id.btnTF1D);
         btnTF1W = v.findViewById(R.id.btnTF1W);
         btnTF1M = v.findViewById(R.id.btnTF1M);
@@ -304,7 +298,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         setupClickListeners();
         setupChartGestures();
 
-        // sync interval from currentTFIndex
         interval = TIMEFRAMES[currentTFIndex][1];
         fetchStockData(symbol, interval);
 
@@ -321,24 +314,124 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     private void showTimeframeDialog() {
         if (getContext() == null) return;
-        String[] labels = new String[TIMEFRAMES.length];
-        for (int i = 0; i < TIMEFRAMES.length; i++) labels[i] = TIMEFRAMES[i][0];
 
-        new AlertDialog.Builder(getContext())
-                .setTitle("Select Timeframe")
-                .setSingleChoiceItems(labels, currentTFIndex, (dialog, which) -> {
-                    currentTFIndex = which;
-                    interval = TIMEFRAMES[currentTFIndex][1];
-                    updateTimeframePickerLabel();
-                    hideCrosshairInfo();
-                    fetchStockData(symbol, interval);
-                    dialog.dismiss();
-                })
+        LinearLayout root = new LinearLayout(getContext());
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(isDarkTheme ? 0xFF151C2E : 0xFFFFFFFF);
+        int ph = dpToPx(20);
+        root.setPadding(ph, dpToPx(20), ph, dpToPx(16));
+
+        TextView title = new TextView(getContext());
+        title.setText("Select Timeframe");
+        title.setTextSize(16f);
+        title.setTextColor(isDarkTheme ? 0xFFE6EDF3 : 0xFF1A1D23);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        title.setPadding(dpToPx(4), 0, 0, dpToPx(16));
+        root.addView(title);
+
+        int cols = 3;
+        for (int row = 0; row < (int) Math.ceil((double) TIMEFRAMES.length / cols); row++) {
+            LinearLayout rowLayout = new LinearLayout(getContext());
+            rowLayout.setOrientation(LinearLayout.HORIZONTAL);
+            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            rowLp.setMargins(0, 0, 0, dpToPx(8));
+            rowLayout.setLayoutParams(rowLp);
+
+            for (int col = 0; col < cols; col++) {
+                int idx = row * cols + col;
+                if (idx >= TIMEFRAMES.length) {
+                    android.widget.Space spacer = new android.widget.Space(getContext());
+                    LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(0,
+                            ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                    sp.setMargins(col == 0 ? 0 : dpToPx(6), 0, 0, 0);
+                    rowLayout.addView(spacer, sp);
+                    continue;
+                }
+
+                boolean isSelected = (idx == currentTFIndex);
+                String label = TIMEFRAMES[idx][0];
+
+                android.widget.FrameLayout btnWrapper = new android.widget.FrameLayout(getContext());
+                android.graphics.drawable.GradientDrawable btnBg =
+                        new android.graphics.drawable.GradientDrawable();
+                btnBg.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+                btnBg.setCornerRadius(dpToPx(10));
+                if (isSelected) {
+                    btnBg.setColor(0xFF4DA3FF);
+                    btnBg.setStroke(0, android.graphics.Color.TRANSPARENT);
+                } else {
+                    btnBg.setColor(isDarkTheme ? 0xFF0B0F14 : 0xFFF0F4F8);
+                    btnBg.setStroke(dpToPx(1), isDarkTheme ? 0xFF1E2A3A : 0xFFE5E7EB);
+                }
+                btnWrapper.setBackground(btnBg);
+
+                TextView btnText = new TextView(getContext());
+                btnText.setText(label);
+                btnText.setTextSize(14f);
+                btnText.setTextColor(isSelected ? 0xFFFFFFFF :
+                        (isDarkTheme ? 0xFF8B98A5 : 0xFF6B7280));
+                btnText.setTypeface(null, isSelected ?
+                        android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+                btnText.setGravity(android.view.Gravity.CENTER);
+                android.widget.FrameLayout.LayoutParams textLp =
+                        new android.widget.FrameLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(44));
+                btnText.setLayoutParams(textLp);
+                btnWrapper.addView(btnText);
+
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0,
+                        ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                lp.setMargins(col == 0 ? 0 : dpToPx(6), 0, 0, 0);
+                rowLayout.addView(btnWrapper, lp);
+            }
+            root.addView(rowLayout);
+        }
+
+        View divider = new View(getContext());
+        divider.setBackgroundColor(isDarkTheme ? 0xFF1E2A3A : 0xFFE5E7EB);
+        LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(1));
+        divLp.setMargins(0, dpToPx(8), 0, dpToPx(12));
+        root.addView(divider, divLp);
+
+        AlertDialog dialog = new AlertDialog.Builder(getContext())
+                .setView(root)
                 .setNegativeButton("Cancel", null)
-                .show();
+                .create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(
+                    new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        }
+
+        dialog.show();
+
+        // חבר listeners אחרי show
+        for (int i = 0; i < root.getChildCount(); i++) {
+            View child = root.getChildAt(i);
+            if (child instanceof LinearLayout) {
+                LinearLayout rowL = (LinearLayout) child;
+                for (int j = 0; j < rowL.getChildCount(); j++) {
+                    View cell = rowL.getChildAt(j);
+                    if (cell instanceof android.widget.FrameLayout) {
+                        final int tfIdx = i * 3 + j;
+                        if (tfIdx < TIMEFRAMES.length) {
+                            cell.setOnClickListener(v -> {
+                                currentTFIndex = tfIdx;
+                                interval = TIMEFRAMES[currentTFIndex][1];
+                                updateTimeframePickerLabel();
+                                hideCrosshairInfo();
+                                fetchStockData(symbol, interval);
+                                dialog.dismiss();
+                            });
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    // Not used anymore but kept to satisfy TimeFrameFragment.TimeFrameListener interface
     @Override
     public void onTimeFrameSelected(String tf) {
         interval = tf;
@@ -346,7 +439,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         fetchStockData(symbol, interval);
     }
 
-    // Kept for backward compat
     private void setActiveTFButton(com.google.android.material.button.MaterialButton selected) {
         activeTFButton = selected;
     }
@@ -427,22 +519,11 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         btnTickerSelect.setText(display);
     }
 
+    // ─── פותח מסך חיפוש מלא במקום dialog ────────────────────────────────────
     private void showTickerInputDialog() {
-        if (getContext() == null) return;
-        EditText et = new EditText(getContext());
-        et.setHint("e.g. AAPL, BTC, TSLA");
-        et.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
-        et.setSingleLine(true);
-
-        new AlertDialog.Builder(getContext())
-                .setTitle("Enter ticker symbol")
-                .setView(et)
-                .setPositiveButton("Open", (d, w) -> {
-                    String raw = et.getText().toString().trim();
-                    if (!raw.isEmpty()) openChartFromInput(raw);
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        TickerSearchSheet sheet = new TickerSearchSheet();
+        sheet.setOnTickerSelectedListener(sym -> openChartFromInput(sym));
+        sheet.show(getParentFragmentManager(), "ticker_search");
     }
 
     // ─── Fullscreen ─────────────────────────────────────────────────
@@ -720,7 +801,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
     }
 
-    // Returns {yahooInterval, yahooRange} for the current timeframe index
     private String[] getYahooParams() {
         String yahooInterval = TIMEFRAMES[currentTFIndex][2];
         String yahooRange    = TIMEFRAMES[currentTFIndex][3];
@@ -772,7 +852,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     List<CandleEntry> entries = new ArrayList<>();
                     SimpleDateFormat sdf = dateFormatFor(p[0]);
                     float lc = 0f, pc = 0f; int vc = 0;
-                    // Take last 252 candles
                     int startIdx = Math.max(0, size - 252);
                     for (int i = startIdx; i < size; i++) {
                         if (cls.isNull(i)||opens.isNull(i)||highs.isNull(i)||lows.isNull(i)) continue;
