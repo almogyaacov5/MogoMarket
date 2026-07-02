@@ -1,6 +1,8 @@
 package com.mogomarket.app;
 
 import android.content.Context;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -10,6 +12,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
+import com.google.android.material.button.MaterialButton;
+import java.util.Arrays;
+import java.util.List;
 
 public class TimeFrameFragment extends DialogFragment {
 
@@ -18,6 +23,7 @@ public class TimeFrameFragment extends DialogFragment {
     }
 
     private TimeFrameListener listener;
+    private MaterialButton selectedButton = null;
 
     @Override
     public void onAttach(@NonNull Context context) {
@@ -38,22 +44,61 @@ public class TimeFrameFragment extends DialogFragment {
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_timeframe, container, false);
 
-        RadioGroup radioGroup = view.findViewById(R.id.radioGroupTimeframes);
-        radioGroup.setOnCheckedChangeListener((group, checkedId) -> {
-            String interval = "1day";
-            if      (checkedId == R.id.radio1min)   interval = "1min";
-            else if (checkedId == R.id.radio5min)   interval = "5min";
-            else if (checkedId == R.id.radio15min)  interval = "15min";
-            else if (checkedId == R.id.radio65min)  interval = "60min";  // Finnhub תומך ב-60 בלבד
-            else if (checkedId == R.id.radio1day)   interval = "1day";
-            else if (checkedId == R.id.radio1week)  interval = "1week";
-            else if (checkedId == R.id.radio1month) interval = "1month";
+        List<MaterialButton> buttons = Arrays.asList(
+            view.findViewById(R.id.btn1min),
+            view.findViewById(R.id.btn5min),
+            view.findViewById(R.id.btn15min),
+            view.findViewById(R.id.btn65min),
+            view.findViewById(R.id.btn1day),
+            view.findViewById(R.id.btn1week),
+            view.findViewById(R.id.btn1month)
+        );
 
-            if (listener != null) {
-                listener.onTimeFrameSelected(interval);
-                dismiss();
-            }
-        });
+        String[] intervals = {"1min", "5min", "15min", "60min", "1day", "1week", "1month"};
+
+        for (int i = 0; i < buttons.size(); i++) {
+            final MaterialButton btn = buttons.get(i);
+            final String interval = intervals[i];
+
+            btn.setOnClickListener(v -> {
+                // Reset all buttons to normal style
+                for (MaterialButton b : buttons) {
+                    b.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFFFFF")));
+                    b.setTextColor(Color.parseColor("#0D1117"));
+                    b.setStrokeColor(ColorStateList.valueOf(Color.parseColor("#CBD5E0")));
+                    b.setStrokeWidth(dpToPx(1));
+                }
+
+                // Highlight selected button
+                btn.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#4DA3FF")));
+                btn.setTextColor(Color.WHITE);
+                btn.setStrokeWidth(0);
+                selectedButton = btn;
+
+                if (listener != null) {
+                    listener.onTimeFrameSelected(interval);
+                    dismiss();
+                }
+            });
+        }
+
+        // Keep RadioGroup hidden but functional for backward compat
+        RadioGroup radioGroup = view.findViewById(R.id.radioGroupTimeframes);
+        if (radioGroup != null) radioGroup.setVisibility(View.GONE);
+
         return view;
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        if (getDialog() != null && getDialog().getWindow() != null) {
+            getDialog().getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+    }
+
+    private int dpToPx(int dp) {
+        float density = requireContext().getResources().getDisplayMetrics().density;
+        return Math.round(dp * density);
     }
 }
