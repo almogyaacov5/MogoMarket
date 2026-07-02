@@ -32,6 +32,15 @@
         android:visibility="gone"
         android:minWidth="0dp" />
 
+    <!-- btnSettings - hidden for backward-compat -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnSettings"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        android:minWidth="0dp"
+        android:minHeight="0dp" />
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnExpandChart"
         style="@style/Widget.Material3.Button.IconButton"
@@ -320,7 +329,7 @@
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="40dp"
-                android:text="AI ✦"
+                android:text="AI ❆"
                 android:backgroundTint="@color/gain"
                 android:layout_marginStart="4dp"
                 android:textAllCaps="false"
