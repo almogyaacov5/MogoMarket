@@ -280,7 +280,7 @@
                 style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="0dp"
                 android:layout_height="40dp"
-                android:layout_weight="1"
+                android:layout_weight="1.2"
                 android:text="SPY"
                 android:textStyle="bold"
                 android:textSize="13sp"
@@ -297,7 +297,6 @@
                 android:text="1D"
                 android:textSize="12sp"
                 android:textAllCaps="false"
-                app:icon="@drawable/ic_nav_chart"
                 app:iconSize="14dp"
                 app:iconGravity="textStart" />
 
@@ -327,9 +326,9 @@
                 android:id="@+id/btnAIAnalysis"
                 style="@style/Widget.Material3.Button"
                 android:layout_width="0dp"
-                android:layout_weight="1"
+                android:layout_weight="0.8"
                 android:layout_height="40dp"
-                android:text="AI ❆"
+                android:text="AI"
                 android:backgroundTint="@color/gain"
                 android:layout_marginStart="4dp"
                 android:textAllCaps="false"

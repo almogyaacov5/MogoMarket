@@ -321,21 +321,156 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     private void showTimeframeDialog() {
         if (getContext() == null) return;
-        String[] labels = new String[TIMEFRAMES.length];
-        for (int i = 0; i < TIMEFRAMES.length; i++) labels[i] = TIMEFRAMES[i][0];
 
-        new AlertDialog.Builder(getContext())
-                .setTitle("Select Timeframe")
-                .setSingleChoiceItems(labels, currentTFIndex, (dialog, which) -> {
-                    currentTFIndex = which;
+        // ─── Root container ───────────────────────────────────────────────────
+        LinearLayout root = new LinearLayout(getContext());
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(isDarkTheme ? 0xFF151C2E : 0xFFFFFFFF);
+        int ph = dpToPx(20);
+        root.setPadding(ph, dpToPx(20), ph, dpToPx(16));
+
+        // ─── כותרת ────────────────────────────────────────────────────────────
+        TextView title = new TextView(getContext());
+        title.setText("Select Timeframe");
+        title.setTextSize(16f);
+        title.setTextColor(isDarkTheme ? 0xFFE6EDF3 : 0xFF1A1D23);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        title.setPadding(dpToPx(4), 0, 0, dpToPx(16));
+        root.addView(title);
+
+        // ─── Grid של כפתורי טיים-פריים ────────────────────────────────────────
+        // שורה אחרי שורה, 3 כפתורים בשורה
+        int cols = 3;
+        for (int row = 0; row < Math.ceil((double) TIMEFRAMES.length / cols); row++) {
+            LinearLayout rowLayout = new LinearLayout(getContext());
+            rowLayout.setOrientation(LinearLayout.HORIZONTAL);
+            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+            rowLp.setMargins(0, 0, 0, dpToPx(8));
+            rowLayout.setLayoutParams(rowLp);
+
+            for (int col = 0; col < cols; col++) {
+                int idx = row * cols + col;
+
+                if (idx >= TIMEFRAMES.length) {
+                    // תא ריק למילוי שורה
+                    android.widget.Space spacer = new android.widget.Space(getContext());
+                    LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(0,
+                            android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                    sp.setMargins(col == 0 ? 0 : dpToPx(6), 0, 0, 0);
+                    rowLayout.addView(spacer, sp);
+                    continue;
+                }
+
+                boolean isSelected = (idx == currentTFIndex);
+                String label = TIMEFRAMES[idx][0];
+                final int finalIdx = idx;
+
+                // כפתור
+                android.widget.FrameLayout btnWrapper = new android.widget.FrameLayout(getContext());
+
+                android.graphics.drawable.GradientDrawable btnBg =
+                        new android.graphics.drawable.GradientDrawable();
+                btnBg.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+                btnBg.setCornerRadius(dpToPx(10));
+
+                if (isSelected) {
+                    btnBg.setColor(0xFF4DA3FF);
+                    btnBg.setStroke(0, android.graphics.Color.TRANSPARENT);
+                } else {
+                    btnBg.setColor(isDarkTheme ? 0xFF0B0F14 : 0xFFF0F4F8);
+                    btnBg.setStroke(dpToPx(1), isDarkTheme ? 0xFF1E2A3A : 0xFFE5E7EB);
+                }
+                btnWrapper.setBackground(btnBg);
+
+                TextView btnText = new TextView(getContext());
+                btnText.setText(label);
+                btnText.setTextSize(14f);
+                btnText.setTextColor(isSelected ? 0xFFFFFFFF :
+                        (isDarkTheme ? 0xFF8B98A5 : 0xFF6B7280));
+                btnText.setTypeface(null, isSelected ?
+                        android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+                btnText.setGravity(android.view.Gravity.CENTER);
+                android.widget.FrameLayout.LayoutParams textLp =
+                        new android.widget.FrameLayout.LayoutParams(
+                                android.view.ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(44));
+                btnText.setLayoutParams(textLp);
+                btnWrapper.addView(btnText);
+
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0,
+                        android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                lp.setMargins(col == 0 ? 0 : dpToPx(6), 0, 0, 0);
+                rowLayout.addView(btnWrapper, lp);
+
+                // ─── AlertDialog reference for dismiss ───────────────────────
+                // נשמור ref ב-array חד-איברי כדי לגשת מתוך lambda
+                final AlertDialog[] dialogRef = new AlertDialog[1];
+                btnWrapper.setOnClickListener(v -> {
+                    currentTFIndex = finalIdx;
                     interval = TIMEFRAMES[currentTFIndex][1];
                     updateTimeframePickerLabel();
                     hideCrosshairInfo();
                     fetchStockData(symbol, interval);
-                    dialog.dismiss();
-                })
+                    if (dialogRef[0] != null) dialogRef[0].dismiss();
+                });
+
+                // שמור ref לאחר יצירת dialog
+                root.setTag(btnWrapper);
+            }
+            root.addView(rowLayout);
+        }
+
+        // ─── Divider ──────────────────────────────────────────────────────────
+        View divider = new View(getContext());
+        divider.setBackgroundColor(isDarkTheme ? 0xFF1E2A3A : 0xFFE5E7EB);
+        LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(1));
+        divLp.setMargins(0, dpToPx(8), 0, dpToPx(12));
+        root.addView(divider, divLp);
+
+        // ─── Dialog ───────────────────────────────────────────────────────────
+        AlertDialog dialog = new AlertDialog.Builder(getContext())
+                .setView(root)
                 .setNegativeButton("Cancel", null)
-                .show();
+                .create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(
+                    new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        }
+
+        // חיבור ה-dialogRef לכפתורים — נעבור שוב על הכפתורים
+        // (דרך פשוטה: מאחר שה-dismiss נקרא מה-listener, נוסיף dismiss ישירות בלולאה)
+        // הערה: ה-dialogRef מוחזק ב-lambda — נחבר אחרי dialog.show()
+        dialog.show();
+
+        // עדכן את כל ה-listeners עם ה-dialog האמיתי
+        for (int i = 0; i < root.getChildCount(); i++) {
+            android.view.View child = root.getChildAt(i);
+            if (child instanceof LinearLayout) {
+                LinearLayout rowL = (LinearLayout) child;
+                for (int j = 0; j < rowL.getChildCount(); j++) {
+                    android.view.View cell = rowL.getChildAt(j);
+                    if (cell instanceof android.widget.FrameLayout) {
+                        final int rowIdx = i;
+                        final int colIdx = j;
+                        final int tfIdx = (i) * cols + j;
+                        if (tfIdx < TIMEFRAMES.length) {
+                            final AlertDialog finalDialog = dialog;
+                            cell.setOnClickListener(v -> {
+                                currentTFIndex = tfIdx;
+                                interval = TIMEFRAMES[currentTFIndex][1];
+                                updateTimeframePickerLabel();
+                                hideCrosshairInfo();
+                                fetchStockData(symbol, interval);
+                                finalDialog.dismiss();
+                            });
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Not used anymore but kept to satisfy TimeFrameFragment.TimeFrameListener interface
@@ -429,20 +564,200 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     private void showTickerInputDialog() {
         if (getContext() == null) return;
-        EditText et = new EditText(getContext());
-        et.setHint("e.g. AAPL, BTC, TSLA");
-        et.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
-        et.setSingleLine(true);
 
-        new AlertDialog.Builder(getContext())
-                .setTitle("Enter ticker symbol")
-                .setView(et)
+        // ─── Root container ───────────────────────────────────────────────────
+        LinearLayout root = new LinearLayout(getContext());
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(isDarkTheme ? 0xFF151C2E : 0xFFFFFFFF);
+        int ph = dpToPx(20);
+        root.setPadding(ph, dpToPx(16), ph, dpToPx(8));
+
+        // ─── Label ────────────────────────────────────────────────────────────
+        TextView label = new TextView(getContext());
+        label.setText("Search symbol");
+        label.setTextSize(11f);
+        label.setTextColor(isDarkTheme ? 0xFF8B98A5 : 0xFF6B7280);
+        label.setLetterSpacing(0.08f);
+        label.setPadding(dpToPx(4), 0, 0, dpToPx(6));
+        root.addView(label);
+
+        // ─── Search box wrapper (rounded, bordered) ───────────────────────────
+        LinearLayout inputWrapper = new LinearLayout(getContext());
+        inputWrapper.setOrientation(LinearLayout.HORIZONTAL);
+        inputWrapper.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        android.graphics.drawable.GradientDrawable inputBg = new android.graphics.drawable.GradientDrawable();
+        inputBg.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+        inputBg.setCornerRadius(dpToPx(12));
+        inputBg.setColor(isDarkTheme ? 0xFF0B0F14 : 0xFFF0F4F8);
+        inputBg.setStroke(dpToPx(1), isDarkTheme ? 0xFF4DA3FF : 0xFF4DA3FF);
+        inputWrapper.setBackground(inputBg);
+        inputWrapper.setPadding(dpToPx(14), 0, dpToPx(10), 0);
+
+        // Search icon
+        TextView searchIcon = new TextView(getContext());
+        searchIcon.setText("🔍");
+        searchIcon.setTextSize(14f);
+        searchIcon.setPadding(0, 0, dpToPx(8), 0);
+        inputWrapper.addView(searchIcon);
+
+        // AutoCompleteTextView
+        AutoCompleteTextView autoEt = new AutoCompleteTextView(getContext());
+        autoEt.setHint("e.g. AAPL, BTC, TSLA");
+        autoEt.setHintTextColor(isDarkTheme ? 0xFF4A5568 : 0xFFADB5BD);
+        autoEt.setTextColor(isDarkTheme ? 0xFFE6EDF3 : 0xFF1A1D23);
+        autoEt.setTextSize(16f);
+        autoEt.setBackground(null);
+        autoEt.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
+        autoEt.setSingleLine(true);
+        autoEt.setThreshold(1);
+        autoEt.setText(isCryptoSymbol(symbol)
+                ? symbol.substring(symbol.indexOf(':') + 1)
+                : symbol);
+        autoEt.selectAll();
+        autoEt.setDropDownBackgroundResource(android.R.color.transparent);
+
+        LinearLayout.LayoutParams etLp = new LinearLayout.LayoutParams(0,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        inputWrapper.addView(autoEt, etLp);
+
+        // Clear "×" button
+        TextView clearBtn = new TextView(getContext());
+        clearBtn.setText("✕");
+        clearBtn.setTextColor(isDarkTheme ? 0xFF8B98A5 : 0xFF6B7280);
+        clearBtn.setTextSize(14f);
+        clearBtn.setPadding(dpToPx(8), dpToPx(10), 0, dpToPx(10));
+        clearBtn.setOnClickListener(v -> autoEt.setText(""));
+        inputWrapper.addView(clearBtn);
+
+        LinearLayout.LayoutParams wrapperLp = new LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(52));
+        root.addView(inputWrapper, wrapperLp);
+
+        // ─── Divider ──────────────────────────────────────────────────────────
+        View divider = new View(getContext());
+        divider.setBackgroundColor(isDarkTheme ? 0xFF1E2A3A : 0xFFE5E7EB);
+        LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(1));
+        divLp.setMargins(0, dpToPx(14), 0, 0);
+        root.addView(divider, divLp);
+
+        // ─── Adapter עם dropdown מעוצב ────────────────────────────────────────
+        ArrayAdapter<StockSuggestion> dialogAdapter = new ArrayAdapter<StockSuggestion>(
+                getContext(), android.R.layout.simple_dropdown_item_1line, new ArrayList<>()) {
+            @Override
+            public android.view.View getView(int position, android.view.View convertView, android.view.ViewGroup parent) {
+                LinearLayout row = new LinearLayout(getContext());
+                row.setOrientation(LinearLayout.VERTICAL);
+                row.setBackgroundColor(isDarkTheme ? 0xFF151C2E : 0xFFFFFFFF);
+                row.setPadding(dpToPx(16), dpToPx(10), dpToPx(16), dpToPx(10));
+
+                StockSuggestion item = getItem(position);
+                if (item == null) return row;
+
+                TextView symView = new TextView(getContext());
+                symView.setText(item.symbol);
+                symView.setTextColor(isDarkTheme ? 0xFFE6EDF3 : 0xFF1A1D23);
+                symView.setTextSize(14f);
+                symView.setTypeface(null, android.graphics.Typeface.BOLD);
+
+                TextView nameView = new TextView(getContext());
+                nameView.setText(item.name);
+                nameView.setTextColor(isDarkTheme ? 0xFF8B98A5 : 0xFF6B7280);
+                nameView.setTextSize(11f);
+
+                row.addView(symView);
+                row.addView(nameView);
+                return row;
+            }
+
+            @NonNull
+            @Override
+            public android.view.View getDropDownView(int position, android.view.View convertView, @NonNull android.view.ViewGroup parent) {
+                return getView(position, convertView, parent);
+            }
+        };
+        autoEt.setAdapter(dialogAdapter);
+
+        // ─── Dialog ───────────────────────────────────────────────────────────
+        AlertDialog dialog = new AlertDialog.Builder(getContext())
+                .setView(root)
                 .setPositiveButton("Open", (d, w) -> {
-                    String raw = et.getText().toString().trim();
+                    String raw = autoEt.getText().toString().trim();
                     if (!raw.isEmpty()) openChartFromInput(raw);
                 })
                 .setNegativeButton("Cancel", null)
-                .show();
+                .create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(
+                    new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        }
+
+        // בחירה מהרשימה
+        autoEt.setOnItemClickListener((parent, view, position, id) -> {
+            StockSuggestion s = dialogAdapter.getItem(position);
+            if (s != null) {
+                dialog.dismiss();
+                openChartFromInput(s.symbol);
+            }
+        });
+
+        // TextWatcher עם debounce לחיפוש חי
+        autoEt.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
+            @Override public void onTextChanged(CharSequence s, int st, int b, int c) {}
+            @Override public void afterTextChanged(Editable s) {
+                String q = s.toString().trim();
+                if (q.length() < 1) return;
+                searchHandler.removeCallbacks(pendingSearch);
+                pendingSearch = () -> searchTickersForDialog(q, dialogAdapter);
+                searchHandler.postDelayed(pendingSearch, SEARCH_DEBOUNCE_MS);
+            }
+        });
+
+        dialog.show();
+
+        // מקלדת נפתחת מיד
+        autoEt.requestFocus();
+        InputMethodManager imm = (InputMethodManager)
+                requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) {
+            autoEt.postDelayed(() ->
+                    imm.showSoftInput(autoEt, InputMethodManager.SHOW_IMPLICIT), 100);
+        }
+    }
+
+    // חיפוש טיקרים ל-Dialog
+    private void searchTickersForDialog(String query, ArrayAdapter<StockSuggestion> adapter) {
+        try {
+            String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name());
+            String url = "https://finnhub.io/api/v1/search?q=" + encoded + "&token=" + FINNHUB_KEY;
+            Request req = new Request.Builder().url(url).build();
+            client.newCall(req).enqueue(new Callback() {
+                @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {}
+                @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                    if (!response.isSuccessful() || response.body() == null) return;
+                    try {
+                        JSONObject root = new JSONObject(response.body().string());
+                        JSONArray  arr  = root.optJSONArray("result");
+                        if (arr == null) return;
+                        List<StockSuggestion> results = new ArrayList<>();
+                        for (int i = 0; i < Math.min(arr.length(), 8); i++) {
+                            JSONObject o = arr.getJSONObject(i);
+                            String sym  = o.optString("symbol", "");
+                            String name = o.optString("description", "");
+                            String exch = o.optString("type", "");
+                            if (!sym.isEmpty()) results.add(new StockSuggestion(sym, name, exch));
+                        }
+                        if (getActivity() != null) getActivity().runOnUiThread(() -> {
+                            adapter.clear();
+                            adapter.addAll(results);
+                            adapter.notifyDataSetChanged();
+                        });
+                    } catch (Exception ignored) {}
+                }
+            });
+        } catch (Exception ignored) {}
     }
 
     // ─── Fullscreen ─────────────────────────────────────────────────
