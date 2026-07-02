@@ -59,6 +59,8 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
 
     private String currentSearch = "";
     private String currentFilter = "default";
+    // ascending = true → sort ascending, false → descending (for chipSortOrder)
+    private boolean sortAscending = true;
 
     public WatchlistAdapter(OnWatchStockClickListener listener) {
         this.listener = listener;
@@ -71,6 +73,16 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
     public void updateData(List<StockWatchData> fresh) {
         masterList.clear();
         if (fresh != null) masterList.addAll(fresh);
+        applyFilterAndSearch();
+    }
+
+    /** Move item — called from ItemTouchHelper drag callback */
+    public void moveItem(int from, int to) {
+        if (from < to) {
+            for (int i = from; i < to; i++) Collections.swap(masterList, i, i + 1);
+        } else {
+            for (int i = from; i > to; i--) Collections.swap(masterList, i, i - 1);
+        }
         applyFilterAndSearch();
     }
 
@@ -90,6 +102,15 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         applyFilterAndSearch();
     }
 
+    public void toggleSortOrder() {
+        sortAscending = !sortAscending;
+        applyFilterAndSearch();
+    }
+
+    public boolean isSortAscending() {
+        return sortAscending;
+    }
+
     private void applyFilterAndSearch() {
         List<StockWatchData> result = new ArrayList<>();
         for (StockWatchData s : masterList) {
@@ -101,12 +122,29 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             }
             result.add(s);
         }
-        if ("alpha".equals(currentFilter))
-            Collections.sort(result, (a, b) -> a.symbol.compareToIgnoreCase(b.symbol));
-        else if ("gain".equals(currentFilter))
-            Collections.sort(result, (a, b) -> Float.compare(b.dayChange, a.dayChange));
-        else if ("loss".equals(currentFilter))
-            Collections.sort(result, (a, b) -> Float.compare(a.dayChange, b.dayChange));
+
+        // Apply sort
+        switch (currentFilter) {
+            case "alpha":
+                if (sortAscending)
+                    Collections.sort(result, (a, b) -> a.symbol.compareToIgnoreCase(b.symbol));
+                else
+                    Collections.sort(result, (a, b) -> b.symbol.compareToIgnoreCase(a.symbol));
+                break;
+            case "gain":
+                if (sortAscending)
+                    Collections.sort(result, (a, b) -> Float.compare(a.dayChange, b.dayChange));
+                else
+                    Collections.sort(result, (a, b) -> Float.compare(b.dayChange, a.dayChange));
+                break;
+            case "loss":
+                if (sortAscending)
+                    Collections.sort(result, (a, b) -> Float.compare(b.dayChange, a.dayChange));
+                else
+                    Collections.sort(result, (a, b) -> Float.compare(a.dayChange, b.dayChange));
+                break;
+            // "default" → keep masterList order (user drag order)
+        }
 
         displayList.clear();
         displayList.addAll(result);
@@ -201,7 +239,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                     + "&token=" + FINNHUB_KEY;
         }
 
-        // לוג של ה-URL שנשלח
         Log.d(TAG, "[בקשה] " + stock.symbol + " -> " + url);
 
         Request request = new Request.Builder().url(url).build();
@@ -209,7 +246,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 loading.remove(stock.symbol);
-                // לוג שגיאת רשת
                 Log.e(TAG, "[כשלון-רשת] " + stock.symbol + " -> " + e.getMessage());
                 if (!targetSymbol.equals(holder.itemView.getTag())) return;
                 showDash(holder, textSecondary);
@@ -218,8 +254,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 loading.remove(stock.symbol);
-
-                // לוג קוד תשובה
                 Log.d(TAG, "[קוד] " + stock.symbol + " -> HTTP " + response.code());
 
                 if (response.body() == null) {
@@ -230,8 +264,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                 }
 
                 String body = response.body().string();
-
-                // לוג ה-JSON המלא שהתקבל
                 Log.d(TAG, "[תשובה] " + stock.symbol + " -> " + body);
 
                 if (!response.isSuccessful()) {
@@ -243,7 +275,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
 
                 try {
                     JSONObject json = new JSONObject(body);
-
                     float price, dayChange;
 
                     if (isCrypto(stock.symbol)) {

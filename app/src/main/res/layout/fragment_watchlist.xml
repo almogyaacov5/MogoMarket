@@ -90,7 +90,7 @@
 
             </LinearLayout>
 
-            <!-- Search Row with clear X -->
+            <!-- Search Row with clear X button -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/searchLayout"
                 android:layout_width="match_parent"
@@ -99,7 +99,6 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 app:startIconDrawable="@android:drawable/ic_menu_search"
                 app:endIconMode="clear_text"
-                app:endIconTint="?attr/colorOnSurfaceVariant"
                 android:hint="Search symbol...">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -112,7 +111,7 @@
                     android:textColorHint="?attr/colorOnSurfaceVariant" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Sort / Filter Chips -->
+            <!-- Sort / Filter Chips (no Default chip; second-click resets in code) -->
             <HorizontalScrollView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -125,8 +124,6 @@
                     android:layout_height="wrap_content"
                     app:singleSelection="true"
                     app:selectionRequired="false">
-
-                    <!-- No "Default" chip — tapping selected chip resets to default -->
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/chipSortGain"
@@ -149,9 +146,9 @@
                         android:layout_height="wrap_content"
                         android:text="A–Z" />
 
-                    <!-- Toggle: sort direction ascending / descending -->
+                    <!-- Toggle chip for ascending/descending sort -->
                     <com.google.android.material.chip.Chip
-                        android:id="@+id/chipSortDir"
+                        android:id="@+id/chipSortOrder"
                         style="@style/Widget.Material3.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"

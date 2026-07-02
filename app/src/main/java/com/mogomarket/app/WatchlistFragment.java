@@ -24,10 +24,12 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
@@ -76,6 +78,9 @@ public class WatchlistFragment extends Fragment {
     private String             latestQuery       = "";
     private boolean            isManualSelection = false;
 
+    // Track which chip is currently selected to enable second-click reset
+    private int lastCheckedChipId = View.NO_ID;
+
     private ArrayAdapter<ChartFragment.StockSuggestion> suggestionAdapter;
 
     // ─── Lifecycle ───────────────────────────────────────────────────────────────
@@ -110,6 +115,23 @@ public class WatchlistFragment extends Fragment {
         RecyclerView recyclerView = v.findViewById(R.id.watchlistRecyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(adapter);
+
+        // ── Drag-to-reorder with ItemTouchHelper ──
+        ItemTouchHelper.SimpleCallback dragCallback = new ItemTouchHelper.SimpleCallback(
+                ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
+            @Override
+            public boolean onMove(@NonNull RecyclerView rv,
+                                  @NonNull RecyclerView.ViewHolder vh,
+                                  @NonNull RecyclerView.ViewHolder target) {
+                int from = vh.getAdapterPosition();
+                int to   = target.getAdapterPosition();
+                adapter.moveItem(from, to);
+                return true;
+            }
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder vh, int direction) { /* no swipe */ }
+        };
+        new ItemTouchHelper(dragCallback).attachToRecyclerView(recyclerView);
 
         AutoCompleteTextView autoInput = v.findViewById(R.id.stockAutoInput);
         if (autoInput != null) {
@@ -173,15 +195,37 @@ public class WatchlistFragment extends Fragment {
             });
         }
 
+        // ── Sort chips: second-click resets to default ──
         ChipGroup sortChipGroup = v.findViewById(R.id.sortChipGroup);
+        Chip chipOrder = v.findViewById(R.id.chipSortOrder);
+
         if (sortChipGroup != null) {
             sortChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
-                if (checkedIds.isEmpty()) return;
+                if (checkedIds.isEmpty()) {
+                    // No chip selected → default order
+                    adapter.setFilter("default");
+                    lastCheckedChipId = View.NO_ID;
+                    return;
+                }
                 int id = checkedIds.get(0);
+                if (id == lastCheckedChipId) {
+                    // Second click on same chip → reset
+                    group.clearCheck();
+                    adapter.setFilter("default");
+                    lastCheckedChipId = View.NO_ID;
+                    return;
+                }
+                lastCheckedChipId = id;
                 if      (id == R.id.chipSortGain)  adapter.setFilter("gain");
                 else if (id == R.id.chipSortLoss)  adapter.setFilter("loss");
                 else if (id == R.id.chipSortAlpha) adapter.setFilter("alpha");
-                else                               adapter.setFilter("default");
+                else if (id == R.id.chipSortOrder) {
+                    adapter.toggleSortOrder();
+                    // Update chip label
+                    if (chipOrder != null)
+                        chipOrder.setText(adapter.isSortAscending() ? "↑ Asc" : "↓ Desc");
+                    adapter.setFilter(adapter.isSortAscending() ? "gain" : "loss");
+                }
             });
         }
 
@@ -295,31 +339,18 @@ public class WatchlistFragment extends Fragment {
                             String name = o.optString("description", "");
                             String type = o.optString("type",        "");
                             if (sym.isEmpty()) continue;
-
-                            if (sym.contains(".")) continue;
-
-                            boolean isStock  = "Common Stock".equals(type);
-                            boolean isCrypto = "Crypto".equals(type);
-
-                            if (!isStock && !isCrypto) continue;
-
-                            if (isCrypto && !sym.startsWith("BINANCE:")) continue;
-                            if (isCrypto && !sym.endsWith("USDT")) continue;
-
-                            String exchange = isCrypto ? "Crypto" : "US";
-                            list.add(new ChartFragment.StockSuggestion(sym, name, exchange));
-
-                            if (list.size() >= 15) break;
+                            list.add(new ChartFragment.StockSuggestion(sym, name, type));
+                            if (list.size() >= 8) break;
                         }
                     } catch (Exception ignored) {}
+                    final ArrayList<ChartFragment.StockSuggestion> finalList = list;
                     if (getActivity() == null) return;
+                    if (!query.equals(latestQuery)) return;
                     getActivity().runOnUiThread(() -> {
-                        if (!query.equals(latestQuery) || suggestionAdapter == null) return;
                         suggestionAdapter.clear();
-                        suggestionAdapter.addAll(list);
+                        suggestionAdapter.addAll(finalList);
                         suggestionAdapter.notifyDataSetChanged();
-                        if (input.hasFocus() && suggestionAdapter.getCount() > 0)
-                            input.showDropDown();
+                        if (!finalList.isEmpty() && input.isAttachedToWindow()) input.showDropDown();
                     });
                 }
             });
@@ -333,72 +364,72 @@ public class WatchlistFragment extends Fragment {
         }
     }
 
-    // ─── Stock actions ───────────────────────────────────────────────────────────
+    // ─── Helpers ─────────────────────────────────────────────────────────────────
 
     private void handleStockClick(String symbol) {
-        if (!isAdded()) return;
-        SharedPreferences prefs = requireActivity()
-                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         boolean navigateToChart = prefs.getBoolean(KEY_WATCHLIST_NAV, true);
-
-        if (navigateToChart) {
-            // Switch ON  → navigate to Chart tab via MainActivity
-            if (getActivity() instanceof MainActivity) {
-                ((MainActivity) getActivity()).showChartWithSymbol(symbol);
-            }
-        } else {
-            // Switch OFF → do nothing (stay on watchlist)
-            // You can show a toast or simply ignore the click
+        if (navigateToChart && getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).showChartWithSymbol(symbol);
         }
     }
 
     private void deleteStock(String symbol) {
         if (watchlistRef == null) return;
-        String firebaseKey = symbol.replace(":", "_");
-        watchlistRef.child(firebaseKey).removeValue();
-        if (getContext() != null)
-            Toast.makeText(getContext(), "המניה הוסרה", Toast.LENGTH_SHORT).show();
+        String key = symbol.replace(":", "_");
+        watchlistRef.child(key).removeValue();
+        Toast.makeText(getContext(), symbol + " הוסר", Toast.LENGTH_SHORT).show();
     }
 
     private void showPriceAlertDialog(StockWatchData stock) {
-        if (stock == null || stock.symbol == null || !isAdded()) return;
-        EditText input = new EditText(requireContext());
-        input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        input.setHint("לדוגמא: 150.5");
-        new AlertDialog.Builder(requireContext())
-                .setTitle("התראת מחיר: " + stock.symbol)
-                .setMessage("הזן מחיר יעד.")
-                .setView(input)
-                .setPositiveButton("שמור", (d, w) -> {
+        if (getContext() == null) return;
+        EditText et = new EditText(getContext());
+        et.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        et.setHint("Target price (e.g. 200.00)");
+        if (stock.alertTargetPrice > 0)
+            et.setText(String.format(Locale.US, "%.2f", stock.alertTargetPrice));
+
+        new AlertDialog.Builder(getContext())
+                .setTitle("Set Price Alert for " + stock.symbol)
+                .setView(et)
+                .setPositiveButton("Set", (d, w) -> {
                     try {
-                        float target = Float.parseFloat(input.getText().toString().trim());
+                        float target = Float.parseFloat(et.getText().toString().trim());
+                        if (watchlistRef == null) return;
                         String key = stock.symbol.replace(":", "_");
                         watchlistRef.child(key).child("alertTargetPrice").setValue(target);
                         watchlistRef.child(key).child("alertEnabled").setValue(true);
                         watchlistRef.child(key).child("alertTriggered").setValue(false);
-                        Toast.makeText(getContext(), "נשמרה התראת מחיר", Toast.LENGTH_SHORT).show();
-                    } catch (Exception e) {
-                        Toast.makeText(getContext(), "מספר לא תקין", Toast.LENGTH_SHORT).show();
+                        stock.alertTargetPrice = target;
+                        stock.alertEnabled     = true;
+                        stock.alertTriggered   = false;
+                        Toast.makeText(getContext(),
+                                "Alert set at $" + target + " for " + stock.symbol,
+                                Toast.LENGTH_SHORT).show();
+                    } catch (NumberFormatException e) {
+                        Toast.makeText(getContext(), "Invalid price", Toast.LENGTH_SHORT).show();
                     }
                 })
-                .setNeutralButton("כבה", (d, w) -> {
+                .setNeutralButton("Remove", (d, w) -> {
+                    if (watchlistRef == null) return;
                     String key = stock.symbol.replace(":", "_");
                     watchlistRef.child(key).child("alertEnabled").setValue(false);
-                    watchlistRef.child(key).child("alertTriggered").setValue(false);
-                    Toast.makeText(getContext(), "ההתראה כובתה", Toast.LENGTH_SHORT).show();
+                    watchlistRef.child(key).child("alertTargetPrice").setValue(0);
+                    stock.alertEnabled     = false;
+                    stock.alertTargetPrice = 0;
                 })
-                .setNegativeButton("ביטול", null).show();
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
-    // ─── Helpers ─────────────────────────────────────────────────────────────────
-
     private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && getContext() != null) {
             NotificationChannel channel = new NotificationChannel(
-                    ALERT_CHANNEL_ID, "Stock price alerts", NotificationManager.IMPORTANCE_HIGH);
-            channel.setDescription("Notifications when watchlist stocks cross your target price");
-            NotificationManager nm = (NotificationManager)
-                    requireContext().getSystemService(Context.NOTIFICATION_SERVICE);
+                    ALERT_CHANNEL_ID,
+                    "Stock Price Alerts",
+                    NotificationManager.IMPORTANCE_HIGH);
+            channel.setDescription("Alerts when stocks hit target price");
+            NotificationManager nm = getContext().getSystemService(NotificationManager.class);
             if (nm != null) nm.createNotificationChannel(channel);
         }
     }
