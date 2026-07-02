@@ -85,9 +85,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginTop="0dp"
-                android:layout_marginBottom="0dp">
+                android:gravity="center_vertical">
 
                 <TextView
                     android:id="@+id/changeText"
@@ -178,7 +176,7 @@
             android:orientation="vertical"
             android:padding="6dp">
 
-            <!-- Row 0: Ticker selector (full width, at top of controls) -->
+            <!-- Row 0: Ticker selector -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnTickerSelect"
                 style="@style/Widget.Material3.Button.TonalButton"
@@ -201,7 +199,7 @@
                 android:textSize="12sp"
                 android:layout_marginBottom="4dp" />
 
-            <!-- Row 2: action buttons -->
+            <!-- Row 2: action buttons (without theme toggle) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -209,18 +207,12 @@
                 android:gravity="center_vertical"
                 android:layoutDirection="ltr">
 
-                <!-- Chart dark/light theme toggle -->
+                <!-- Hidden btnChartThemeToggle for backward compat -->
                 <Button
                     android:id="@+id/btnChartThemeToggle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="36dp"
-                    android:text="🌙"
-                    android:textSize="16sp"
-                    android:textAllCaps="false"
-                    android:paddingStart="8dp"
-                    android:paddingEnd="8dp"
-                    android:backgroundTint="#AA151C2E"
-                    android:textColor="#FFFFFF"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:visibility="gone"
                     android:minWidth="0dp" />
 
                 <com.google.android.material.button.MaterialButton
@@ -228,7 +220,6 @@
                     style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
                     android:contentDescription="Refresh"
                     app:icon="@drawable/baseline_refresh_24" />
 
@@ -238,7 +229,7 @@
                     android:layout_width="0dp"
                     android:layout_height="40dp"
                     android:layout_marginStart="4dp"
-                    android:layout_weight="0.8"
+                    android:layout_weight="1"
                     android:text="Line"
                     android:textAllCaps="false"
                     android:textSize="12sp" />
@@ -247,7 +238,7 @@
                     android:id="@+id/btnPortfolioChart"
                     style="@style/Widget.Material3.Button.TonalButton"
                     android:layout_width="0dp"
-                    android:layout_weight="0.9"
+                    android:layout_weight="1"
                     android:layout_height="40dp"
                     android:text="📊"
                     android:layout_marginStart="4dp"
@@ -258,7 +249,7 @@
                     android:id="@+id/btnAIAnalysis"
                     style="@style/Widget.Material3.Button"
                     android:layout_width="0dp"
-                    android:layout_weight="0.9"
+                    android:layout_weight="1"
                     android:layout_height="40dp"
                     android:text="AI ✦"
                     android:backgroundTint="@color/gain"
