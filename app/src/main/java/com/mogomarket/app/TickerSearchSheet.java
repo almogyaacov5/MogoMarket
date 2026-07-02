@@ -173,6 +173,7 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
             if (imm != null)
                 imm.showSoftInput(searchInput, InputMethodManager.SHOW_IMPLICIT);
         }, 150);
+        searchInput.setHintTextColor(0xFF4A5568);
     }
 
     private void fetchSuggestions(String query,
