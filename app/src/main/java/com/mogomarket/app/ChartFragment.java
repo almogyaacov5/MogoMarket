@@ -96,24 +96,23 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private static final int COLOR_GAIN     = 0xFF00C896;
     private static final int COLOR_LOSS     = 0xFFFF4D4D;
     private static final int COLOR_FILL     = 0xFF1C6DD0;
-    private static final int COLOR_PORTFOLIO = 0xFFFFB300;
 
     private static final long DOUBLE_TAP_TIMEOUT_MS = 350;
     private long lastTapTime = 0;
 
-    // Timeframe definitions: label, interval string, Yahoo interval, Yahoo range, Binance interval, Binance limit
-    // Each timeframe shows 252 candles of that resolution
+    // Timeframe definitions: label, interval string, Yahoo interval, Yahoo range, Binance interval
+    // Each timeframe always shows 252 candles
     private static final String[][] TIMEFRAMES = {
-        // {label, internalInterval, yahooInterval, yahooRange, binanceInterval, binanceLimit}
-        {"1m",  "1min",   "1m",  "1d",  "1m",  "252"},
-        {"5m",  "5min",   "5m",  "5d",  "5m",  "252"},
-        {"15m", "15min",  "15m", "5d",  "15m", "252"},
-        {"30m", "30min",  "30m", "1mo", "30m", "252"},
-        {"1H",  "60min",  "1h",  "5d",  "1h",  "252"},
-        {"4H",  "4hour",  "1h",  "1mo", "4h",  "252"},
-        {"1D",  "1day",   "1d",  "1y",  "1d",  "252"},
-        {"1W",  "1week",  "1wk", "5y",  "1w",  "252"},
-        {"1M",  "1month", "1mo", "max", "1M",  "252"},
+        // {label, internalInterval, yahooInterval, yahooRange, binanceInterval}
+        {"1m",  "1min",   "1m",  "1d",  "1m"},
+        {"5m",  "5min",   "5m",  "5d",  "5m"},
+        {"15m", "15min",  "15m", "5d",  "15m"},
+        {"30m", "30min",  "30m", "1mo", "30m"},
+        {"1H",  "60min",  "1h",  "5d",  "1h"},
+        {"4H",  "4hour",  "1h",  "1mo", "4h"},
+        {"1D",  "1day",   "1d",  "1y",  "1d"},
+        {"1W",  "1week",  "1wk", "5y",  "1w"},
+        {"1M",  "1month", "1mo", "max", "1M"},
     };
 
     static final Map<String, String> CRYPTO_MAP = new HashMap<>();
@@ -152,7 +151,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private boolean isDarkTheme;
     private boolean isChartDark;
     private boolean isFullscreen = false;
-    private boolean isPortfolioMode = false;
     private boolean isCrosshairActive = false;
 
     // Current timeframe index into TIMEFRAMES array (default = "1D" = index 6)
@@ -172,7 +170,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private com.google.android.material.button.MaterialButton btnTimeframePicker;
     private Button btnLoad, btnTimeFrame, btnToggleChart, btnAIAnalysis;
     private com.google.android.material.button.MaterialButton btnChartRefresh, btnExpandChart,
-            btnExitFullscreen, btnSettings, btnPortfolioChart;
+            btnExitFullscreen, btnSettings;
     private Button btnChartThemeToggle;
 
     private View headerSection;
@@ -252,7 +250,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         btnSettings        = v.findViewById(R.id.btnSettings);
         btnChartThemeToggle= v.findViewById(R.id.btnChartThemeToggle);
         btnTickerSelect    = v.findViewById(R.id.btnTickerSelect);
-        btnPortfolioChart  = v.findViewById(R.id.btnPortfolioChart); // hidden, backward compat
         btnTimeframePicker = v.findViewById(R.id.btnTimeframePicker);
 
         // Backward-compat TF buttons (hidden)
@@ -349,7 +346,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         fetchStockData(symbol, interval);
     }
 
-    // Kept for backward compat (not called from UI)
+    // Kept for backward compat
     private void setActiveTFButton(com.google.android.material.button.MaterialButton selected) {
         activeTFButton = selected;
     }
@@ -716,7 +713,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     }
 
     private void fetchStockData(String symbol, String interval) {
-        isPortfolioMode = false;
         if (isCryptoSymbol(symbol)) {
             fetchCryptoData(symbol, interval);
         } else {
@@ -875,7 +871,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         String upper = raw.toUpperCase(Locale.US).trim();
         String cryptoSym = CRYPTO_MAP.get(upper);
         symbol = (cryptoSym != null) ? cryptoSym : upper;
-        isPortfolioMode = false;
         updateTickerButtonLabel();
         hideCrosshairInfo();
         fetchStockData(symbol, interval);

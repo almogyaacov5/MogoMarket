@@ -73,13 +73,6 @@
         android:layout_height="0dp"
         android:visibility="gone" />
 
-    <!-- Hidden portfolio button kept for backward-compat -->
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnPortfolioChart"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:visibility="gone" />
-
     <!-- ===== HEADER CARD ===== -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/headerSection"
