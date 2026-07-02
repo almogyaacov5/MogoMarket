@@ -78,12 +78,12 @@ public class WatchlistFragment extends Fragment {
     private String             latestQuery       = "";
     private boolean            isManualSelection = false;
 
-    // Track which chip is currently selected to enable second-click reset
+    // נעקוב איזה chip נבחר אחרון כדי לאפשר לחיצה שנייה לאפס את המיון
     private int lastCheckedChipId = View.NO_ID;
 
     private ArrayAdapter<ChartFragment.StockSuggestion> suggestionAdapter;
 
-    // ─── Lifecycle ───────────────────────────────────────────────────────────────
+    // ─── Lifecycle ───────────────────────────────────────────────────────────────────────────
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -195,36 +195,51 @@ public class WatchlistFragment extends Fragment {
             });
         }
 
-        // ── Sort chips: second-click resets to default ──
+        // ── Sort chips ──
         ChipGroup sortChipGroup = v.findViewById(R.id.sortChipGroup);
         Chip chipOrder = v.findViewById(R.id.chipSortOrder);
 
         if (sortChipGroup != null) {
             sortChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
                 if (checkedIds.isEmpty()) {
-                    // No chip selected → default order
+                    // אין chip נבחר → ברירת מחדל (order לפי גרירה)
                     adapter.setFilter("default");
                     lastCheckedChipId = View.NO_ID;
                     return;
                 }
+
                 int id = checkedIds.get(0);
+
                 if (id == lastCheckedChipId) {
-                    // Second click on same chip → reset
+                    // לחיצה שנייה על אותו chip → אפס ל-default
                     group.clearCheck();
                     adapter.setFilter("default");
                     lastCheckedChipId = View.NO_ID;
                     return;
                 }
+
                 lastCheckedChipId = id;
-                if      (id == R.id.chipSortGain)  adapter.setFilter("gain");
-                else if (id == R.id.chipSortLoss)  adapter.setFilter("loss");
-                else if (id == R.id.chipSortAlpha) adapter.setFilter("alpha");
-                else if (id == R.id.chipSortOrder) {
+
+                if (id == R.id.chipSortGain) {
+                    adapter.setFilter("gain");
+
+                } else if (id == R.id.chipSortLoss) {
+                    adapter.setFilter("loss");
+
+                } else if (id == R.id.chipSortAlpha) {
+                    adapter.setFilter("alpha");
+
+                } else if (id == R.id.chipSortOrder) {
+                    // החלפת כיוון בכל לחיצה
                     adapter.toggleSortOrder();
-                    // Update chip label
-                    if (chipOrder != null)
-                        chipOrder.setText(adapter.isSortAscending() ? "↑ Asc" : "↓ Desc");
-                    adapter.setFilter(adapter.isSortAscending() ? "gain" : "loss");
+                    // עדכון שם הכפתור
+                    if (chipOrder != null) {
+                        chipOrder.setText(adapter.isSortAscending()
+                                ? "▲ עולה"
+                                : "▼ יורד");
+                    }
+                    // מיון כל המניות לפי % שינוי
+                    adapter.setFilter("order");
                 }
             });
         }
@@ -265,7 +280,7 @@ public class WatchlistFragment extends Fragment {
         }
     }
 
-    // ─── AutoComplete ────────────────────────────────────────────────────────────
+    // ─── AutoComplete ───────────────────────────────────────────────────────────────────
 
     private void setupAutoComplete(AutoCompleteTextView input) {
         suggestionAdapter = new ArrayAdapter<ChartFragment.StockSuggestion>(
@@ -364,7 +379,7 @@ public class WatchlistFragment extends Fragment {
         }
     }
 
-    // ─── Helpers ─────────────────────────────────────────────────────────────────
+    // ─── Helpers ─────────────────────────────────────────────────────────────────────────────
 
     private void handleStockClick(String symbol) {
         SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
