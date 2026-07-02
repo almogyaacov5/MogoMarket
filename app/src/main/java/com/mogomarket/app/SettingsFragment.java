@@ -29,6 +29,16 @@ public class SettingsFragment extends Fragment {
     private boolean isDark;
     private SharedPreferences prefs;
 
+    // Listener מבטיח שכאשר ChartFragment משנה את הtheme,
+    // דף ההגדרות יתעדכן מיידית גם בלי לעזוב ולחזור
+    private final SharedPreferences.OnSharedPreferenceChangeListener prefListener =
+            (sharedPreferences, key) -> {
+                if (KEY_THEME.equals(key)) {
+                    isDark = sharedPreferences.getBoolean(KEY_THEME, true);
+                    updateThemeUI(isDark);
+                }
+            };
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -117,6 +127,20 @@ public class SettingsFragment extends Fragment {
         }
 
         return v;
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        // רשום listener כדי לקבל עדכונים מיידיים כשChartFragment משנה את הtheme
+        if (prefs != null) prefs.registerOnSharedPreferenceChangeListener(prefListener);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        // בטל רישום כדי למנוע memory leak
+        if (prefs != null) prefs.unregisterOnSharedPreferenceChangeListener(prefListener);
     }
 
     @Override
