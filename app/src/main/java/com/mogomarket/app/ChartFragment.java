@@ -321,21 +321,156 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     private void showTimeframeDialog() {
         if (getContext() == null) return;
-        String[] labels = new String[TIMEFRAMES.length];
-        for (int i = 0; i < TIMEFRAMES.length; i++) labels[i] = TIMEFRAMES[i][0];
 
-        new AlertDialog.Builder(getContext())
-                .setTitle("Select Timeframe")
-                .setSingleChoiceItems(labels, currentTFIndex, (dialog, which) -> {
-                    currentTFIndex = which;
+        // ─── Root container ───────────────────────────────────────────────────
+        LinearLayout root = new LinearLayout(getContext());
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(isDarkTheme ? 0xFF151C2E : 0xFFFFFFFF);
+        int ph = dpToPx(20);
+        root.setPadding(ph, dpToPx(20), ph, dpToPx(16));
+
+        // ─── כותרת ────────────────────────────────────────────────────────────
+        TextView title = new TextView(getContext());
+        title.setText("Select Timeframe");
+        title.setTextSize(16f);
+        title.setTextColor(isDarkTheme ? 0xFFE6EDF3 : 0xFF1A1D23);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        title.setPadding(dpToPx(4), 0, 0, dpToPx(16));
+        root.addView(title);
+
+        // ─── Grid של כפתורי טיים-פריים ────────────────────────────────────────
+        // שורה אחרי שורה, 3 כפתורים בשורה
+        int cols = 3;
+        for (int row = 0; row < Math.ceil((double) TIMEFRAMES.length / cols); row++) {
+            LinearLayout rowLayout = new LinearLayout(getContext());
+            rowLayout.setOrientation(LinearLayout.HORIZONTAL);
+            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+            rowLp.setMargins(0, 0, 0, dpToPx(8));
+            rowLayout.setLayoutParams(rowLp);
+
+            for (int col = 0; col < cols; col++) {
+                int idx = row * cols + col;
+
+                if (idx >= TIMEFRAMES.length) {
+                    // תא ריק למילוי שורה
+                    android.widget.Space spacer = new android.widget.Space(getContext());
+                    LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(0,
+                            android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                    sp.setMargins(col == 0 ? 0 : dpToPx(6), 0, 0, 0);
+                    rowLayout.addView(spacer, sp);
+                    continue;
+                }
+
+                boolean isSelected = (idx == currentTFIndex);
+                String label = TIMEFRAMES[idx][0];
+                final int finalIdx = idx;
+
+                // כפתור
+                android.widget.FrameLayout btnWrapper = new android.widget.FrameLayout(getContext());
+
+                android.graphics.drawable.GradientDrawable btnBg =
+                        new android.graphics.drawable.GradientDrawable();
+                btnBg.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+                btnBg.setCornerRadius(dpToPx(10));
+
+                if (isSelected) {
+                    btnBg.setColor(0xFF4DA3FF);
+                    btnBg.setStroke(0, android.graphics.Color.TRANSPARENT);
+                } else {
+                    btnBg.setColor(isDarkTheme ? 0xFF0B0F14 : 0xFFF0F4F8);
+                    btnBg.setStroke(dpToPx(1), isDarkTheme ? 0xFF1E2A3A : 0xFFE5E7EB);
+                }
+                btnWrapper.setBackground(btnBg);
+
+                TextView btnText = new TextView(getContext());
+                btnText.setText(label);
+                btnText.setTextSize(14f);
+                btnText.setTextColor(isSelected ? 0xFFFFFFFF :
+                        (isDarkTheme ? 0xFF8B98A5 : 0xFF6B7280));
+                btnText.setTypeface(null, isSelected ?
+                        android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+                btnText.setGravity(android.view.Gravity.CENTER);
+                android.widget.FrameLayout.LayoutParams textLp =
+                        new android.widget.FrameLayout.LayoutParams(
+                                android.view.ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(44));
+                btnText.setLayoutParams(textLp);
+                btnWrapper.addView(btnText);
+
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0,
+                        android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                lp.setMargins(col == 0 ? 0 : dpToPx(6), 0, 0, 0);
+                rowLayout.addView(btnWrapper, lp);
+
+                // ─── AlertDialog reference for dismiss ───────────────────────
+                // נשמור ref ב-array חד-איברי כדי לגשת מתוך lambda
+                final AlertDialog[] dialogRef = new AlertDialog[1];
+                btnWrapper.setOnClickListener(v -> {
+                    currentTFIndex = finalIdx;
                     interval = TIMEFRAMES[currentTFIndex][1];
                     updateTimeframePickerLabel();
                     hideCrosshairInfo();
                     fetchStockData(symbol, interval);
-                    dialog.dismiss();
-                })
+                    if (dialogRef[0] != null) dialogRef[0].dismiss();
+                });
+
+                // שמור ref לאחר יצירת dialog
+                root.setTag(btnWrapper);
+            }
+            root.addView(rowLayout);
+        }
+
+        // ─── Divider ──────────────────────────────────────────────────────────
+        View divider = new View(getContext());
+        divider.setBackgroundColor(isDarkTheme ? 0xFF1E2A3A : 0xFFE5E7EB);
+        LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(1));
+        divLp.setMargins(0, dpToPx(8), 0, dpToPx(12));
+        root.addView(divider, divLp);
+
+        // ─── Dialog ───────────────────────────────────────────────────────────
+        AlertDialog dialog = new AlertDialog.Builder(getContext())
+                .setView(root)
                 .setNegativeButton("Cancel", null)
-                .show();
+                .create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(
+                    new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        }
+
+        // חיבור ה-dialogRef לכפתורים — נעבור שוב על הכפתורים
+        // (דרך פשוטה: מאחר שה-dismiss נקרא מה-listener, נוסיף dismiss ישירות בלולאה)
+        // הערה: ה-dialogRef מוחזק ב-lambda — נחבר אחרי dialog.show()
+        dialog.show();
+
+        // עדכן את כל ה-listeners עם ה-dialog האמיתי
+        for (int i = 0; i < root.getChildCount(); i++) {
+            android.view.View child = root.getChildAt(i);
+            if (child instanceof LinearLayout) {
+                LinearLayout rowL = (LinearLayout) child;
+                for (int j = 0; j < rowL.getChildCount(); j++) {
+                    android.view.View cell = rowL.getChildAt(j);
+                    if (cell instanceof android.widget.FrameLayout) {
+                        final int rowIdx = i;
+                        final int colIdx = j;
+                        final int tfIdx = (i) * cols + j;
+                        if (tfIdx < TIMEFRAMES.length) {
+                            final AlertDialog finalDialog = dialog;
+                            cell.setOnClickListener(v -> {
+                                currentTFIndex = tfIdx;
+                                interval = TIMEFRAMES[currentTFIndex][1];
+                                updateTimeframePickerLabel();
+                                hideCrosshairInfo();
+                                fetchStockData(symbol, interval);
+                                finalDialog.dismiss();
+                            });
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Not used anymore but kept to satisfy TimeFrameFragment.TimeFrameListener interface
