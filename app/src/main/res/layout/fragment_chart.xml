@@ -10,6 +10,20 @@
     android:background="@color/bg_primary"
     tools:context=".MainActivity">
 
+    <!-- Hidden IDs kept for Java backward-compat (not visible) -->
+    <View
+        android:id="@+id/searchSection"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/timeFrameText"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:text=""
+        android:visibility="gone" />
+
     <!-- ===== HEADER CARD ===== -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/headerSection"
@@ -80,7 +94,7 @@
                     android:letterSpacing="0.02"/>
             </LinearLayout>
 
-            <!-- change + percent row -->
+            <!-- change + timeframe row -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -275,7 +289,7 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Hidden bottom bar kept for backward compat — zero height -->
+    <!-- Hidden bottom bar kept for backward compat - zero height -->
     <View
         android:id="@+id/bottomBar"
         android:layout_width="match_parent"
