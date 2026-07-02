@@ -51,6 +51,13 @@ public class LLMService {
         void onFailure(Throwable t);
     }
 
+    // ממשק Streaming - מחזיר טקסט בזרימה תו אחר תו (אפקט הקלדה)
+    public interface StreamCallback {
+        void onToken(String token);
+        void onComplete(String fullText);
+        void onError(String error);
+    }
+
     public LLMService() { }
 
     // מתודה ציבורית לשליחת prompt גנרי - עוטפת את AnalysisCallback ב-LLMCallback
@@ -63,6 +70,32 @@ public class LLMService {
             @Override
             public void onError(String error) {
                 callback.onFailure(new Exception(error));
+            }
+        });
+    }
+
+    // מתודה streaming - מפצלת את התשובה למילים ושולחת בהדרגה (אפקט הקלדה)
+    public void streamQuery(String prompt, StreamCallback callback) {
+        sendToGemini(prompt, new AnalysisCallback() {
+            @Override
+            public void onAnalysisReceived(String result) {
+                String[] words = result.split(" ");
+                Handler handler = new Handler(Looper.getMainLooper());
+                for (int i = 0; i < words.length; i++) {
+                    final String token = (i == 0 ? "" : " ") + words[i];
+                    final int idx = i;
+                    final int total = words.length;
+                    handler.postDelayed(() -> {
+                        callback.onToken(token);
+                        if (idx == total - 1) {
+                            callback.onComplete(result);
+                        }
+                    }, i * 40L); // 40ms בין כל מילה לאפקט הקלדה חלק
+                }
+            }
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
             }
         });
     }
@@ -150,7 +183,6 @@ public class LLMService {
                 String responseBody = response.body() != null ? response.body().string() : "";
                 android.util.Log.d("LLM", "קוד תגובה: " + response.code());
 
-                // *** תיקון הבעיה – עצירת הלולאה ***
                 // קוד 429 = חרגנו ממכסת הבקשות - עוצרים ולא מנסים שוב
                 if (response.code() == 429) {
                     android.util.Log.w("LLM", "429 - המכסה נגמרה");
@@ -159,8 +191,7 @@ public class LLMService {
                 }
 
                 // קוד 403 = גישה נדחית (מפתח לא תקין / מכסה נגמרה)
-                if(response.code()==403)
-                {
+                if (response.code() == 403) {
                     android.util.Log.w("LLM", "המכסה ניגמרה להיום, חכה עד מחר בעשר בבוקר");
                     notifyError(callback, "המכסה היומית של Gemini נגמרה.\nנסה שוב מחר בשעה 10:00 בבוקר.");
                     return;
