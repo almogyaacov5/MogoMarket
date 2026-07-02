@@ -1,25 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="10dp"
-    android:background="@drawable/marker_background"
-    android:clipToOutline="true">
-
-    <TextView
-        android:id="@+id/markerPrice"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="#E6EDF3"
-        android:textStyle="bold"
-        android:textSize="14sp"/>
-
-    <TextView
-        android:id="@+id/markerDate"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="#8B98A5"
-        android:textSize="12sp"/>
-
-</LinearLayout>
+<!-- Invisible 1x1 view; all info is shown in the chart top-bar -->
+<View
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="1dp"
+    android:layout_height="1dp" />

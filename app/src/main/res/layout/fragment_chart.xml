@@ -141,6 +141,45 @@
                 android:background="?attr/colorSurface"
                 android:visibility="gone" />
 
+            <!-- Crosshair info bar – fixed at top of chart, shown while highlight is active -->
+            <LinearLayout
+                android:id="@+id/crosshairInfoBar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|start"
+                android:layout_margin="8dp"
+                android:orientation="horizontal"
+                android:background="#CC151C2E"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/crosshairPrice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#E6EDF3"
+                    android:textStyle="bold"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="  ·  "
+                    android:textColor="#8B98A5"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/crosshairDate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#8B98A5"
+                    android:textSize="12sp" />
+
+            </LinearLayout>
+
             <!-- Exit fullscreen button (shown only in fullscreen mode) -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnExitFullscreen"
