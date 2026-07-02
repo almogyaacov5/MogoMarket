@@ -440,9 +440,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
         }
 
-        // חיבור ה-dialogRef לכפתורים — נעבור שוב על הכפתורים
-        // (דרך פשוטה: מאחר שה-dismiss נקרא מה-listener, נוסיף dismiss ישירות בלולאה)
-        // הערה: ה-dialogRef מוחזק ב-lambda — נחבר אחרי dialog.show()
         dialog.show();
 
         // עדכן את כל ה-listeners עם ה-dialog האמיתי
@@ -453,8 +450,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 for (int j = 0; j < rowL.getChildCount(); j++) {
                     android.view.View cell = rowL.getChildAt(j);
                     if (cell instanceof android.widget.FrameLayout) {
-                        final int rowIdx = i;
-                        final int colIdx = j;
                         final int tfIdx = (i) * cols + j;
                         if (tfIdx < TIMEFRAMES.length) {
                             final AlertDialog finalDialog = dialog;
@@ -563,21 +558,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     }
 
     private void showTickerInputDialog() {
-        if (getContext() == null) return;
-        EditText et = new EditText(getContext());
-        et.setHint("e.g. AAPL, BTC, TSLA");
-        et.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
-        et.setSingleLine(true);
-
-        new AlertDialog.Builder(getContext())
-                .setTitle("Enter ticker symbol")
-                .setView(et)
-                .setPositiveButton("Open", (d, w) -> {
-                    String raw = et.getText().toString().trim();
-                    if (!raw.isEmpty()) openChartFromInput(raw);
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        TickerSearchSheet sheet = new TickerSearchSheet();
+        sheet.setOnTickerSelectedListener(sym -> openChartFromInput(sym));
+        sheet.show(getParentFragmentManager(), "ticker_search");
     }
 
     // ─── Fullscreen ─────────────────────────────────────────────────

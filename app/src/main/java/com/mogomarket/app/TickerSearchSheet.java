@@ -1,10 +1,6 @@
 package com.mogomarket.app;
 
-import android.content.Context;
-import android.graphics.Typeface;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -12,6 +8,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
+import android.content.Context;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.ImageButton;
@@ -34,6 +31,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import android.os.Handler;
+import android.os.Looper;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -55,6 +54,7 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Runnable pendingSearch;
 
+    // רשימת פופולריים לברירת מחדל
     private static final List<ChartFragment.StockSuggestion> POPULAR = Arrays.asList(
         new ChartFragment.StockSuggestion("SPY",  "S&P 500 ETF",        "ETF"),
         new ChartFragment.StockSuggestion("AAPL", "Apple Inc.",          "NASDAQ"),
@@ -82,7 +82,7 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // פרוס על כל המסך
+        // פרוס BottomSheet על כל המסך
         BottomSheetDialog bsd = (BottomSheetDialog) requireDialog();
         bsd.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         View bs = bsd.findViewById(com.google.android.material.R.id.design_bottom_sheet);
@@ -99,6 +99,7 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
         ListView resultsList             = view.findViewById(R.id.searchResultsList);
         TextView labelResults            = view.findViewById(R.id.labelResults);
 
+        // Adapter עם עיצוב מותאם
         ArrayAdapter<ChartFragment.StockSuggestion> adapter =
             new ArrayAdapter<ChartFragment.StockSuggestion>(
                 requireContext(),
@@ -116,11 +117,13 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
                 ChartFragment.StockSuggestion item = getItem(position);
                 TextView t1 = convertView.findViewById(android.R.id.text1);
                 TextView t2 = convertView.findViewById(android.R.id.text2);
+
                 if (item != null) {
                     t1.setText(item.symbol);
                     t1.setTextColor(0xFFE6EDF3);
                     t1.setTextSize(15f);
-                    t1.setTypeface(null, Typeface.BOLD);
+                    t1.setTypeface(null, android.graphics.Typeface.BOLD);
+
                     t2.setText(item.name + (item.exchange.isEmpty() ? "" : "  \u00b7  " + item.exchange));
                     t2.setTextColor(0xFF8B98A5);
                     t2.setTextSize(12f);
@@ -133,6 +136,7 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
 
         resultsList.setAdapter(adapter);
 
+        // לחיצה על תוצאה
         resultsList.setOnItemClickListener((parent, v, position, id) -> {
             ChartFragment.StockSuggestion s = adapter.getItem(position);
             if (s != null && listener != null) {
@@ -141,9 +145,13 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
             dismiss();
         });
 
+        // חץ חזרה
         btnBack.setOnClickListener(v -> dismiss());
+
+        // כפתור ניקוי
         btnClear.setOnClickListener(v -> searchInput.setText(""));
 
+        // TextWatcher
         searchInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
             @Override public void onTextChanged(CharSequence s, int st, int b, int c) {
@@ -173,7 +181,6 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
             if (imm != null)
                 imm.showSoftInput(searchInput, InputMethodManager.SHOW_IMPLICIT);
         }, 150);
-        searchInput.setHintTextColor(0xFF4A5568);
     }
 
     private void fetchSuggestions(String query,

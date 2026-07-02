@@ -15,7 +15,7 @@
         android:background="#FF2A3550"
         android:layout_marginBottom="8dp"/>
 
-    <!-- Header row -->
+    <!-- Header row: חץ חזרה + כותרת -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -25,16 +25,14 @@
         android:paddingEnd="16dp"
         android:paddingBottom="8dp">
 
-        <Button
+        <ImageButton
             android:id="@+id/btnSearchBack"
             android:layout_width="44dp"
             android:layout_height="44dp"
-            android:text="←"
-            android:textColor="#FFE6EDF3"
-            android:textSize="22sp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Back"
-            android:padding="0dp"/>
+            android:src="@drawable/baseline_arrow_back_24"
+            android:tint="#FFE6EDF3"
+            android:contentDescription="Back"/>
 
         <TextView
             android:layout_width="0dp"
@@ -53,6 +51,7 @@
         android:layout_height="54dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
+        android:marginStart="16dp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
         android:paddingStart="14dp"
@@ -72,6 +71,7 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:hint="e.g. AAPL, BTC, TSLA"
+            android:hintTextColor="#FF4A5568"
             android:textColor="#FFE6EDF3"
             android:textSize="17sp"
             android:background="@null"
@@ -100,7 +100,7 @@
         android:layout_marginEnd="16dp"
         android:background="#FF1E2A3A"/>
 
-    <!-- Label -->
+    <!-- Label "Results" -->
     <TextView
         android:id="@+id/labelResults"
         android:layout_width="match_parent"
@@ -113,7 +113,7 @@
         android:paddingTop="14dp"
         android:paddingBottom="6dp"/>
 
-    <!-- Results list -->
+    <!-- רשימת תוצאות -->
     <ListView
         android:id="@+id/searchResultsList"
         android:layout_width="match_parent"
