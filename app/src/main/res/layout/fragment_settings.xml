@@ -74,7 +74,6 @@
                     android:layout_marginBottom="14dp"
                     android:background="@color/colorDivider" />
 
-                <!-- English -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -93,7 +92,6 @@
                     android:lineSpacingExtra="4dp"
                     android:layout_marginBottom="16dp" />
 
-                <!-- Hebrew -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -106,7 +104,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="MogoMarket &#1492;&#1497;&#1488; &#1488;&#1508;&#1500;&#1497;&#1511;&#1510;&#1497;&#1492; &#1495;&#1499;&#1502;&#1492; &#1500;&#1502;&#1505;&#1495;&#1512; &#1489;&#1513;&#1493;&#1511; &#1492;&#1492;&#1493;&#1503; &#1492;&#1502;&#1488;&#1508;&#1513;&#1512;&#1514; &#1500;&#1499;&#1501; &#1500;&#1506;&#1511;&#1493;&#1489; &#1488;&#1495;&#1512; &#1502;&#1495;&#1497;&#1512;&#1497;&#1501; &#1489;&#1494;&#1502;&#1503; &#1488;&#1502;&#1514;, &#1500;&#1504;&#1492;&#1500; &#1488;&#1514; &#1514;&#1497;&#1511; &#1492;&#1492;&#1513;&#1511;&#1506;&#1493;&#1514; &#1513;&#1500;&#1499;&#1501;, &#1500;&#1489;&#1510;&#1506; &#1505;&#1497;&#1502;&#1493;&#1500;&#1510;&#1497;&#1493;&#1514; &#1502;&#1505;&#1495;&#1512; &#1493;&#1500;&#1504;&#1514;&#1495; &#1488;&#1514; &#1492;&#1489;&#1497;&#1510;&#1493;&#1506;&#1497;&#1501; &#1513;&#1500;&#1499;&#1501; &#1489;&#1506;&#1494;&#1512;&#1514; &#1489;&#1497;&#1504;&#1492; &#1502;&#1500;&#1488;&#1499;&#1493;&#1514;&#1497;&#1514;. &#1514;&#1493;&#1502;&#1499;&#1514; &#1489;&#1512;&#1513;&#1497;&#1502;&#1514; &#1502;&#1506;&#1511;&#1489; &#1506;&#1501; &#1492;&#1514;&#1512;&#1488;&#1493;&#1514; &#1502;&#1495;&#1497;&#1512;, &#1492;&#1497;&#1505;&#1496;&#1493;&#1512;&#1497;&#1497;&#1514; &#1506;&#1505;&#1511;&#1488;&#1493;&#1514; &#1505;&#1490;&#1493;&#1512;&#1493;&#1514; &#1493;&#1505;&#1497;&#1502;&#1493;&#1500;&#1496;&#1493;&#1512; &#1502;&#1505;&#1495;&#1512; &#1502;&#1493;&#1489;&#1504;&#1492;."
+                    android:text="MogoMarket &#1492;&#1497;&#1488; &#1488;&#1508;&#1500;&#1497;&#1511;&#1510;&#1497;&#1492; &#1495;&#1499;&#1502;&#1492; &#1500;&#1502;&#1505;&#1495;&#1512; &#1489;&#1513;&#1493;&#1511; &#1492;&#1492;&#1493;&#1503; &#1492;&#1502;&#1488;&#1508;&#1513;&#1512;&#1514; &#1500;&#1499;&#1501; &#1500;&#1506;&#1511;&#1493;&#1489; &#1488;&#1495;&#1512; &#1502;&#1495;&#1497;&#1512;&#1497;&#1501; &#1489;&#1494;&#1502;&#1503; &#1488;&#1502;&#1514;, &#1500;&#1504;&#1492;&#1500; &#1488;&#1514; &#1514;&#1497;&#1511; &#1492;&#1492;&#1513;&#1511;&#1506;&#1493;&#1514; &#1513;&#1500;&#1499;&#1501;, &#1500;&#1489;&#1510;&#1506; &#1505;&#1497;&#1502;&#1493;&#1500;&#1510;&#1497;&#1493;&#1514; &#1502;&#1505;&#1495;&#1512; &#1493;&#1500;&#1504;&#1514;&#1495; &#1488;&#1514; &#1492;&#1489;&#1497;&#1510;&#1493;&#1506;&#1497;&#1501; &#1513;&#1500;&#1499;&#1501; &#1489;&#1506;&#1494;&#1512;&#1514; &#1489;&#1497;&#1504;&#1492; &#1502;&#1500;&#1488;&#1499;&#1493;&#1514;&#1497;&#1514;."
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="14sp"
                     android:lineSpacingExtra="4dp"
@@ -141,7 +139,6 @@
                     android:textStyle="bold"
                     android:layout_marginBottom="14dp" />
 
-                <!-- Dark/Light Toggle Row -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -173,7 +170,6 @@
 
                     </LinearLayout>
 
-                    <!-- Theme Toggle Button -->
                     <LinearLayout
                         android:id="@+id/layoutThemeToggle"
                         android:layout_width="120dp"
@@ -266,7 +262,6 @@
                     android:textStyle="bold"
                     android:layout_marginBottom="14dp" />
 
-                <!-- Watchlist -> Chart Toggle -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -306,14 +301,12 @@
 
                 </LinearLayout>
 
-                <!-- Divider -->
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:layout_marginBottom="16dp"
                     android:background="@color/colorDivider" />
 
-                <!-- Hide Keyboard on Add Toggle -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -414,7 +407,7 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- Start Page Card -->
+        <!-- Start Page Card — גריד אלגנטי 2x3 -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -428,7 +421,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="18dp">
+                android:padding="16dp">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -437,7 +430,7 @@
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="16sp"
                     android:textStyle="bold"
-                    android:layout_marginBottom="8dp" />
+                    android:layout_marginBottom="4dp" />
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -445,51 +438,95 @@
                     android:text="Choose which page opens when you launch the app"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="12sp"
-                    android:layout_marginBottom="14dp" />
+                    android:layout_marginBottom="12dp" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnStartChart"
+                <!-- Row 1 -->
+                <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginBottom="8dp"
-                    android:text="&#128200;  Chart"
-                    android:textAllCaps="false"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="8dp">
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnStartWatchlist"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginBottom="8dp"
-                    android:text="&#128065;  Watchlist"
-                    android:textAllCaps="false"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnStartChart"
+                        android:layout_width="0dp"
+                        android:layout_height="60dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="4dp"
+                        android:text="&#128200;&#10;Chart"
+                        android:textSize="12sp"
+                        android:textAllCaps="false"
+                        android:lineSpacingExtra="2dp"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnStartPortfolio"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginBottom="8dp"
-                    android:text="&#128188;  Portfolio"
-                    android:textAllCaps="false"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnStartWatchlist"
+                        android:layout_width="0dp"
+                        android:layout_height="60dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="4dp"
+                        android:layout_marginEnd="4dp"
+                        android:text="&#128065;&#10;Watchlist"
+                        android:textSize="12sp"
+                        android:textAllCaps="false"
+                        android:lineSpacingExtra="2dp"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnStartTrades"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginBottom="8dp"
-                    android:text="&#128203;  Trades"
-                    android:textAllCaps="false"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnStartPortfolio"
+                        android:layout_width="0dp"
+                        android:layout_height="60dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="4dp"
+                        android:text="&#128188;&#10;Portfolio"
+                        android:textSize="12sp"
+                        android:textAllCaps="false"
+                        android:lineSpacingExtra="2dp"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnStartSettings"
+                </LinearLayout>
+
+                <!-- Row 2 -->
+                <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:text="&#9881;  Settings"
-                    android:textAllCaps="false"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="0.5" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnStartTrades"
+                        android:layout_width="0dp"
+                        android:layout_height="60dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="4dp"
+                        android:text="&#128203;&#10;Trades"
+                        android:textSize="12sp"
+                        android:textAllCaps="false"
+                        android:lineSpacingExtra="2dp"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnStartSettings"
+                        android:layout_width="0dp"
+                        android:layout_height="60dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="4dp"
+                        android:text="&#9881;&#10;Settings"
+                        android:textSize="12sp"
+                        android:textAllCaps="false"
+                        android:lineSpacingExtra="2dp"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="0.5" />
+
+                </LinearLayout>
 
             </LinearLayout>
         </androidx.cardview.widget.CardView>
@@ -519,7 +556,6 @@
                     android:textStyle="bold"
                     android:layout_marginBottom="14dp" />
 
-                <!-- Email Row -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -551,7 +587,6 @@
                     android:layout_marginBottom="12dp"
                     android:background="@color/colorDivider" />
 
-                <!-- Logout Button -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnSettingsLogout"
                     android:layout_width="match_parent"
@@ -590,7 +625,6 @@
                     android:textStyle="bold"
                     android:layout_marginBottom="14dp" />
 
-                <!-- Version -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -613,7 +647,6 @@
                         android:textStyle="bold" />
                 </LinearLayout>
 
-                <!-- Developer -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -635,7 +668,6 @@
                         android:textStyle="bold" />
                 </LinearLayout>
 
-                <!-- Tech Stack -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
