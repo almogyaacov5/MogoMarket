@@ -22,7 +22,7 @@
         android:theme="@style/Theme.Chart"
         tools:targetApi="31">
 
-        <!-- BroadcastReceiver להתראות מחיר ברקע (קיים) -->
+        <!-- BroadcastReceiver להתראות מחיר ברקע -->
         <receiver
             android:name=".PriceAlertReceiver"
             android:exported="false">
@@ -32,7 +32,7 @@
             </intent-filter>
         </receiver>
 
-        <!-- BroadcastReceiver לסיכומי אימייל יומיים ושבועיים (קיים) -->
+        <!-- BroadcastReceiver לסיכומי אימייל יומיים ושבועיים -->
         <receiver
             android:name=".EmailSummaryService"
             android:exported="false">
@@ -54,15 +54,23 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- ✅ SplashActivity — LAUNCHER ראשי, מחליף את AuthLogin כנקודת כניסה -->
         <activity
-            android:name=".AuthLogin"
+            android:name=".SplashActivity"
             android:exported="true"
-            android:windowSoftInputMode="stateHidden|adjustResize">
+            android:theme="@style/Theme.Splash"
+            android:noHistory="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- AuthLogin — כבר לא ה-LAUNCHER, רק Activity רגיל -->
+        <activity
+            android:name=".AuthLogin"
+            android:exported="false"
+            android:windowSoftInputMode="stateHidden|adjustResize" />
 
         <activity
             android:name=".AuthRegister"
