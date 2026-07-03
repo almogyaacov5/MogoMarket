@@ -175,7 +175,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private FrameLayout chartContainer;
     private View chartRootLayout;
     private TextView timeFrameText, tickerText, priceText, changeText, currentPriceDisplay;
-    private TextView tickerLabelTop; // <-- שם הטיקר בכרטיס העליון
+    private TextView tickerLabelTop;
     private ProgressBar progressAI;
 
     private LinearLayout crosshairInfoBar;
@@ -308,7 +308,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         return v;
     }
 
-    /** מעדכן את שם הטיקר בטקסט שבכרטיס העליון */
     private void updateTickerLabelTop() {
         if (tickerLabelTop == null) return;
         String display = isCryptoSymbol(symbol)
@@ -327,6 +326,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private void showTimeframeDialog() {
         if (getContext() == null) return;
 
+        // נשמור reference לדיאלוג מראש
+        final AlertDialog[] dialogHolder = new AlertDialog[1];
+
         LinearLayout root = new LinearLayout(getContext());
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(isDarkTheme ? 0xFF151C2E : 0xFFFFFFFF);
@@ -342,6 +344,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         root.addView(title);
 
         int cols = 3;
+        int tfCounter = 0; // סופר את אינדקס ה-timeframe בנפרד מה-children של root
+
         for (int row = 0; row < Math.ceil((double) TIMEFRAMES.length / cols); row++) {
             LinearLayout rowLayout = new LinearLayout(getContext());
             rowLayout.setOrientation(LinearLayout.HORIZONTAL);
@@ -352,7 +356,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             rowLayout.setLayoutParams(rowLp);
 
             for (int col = 0; col < cols; col++) {
-                int idx = row * cols + col;
+                final int idx = tfCounter; // אינדקס אמיתי ב-TIMEFRAMES
+                tfCounter++;
 
                 if (idx >= TIMEFRAMES.length) {
                     android.widget.Space spacer = new android.widget.Space(getContext());
@@ -365,7 +370,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
                 boolean isSelected = (idx == currentTFIndex);
                 String label = TIMEFRAMES[idx][0];
-                final int finalIdx = idx;
 
                 android.widget.FrameLayout btnWrapper = new android.widget.FrameLayout(getContext());
 
@@ -402,17 +406,15 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 lp.setMargins(col == 0 ? 0 : dpToPx(6), 0, 0, 0);
                 rowLayout.addView(btnWrapper, lp);
 
-                final AlertDialog[] dialogRef = new AlertDialog[1];
+                // listener אחד בלבד - עם idx הנכון
                 btnWrapper.setOnClickListener(v -> {
-                    currentTFIndex = finalIdx;
+                    currentTFIndex = idx;
                     interval = TIMEFRAMES[currentTFIndex][1];
                     updateTimeframePickerLabel();
                     hideCrosshairInfo();
                     fetchStockData(symbol, interval);
-                    if (dialogRef[0] != null) dialogRef[0].dismiss();
+                    if (dialogHolder[0] != null) dialogHolder[0].dismiss();
                 });
-
-                root.setTag(btnWrapper);
             }
             root.addView(rowLayout);
         }
@@ -434,31 +436,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
         }
 
+        dialogHolder[0] = dialog;
         dialog.show();
-
-        for (int i = 0; i < root.getChildCount(); i++) {
-            android.view.View child = root.getChildAt(i);
-            if (child instanceof LinearLayout) {
-                LinearLayout rowL = (LinearLayout) child;
-                for (int j = 0; j < rowL.getChildCount(); j++) {
-                    android.view.View cell = rowL.getChildAt(j);
-                    if (cell instanceof android.widget.FrameLayout) {
-                        final int tfIdx = (i) * cols + j;
-                        if (tfIdx < TIMEFRAMES.length) {
-                            final AlertDialog finalDialog = dialog;
-                            cell.setOnClickListener(v -> {
-                                currentTFIndex = tfIdx;
-                                interval = TIMEFRAMES[currentTFIndex][1];
-                                updateTimeframePickerLabel();
-                                hideCrosshairInfo();
-                                fetchStockData(symbol, interval);
-                                finalDialog.dismiss();
-                            });
-                        }
-                    }
-                }
-            }
-        }
+        // *** אין לולאה שנייה - הכל מטופל בתוך הבנייה למעלה ***
     }
 
     @Override
@@ -967,7 +947,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 changeText.setTextColor(gain ? COLOR_GAIN : COLOR_LOSS);
             }
             if (tickerText     != null) tickerText.setText(sym);
-            // עדכון שם הטיקר בכרטיס העליון
             if (tickerLabelTop != null) {
                 String display = isCryptoSymbol(sym)
                         ? sym.substring(sym.indexOf(':') + 1)
@@ -1028,7 +1007,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 if (getActivity() != null) getActivity().runOnUiThread(() -> {
                     if (progressAI   != null) progressAI.setVisibility(View.GONE);
                     if (btnAIAnalysis != null) btnAIAnalysis.setEnabled(true);
-                    Toast.makeText(requireContext(), "AI error: " + error, Toast.LENGTH_SHORT).show());
+                    Toast.makeText(requireContext(), "AI error: " + error, Toast.LENGTH_SHORT).show();
                 });
             }
         });
