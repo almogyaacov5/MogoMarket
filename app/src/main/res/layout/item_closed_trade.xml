@@ -161,7 +161,7 @@
 
         </LinearLayout>
 
-        <!-- כפתור עריכה -->
+        <!-- כפתורי עריכה ומחיקה -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -173,10 +173,20 @@
                 android:id="@+id/btnEditTrade"
                 android:layout_width="36dp"
                 android:layout_height="36dp"
+                android:layout_marginEnd="8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/baseline_edit_24"
                 android:contentDescription="Edit"
                 android:tint="?attr/colorPrimary" />
+
+            <ImageButton
+                android:id="@+id/btnDeleteTrade"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_menu_delete"
+                android:contentDescription="Delete"
+                android:tint="#FF5252" />
 
         </LinearLayout>
 
