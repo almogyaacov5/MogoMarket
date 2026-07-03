@@ -31,6 +31,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -47,16 +48,15 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
     }
 
     private static final String FINNHUB_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
-    private static final long DEBOUNCE_MS = 300;
+    private static final long   DEBOUNCE_MS = 300;
 
     private OnTickerSelectedListener listener;
-    private final OkHttpClient client = new OkHttpClient();
-    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final OkHttpClient client  = new OkHttpClient();
+    private final Handler      handler = new Handler(Looper.getMainLooper());
     private Runnable pendingSearch;
-
-    // הטיקר הנוכחי שמוצג בגרף
     private String currentSymbol = "SPY";
 
+    // Popular — כולל קריפטו
     private static final List<ChartFragment.StockSuggestion> POPULAR = Arrays.asList(
         new ChartFragment.StockSuggestion("SPY",  "S&P 500 ETF",        "ETF"),
         new ChartFragment.StockSuggestion("AAPL", "Apple Inc.",          "NASDAQ"),
@@ -65,17 +65,39 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
         new ChartFragment.StockSuggestion("AMZN", "Amazon.com Inc.",     "NASDAQ"),
         new ChartFragment.StockSuggestion("MSFT", "Microsoft Corp.",     "NASDAQ"),
         new ChartFragment.StockSuggestion("BTC",  "Bitcoin",             "CRYPTO"),
-        new ChartFragment.StockSuggestion("ETH",  "Ethereum",            "CRYPTO")
+        new ChartFragment.StockSuggestion("ETH",  "Ethereum",            "CRYPTO"),
+        new ChartFragment.StockSuggestion("SOL",  "Solana",              "CRYPTO"),
+        new ChartFragment.StockSuggestion("XRP",  "Ripple",              "CRYPTO")
     );
 
-    public void setOnTickerSelectedListener(OnTickerSelectedListener l) {
-        this.listener = l;
-    }
+    // רשימת קריפטו מקומית לסינון
+    private static final List<ChartFragment.StockSuggestion> CRYPTO_LIST = Arrays.asList(
+        new ChartFragment.StockSuggestion("BTC",   "Bitcoin",          "CRYPTO"),
+        new ChartFragment.StockSuggestion("ETH",   "Ethereum",         "CRYPTO"),
+        new ChartFragment.StockSuggestion("SOL",   "Solana",           "CRYPTO"),
+        new ChartFragment.StockSuggestion("XRP",   "Ripple",           "CRYPTO"),
+        new ChartFragment.StockSuggestion("BNB",   "Binance Coin",     "CRYPTO"),
+        new ChartFragment.StockSuggestion("ADA",   "Cardano",          "CRYPTO"),
+        new ChartFragment.StockSuggestion("DOGE",  "Dogecoin",         "CRYPTO"),
+        new ChartFragment.StockSuggestion("AVAX",  "Avalanche",        "CRYPTO"),
+        new ChartFragment.StockSuggestion("DOT",   "Polkadot",         "CRYPTO"),
+        new ChartFragment.StockSuggestion("LINK",  "Chainlink",        "CRYPTO"),
+        new ChartFragment.StockSuggestion("MATIC", "Polygon",          "CRYPTO"),
+        new ChartFragment.StockSuggestion("LTC",   "Litecoin",         "CRYPTO"),
+        new ChartFragment.StockSuggestion("UNI",   "Uniswap",          "CRYPTO"),
+        new ChartFragment.StockSuggestion("SHIB",  "Shiba Inu",        "CRYPTO"),
+        new ChartFragment.StockSuggestion("TRX",   "TRON",             "CRYPTO"),
+        new ChartFragment.StockSuggestion("ATOM",  "Cosmos",           "CRYPTO"),
+        new ChartFragment.StockSuggestion("XLM",   "Stellar",          "CRYPTO"),
+        new ChartFragment.StockSuggestion("NEAR",  "NEAR Protocol",    "CRYPTO"),
+        new ChartFragment.StockSuggestion("APT",   "Aptos",            "CRYPTO"),
+        new ChartFragment.StockSuggestion("OP",    "Optimism",         "CRYPTO")
+    );
 
-    /** קבע את הסימבול הנוכחי שיוצג בגרף */
+    public void setOnTickerSelectedListener(OnTickerSelectedListener l) { this.listener = l; }
+
     public void setCurrentSymbol(String symbol) {
         this.currentSymbol = (symbol != null && !symbol.isEmpty()) ? symbol : "SPY";
-        // אם הגרסה כבר נוצרה, עדכן UI
         if (getView() != null) updateCurrentTickerBar();
     }
 
@@ -91,7 +113,6 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // פרוס BottomSheet על כל המסך
         BottomSheetDialog bsd = (BottomSheetDialog) requireDialog();
         bsd.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         View bs = bsd.findViewById(com.google.android.material.R.id.design_bottom_sheet);
@@ -105,13 +126,11 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
         AutoCompleteTextView searchInput = view.findViewById(R.id.searchTickerInput);
         ImageButton btnBack              = view.findViewById(R.id.btnSearchBack);
         ImageButton btnClear             = view.findViewById(R.id.btnClearSearch);
-        ListView resultsList             = view.findViewById(R.id.searchResultsList);
-        TextView labelResults            = view.findViewById(R.id.labelResults);
+        ListView    resultsList          = view.findViewById(R.id.searchResultsList);
+        TextView    labelResults         = view.findViewById(R.id.labelResults);
 
-        // עדכן סרטט הטיקר הנוכחי
         updateCurrentTickerBar();
 
-        // Adapter עם עיצוב מותאם
         ArrayAdapter<ChartFragment.StockSuggestion> adapter =
             new ArrayAdapter<ChartFragment.StockSuggestion>(
                 requireContext(),
@@ -122,20 +141,21 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
             @NonNull
             @Override
             public View getView(int position, View convertView, @NonNull ViewGroup parent) {
-                if (convertView == null) {
+                if (convertView == null)
                     convertView = LayoutInflater.from(getContext())
                         .inflate(android.R.layout.simple_list_item_2, parent, false);
-                }
+
                 ChartFragment.StockSuggestion item = getItem(position);
                 TextView t1 = convertView.findViewById(android.R.id.text1);
                 TextView t2 = convertView.findViewById(android.R.id.text2);
-
                 if (item != null) {
-                    t1.setText(item.symbol);
+                    String label = "CRYPTO".equals(item.exchange)
+                            ? "\uD83E\uDE99 " + item.symbol
+                            : item.symbol;
+                    t1.setText(label);
                     t1.setTextColor(0xFFE6EDF3);
                     t1.setTextSize(15f);
                     t1.setTypeface(null, android.graphics.Typeface.BOLD);
-
                     t2.setText(item.name + (item.exchange.isEmpty() ? "" : "  \u00b7  " + item.exchange));
                     t2.setTextColor(0xFF8B98A5);
                     t2.setTextSize(12f);
@@ -148,22 +168,15 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
 
         resultsList.setAdapter(adapter);
 
-        // לחיצה על תוצאה
         resultsList.setOnItemClickListener((parent, v, position, id) -> {
             ChartFragment.StockSuggestion s = adapter.getItem(position);
-            if (s != null && listener != null) {
-                listener.onTickerSelected(s.symbol);
-            }
+            if (s != null && listener != null) listener.onTickerSelected(s.symbol);
             dismiss();
         });
 
-        // חץ חזרה
         btnBack.setOnClickListener(v -> dismiss());
-
-        // כפתור ניקוי
         btnClear.setOnClickListener(v -> searchInput.setText(""));
 
-        // TextWatcher
         searchInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
             @Override public void onTextChanged(CharSequence s, int st, int b, int c) {
@@ -180,22 +193,19 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
                 }
                 labelResults.setText("Results");
                 handler.removeCallbacks(pendingSearch);
-                pendingSearch = () -> fetchSuggestions(q, adapter);
+                pendingSearch = () -> fetchAll(q, adapter);
                 handler.postDelayed(pendingSearch, DEBOUNCE_MS);
             }
         });
 
-        // פתח מקלדת אוטומטית
         searchInput.requestFocus();
         searchInput.postDelayed(() -> {
             InputMethodManager imm = (InputMethodManager)
                 requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-            if (imm != null)
-                imm.showSoftInput(searchInput, InputMethodManager.SHOW_IMPLICIT);
+            if (imm != null) imm.showSoftInput(searchInput, InputMethodManager.SHOW_IMPLICIT);
         }, 150);
     }
 
-    /** עדכון סרטט הטיקר הנוכחי במסך */
     private void updateCurrentTickerBar() {
         if (getView() == null) return;
         TextView txtSymbol = getView().findViewById(R.id.txtCurrentTicker);
@@ -204,38 +214,71 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
         if (txtChart  != null) txtChart.setText("Viewing chart");
     }
 
-    private void fetchSuggestions(String query,
-                                   ArrayAdapter<ChartFragment.StockSuggestion> adapter) {
+    // ── חיפוש משולב: קריפטו (סינון מקומי) + אקציות (Finnhub) ────────────────
+    private void fetchAll(String query, ArrayAdapter<ChartFragment.StockSuggestion> adapter) {
+        String q = query.toUpperCase(Locale.US);
+
+        // 1. סינון קריפטו מקומי (מיידי)
+        List<ChartFragment.StockSuggestion> cryptoMatches = new ArrayList<>();
+        for (ChartFragment.StockSuggestion c : CRYPTO_LIST) {
+            if (c.symbol.startsWith(q) || c.name.toUpperCase(Locale.US).contains(q)) {
+                cryptoMatches.add(c);
+            }
+        }
+
+        // 2. חיפוש אקציות מהרשת
+        fetchStocks(query, cryptoMatches, adapter);
+    }
+
+    private void fetchStocks(String query,
+                              List<ChartFragment.StockSuggestion> cryptoMatches,
+                              ArrayAdapter<ChartFragment.StockSuggestion> adapter) {
         try {
             String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name());
             String url = "https://finnhub.io/api/v1/search?q=" + encoded + "&token=" + FINNHUB_KEY;
             Request req = new Request.Builder().url(url).build();
             client.newCall(req).enqueue(new Callback() {
-                @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {}
+                @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                    postResults(cryptoMatches, new ArrayList<>(), adapter);
+                }
                 @Override public void onResponse(@NonNull Call call,
                                                   @NonNull Response response) throws IOException {
-                    if (!response.isSuccessful() || response.body() == null) return;
-                    try {
-                        JSONObject root = new JSONObject(response.body().string());
-                        JSONArray arr   = root.optJSONArray("result");
-                        if (arr == null) return;
-                        List<ChartFragment.StockSuggestion> results = new ArrayList<>();
-                        for (int i = 0; i < Math.min(arr.length(), 10); i++) {
-                            JSONObject o = arr.getJSONObject(i);
-                            String sym  = o.optString("symbol", "");
-                            String name = o.optString("description", "");
-                            String exch = o.optString("type", "");
-                            if (!sym.isEmpty())
-                                results.add(new ChartFragment.StockSuggestion(sym, name, exch));
-                        }
-                        if (getActivity() != null) getActivity().runOnUiThread(() -> {
-                            adapter.clear();
-                            adapter.addAll(results);
-                            adapter.notifyDataSetChanged();
-                        });
-                    } catch (Exception ignored) {}
+                    List<ChartFragment.StockSuggestion> stocks = new ArrayList<>();
+                    if (response.isSuccessful() && response.body() != null) {
+                        try {
+                            JSONObject root = new JSONObject(response.body().string());
+                            JSONArray arr   = root.optJSONArray("result");
+                            if (arr != null) {
+                                for (int i = 0; i < Math.min(arr.length(), 8); i++) {
+                                    JSONObject o = arr.getJSONObject(i);
+                                    String sym  = o.optString("symbol", "");
+                                    String name = o.optString("description", "");
+                                    String exch = o.optString("type", "");
+                                    if (!sym.isEmpty())
+                                        stocks.add(new ChartFragment.StockSuggestion(sym, name, exch));
+                                }
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                    postResults(cryptoMatches, stocks, adapter);
                 }
             });
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+            postResults(cryptoMatches, new ArrayList<>(), adapter);
+        }
+    }
+
+    // קריפטו קודם, אחר כך אקציות
+    private void postResults(List<ChartFragment.StockSuggestion> crypto,
+                              List<ChartFragment.StockSuggestion> stocks,
+                              ArrayAdapter<ChartFragment.StockSuggestion> adapter) {
+        List<ChartFragment.StockSuggestion> merged = new ArrayList<>();
+        merged.addAll(crypto);
+        merged.addAll(stocks);
+        if (getActivity() != null) getActivity().runOnUiThread(() -> {
+            adapter.clear();
+            adapter.addAll(merged);
+            adapter.notifyDataSetChanged();
+        });
     }
 }
