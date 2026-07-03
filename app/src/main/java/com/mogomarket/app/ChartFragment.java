@@ -82,7 +82,9 @@ import okhttp3.Response;
 public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFrameListener {
 
     private static final String PREFS_NAME = "app_prefs";
-    private static final String KEY_THEME  = "dark_mode";
+
+    private static final String KEY_THEME       = "dark_mode";
+    private static final String KEY_LAST_SYMBOL = "last_chart_symbol";
 
     private static final int DARK_BG        = 0xFF0B0F14;
     private static final int DARK_CARD      = 0xFF151C2E;
@@ -185,7 +187,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private final OkHttpClient client = new OkHttpClient();
     private final String FINNHUB_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
 
-    private String symbol = "SPY";
+    private String symbol = "SPY"; // ישאר כברירת מחדל, נדרוס ב-onCreateView
     private String interval = "1day";
     private boolean isCandleStick = true;
     private final DecimalFormat df = new DecimalFormat("#.##");
@@ -232,6 +234,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
         SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         isDarkTheme = prefs.getBoolean(KEY_THEME, true);
+        symbol = prefs.getString(KEY_LAST_SYMBOL, "SPY");
         isChartDark = isDarkTheme;
 
         chartRootLayout    = v.findViewById(R.id.chartRootLayout);

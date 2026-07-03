@@ -95,6 +95,7 @@ public class SettingsFragment extends Fragment {
             etDefaultSymbol.setText(current);
         }
         if (btnSaveSymbol != null) {
+
             btnSaveSymbol.setOnClickListener(view -> {
                 if (etDefaultSymbol == null) return;
                 String sym = etDefaultSymbol.getText().toString().trim().toUpperCase();
