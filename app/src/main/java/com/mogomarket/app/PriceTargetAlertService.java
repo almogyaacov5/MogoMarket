@@ -204,7 +204,7 @@ public class PriceTargetAlertService extends Service {
         return new NotificationCompat.Builder(this, "price_fg_channel")
                 .setContentTitle("MogoMarket")
                 .setContentText("מנטר מחירי מניות...")
-                .setSmallIcon(R.drawable._2)
+                .setSmallIcon(R.drawable._21)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .build();
     }
