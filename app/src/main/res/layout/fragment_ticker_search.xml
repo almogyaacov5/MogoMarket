@@ -70,7 +70,7 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:hint="e.g. AAPL, BTC, TSLA"
-            android:hintTextColor="#FF4A5568"
+            android:textColorHint="#FF4A5568"
             android:textColor="#FFE6EDF3"
             android:textSize="17sp"
             android:background="@null"
