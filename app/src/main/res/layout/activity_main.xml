@@ -15,7 +15,7 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         app:defaultNavHost="true"
-        app:navGraph="@navigation/nav_graph" />
+        app:navGraph="@menu/nav_graph" />
 
     <!-- Material3 Bottom Navigation Bar -->
     <com.google.android.material.bottomnavigation.BottomNavigationView

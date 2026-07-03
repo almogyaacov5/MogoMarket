@@ -35,7 +35,7 @@
         android:name="com.mogomarket.app.SettingsFragment"
         android:label="Settings" />
 
-    <!-- PnlCalculator כ-destination נפרד עם backstack -->
+    <!-- PnL Calculator -->
     <fragment
         android:id="@+id/pnlCalculatorFragment"
         android:name="com.mogomarket.app.PnlCalculatorFragment"

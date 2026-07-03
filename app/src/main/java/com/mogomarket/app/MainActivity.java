@@ -10,6 +10,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
 import androidx.navigation.ui.NavigationUI;
@@ -25,11 +26,12 @@ public class MainActivity extends AppCompatActivity {
     public static final String KEY_START_PAGE     = "start_page_nav_id";
 
     private static final int RC_NOTIF = 1002;
+
     private NavController navController;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // ✅ חובה לפני super.onCreate כדי למנוע recreation
+        // הגדרת מצב כהה/בהיר לפני יצירת ה-Activity
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         boolean isDarkMode = prefs.getBoolean(KEY_THEME, true);
         AppCompatDelegate.setDefaultNightMode(
@@ -39,21 +41,28 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        if (getSupportActionBar() != null) getSupportActionBar().hide();
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().hide();
+        }
 
         requestNotificationPermission();
 
-        // ✅ Navigation Component Setup
+        // NavHost + NavController
         NavHostFragment navHostFragment =
                 (NavHostFragment) getSupportFragmentManager()
                         .findFragmentById(R.id.nav_host);
 
+        if (navHostFragment == null) {
+            throw new IllegalStateException("NavHostFragment with id nav_host not found");
+        }
+
         navController = navHostFragment.getNavController();
 
+        // BottomNavigationView + NavigationUI
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
         NavigationUI.setupWithNavController(bottomNav, navController);
 
-        // ✅ עמוד התחלה לפי הגדרות המשתמש
+        // עמוד התחלתי לפי ההגדרה השמורה
         if (savedInstanceState == null) {
             int startPageId = prefs.getInt(KEY_START_PAGE, R.id.nav_chart);
             if (startPageId != R.id.nav_chart) {
@@ -61,50 +70,67 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        // שירותי רקע
+        // שירותי רקע קיימים
         PriceTargetAlertService.startService(this);
         DailySummaryEmailService.scheduleDailySummary(this);
     }
 
     private void requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                    != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this,
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED) {
+
+                ActivityCompat.requestPermissions(
+                        this,
                         new String[]{Manifest.permission.POST_NOTIFICATIONS},
-                        RC_NOTIF);
+                        RC_NOTIF
+                );
             }
         }
     }
 
     /**
-     * ניווט לגרף עם סמל ספציפי — נשמר ב-SharedPreferences,
-     * ה-ChartFragment יקרא את הסמל ב-onViewCreated דרך SharedViewModel.
+     * מעבר לגרף עם סימבול מסוים.
+     * מעדכן גם SharedViewModel וגם SharedPreferences.
      */
     public void showChartWithSymbol(String symbol) {
+        if (symbol == null || symbol.trim().isEmpty()) return;
+
+        String cleanSymbol = symbol.trim().toUpperCase();
+
+        // שמירה ב-SharedPreferences (לשימוש עתידי)
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
-                .putString(KEY_LAST_SYMBOL, symbol).apply();
+                .putString(KEY_LAST_SYMBOL, cleanSymbol)
+                .apply();
 
-        // ✅ עדכון SharedViewModel כדי שכל הפרגמנטים יסתנכרנו
-        SharedViewModel vm = new androidx.lifecycle.ViewModelProvider(this)
+        // SharedViewModel משותף
+        SharedViewModel vm = new ViewModelProvider(this)
                 .get(SharedViewModel.class);
-        vm.setSelectedSymbol(symbol);
+        vm.setSelectedSymbol(cleanSymbol);
 
-        // ✅ Navigation Component — ניווט בטוח ללא FragmentTransaction ידני
-        navController.navigate(R.id.nav_chart);
+        // ניווט למסך הגרף
+        if (navController != null) {
+            navController.navigate(R.id.nav_chart);
+        }
     }
 
     /**
-     * פתיחת PnL Calculator עם backstack תקין
+     * פתיחת מחשבון PnL כ-screen בתוך ה-NavGraph.
      */
     public void openPnlCalculator() {
-        navController.navigate(R.id.pnlCalculatorFragment);
+        if (navController != null) {
+            navController.navigate(R.id.pnlCalculatorFragment);
+        }
     }
 
     /**
-     * פתיחת Settings
+     * פתיחת Settings דרך ה-NavController.
      */
     public void openSettings() {
-        navController.navigate(R.id.nav_settings);
+        if (navController != null) {
+            navController.navigate(R.id.nav_settings);
+        }
     }
 }
