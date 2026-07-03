@@ -10,7 +10,7 @@ import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.content.Context;
 import android.widget.ArrayAdapter;
-import android.widget.EditText;
+import android.widget.AutoCompleteTextView;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -54,6 +54,7 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Runnable pendingSearch;
 
+    // רשימת פופולריים לברירת מחדל
     private static final List<ChartFragment.StockSuggestion> POPULAR = Arrays.asList(
         new ChartFragment.StockSuggestion("SPY",  "S&P 500 ETF",        "ETF"),
         new ChartFragment.StockSuggestion("AAPL", "Apple Inc.",          "NASDAQ"),
@@ -81,6 +82,7 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
+        // פרוס BottomSheet על כל המסך
         BottomSheetDialog bsd = (BottomSheetDialog) requireDialog();
         bsd.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         View bs = bsd.findViewById(com.google.android.material.R.id.design_bottom_sheet);
@@ -91,12 +93,13 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
             bs.getLayoutParams().height = ViewGroup.LayoutParams.MATCH_PARENT;
         }
 
-        EditText searchInput   = view.findViewById(R.id.searchTickerInput);
-        ImageButton btnBack    = view.findViewById(R.id.btnSearchBack);
-        ImageButton btnClear   = view.findViewById(R.id.btnClearSearch);
-        ListView resultsList   = view.findViewById(R.id.searchResultsList);
-        TextView labelResults  = view.findViewById(R.id.labelResults);
+        AutoCompleteTextView searchInput = view.findViewById(R.id.searchTickerInput);
+        ImageButton btnBack              = view.findViewById(R.id.btnSearchBack);
+        ImageButton btnClear             = view.findViewById(R.id.btnClearSearch);
+        ListView resultsList             = view.findViewById(R.id.searchResultsList);
+        TextView labelResults            = view.findViewById(R.id.labelResults);
 
+        // Adapter עם עיצוב מותאם
         ArrayAdapter<ChartFragment.StockSuggestion> adapter =
             new ArrayAdapter<ChartFragment.StockSuggestion>(
                 requireContext(),
@@ -133,6 +136,7 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
 
         resultsList.setAdapter(adapter);
 
+        // לחיצה על תוצאה
         resultsList.setOnItemClickListener((parent, v, position, id) -> {
             ChartFragment.StockSuggestion s = adapter.getItem(position);
             if (s != null && listener != null) {
@@ -141,9 +145,13 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
             dismiss();
         });
 
+        // חץ חזרה
         btnBack.setOnClickListener(v -> dismiss());
+
+        // כפתור ניקוי
         btnClear.setOnClickListener(v -> searchInput.setText(""));
 
+        // TextWatcher
         searchInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
             @Override public void onTextChanged(CharSequence s, int st, int b, int c) {
@@ -165,6 +173,7 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
             }
         });
 
+        // פתח מקלדת אוטומטית
         searchInput.requestFocus();
         searchInput.postDelayed(() -> {
             InputMethodManager imm = (InputMethodManager)

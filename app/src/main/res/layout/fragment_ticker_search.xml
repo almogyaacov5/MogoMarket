@@ -15,7 +15,7 @@
         android:background="#FF2A3550"
         android:layout_marginBottom="8dp"/>
 
-    <!-- Header row -->
+    <!-- Header row: חץ חזרה + כותרת -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -60,23 +60,24 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="🔍"
+            android:text="&#128269;"
             android:textSize="16sp"
             android:paddingEnd="10dp"/>
 
-        <EditText
+        <AutoCompleteTextView
             android:id="@+id/searchTickerInput"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:hint="e.g. AAPL, BTC, TSLA"
-            android:textColorHint="#FF4A5568"
+            android:hintTextColor="#FF4A5568"
             android:textColor="#FFE6EDF3"
             android:textSize="17sp"
             android:background="@null"
             android:inputType="textCapCharacters"
             android:singleLine="true"
-            android:imeOptions="actionSearch"/>
+            android:imeOptions="actionSearch"
+            android:completionThreshold="1"/>
 
         <ImageButton
             android:id="@+id/btnClearSearch"
@@ -98,7 +99,7 @@
         android:layout_marginEnd="16dp"
         android:background="#FF1E2A3A"/>
 
-    <!-- Label Results -->
+    <!-- Label "Results" -->
     <TextView
         android:id="@+id/labelResults"
         android:layout_width="match_parent"
