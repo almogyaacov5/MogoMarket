@@ -74,7 +74,6 @@ public class PortfolioFragment extends Fragment {
         recyclerView           = v.findViewById(R.id.tradesRecyclerView);
         btnAddStockToPortfolio = v.findViewById(R.id.btnAddStockToPortfolio);
         btnRefreshPortfolio    = v.findViewById(R.id.btnRefreshPortfolio);
-        btnPortfolioChart      = v.findViewById(R.id.btnPortfolioChart);
         tvTotalPnl             = v.findViewById(R.id.tvTotalPnl);
         tvTotalPct             = v.findViewById(R.id.tvTotalPct);
         tvOpenCount            = v.findViewById(R.id.tvOpenCount);

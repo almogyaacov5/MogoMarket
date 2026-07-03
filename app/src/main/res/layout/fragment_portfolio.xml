@@ -220,17 +220,7 @@
                 android:contentDescription="Refresh portfolio"
                 app:icon="@drawable/baseline_refresh_24" />
 
-            <!-- Portfolio Chart Button -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnPortfolioChart"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="50dp"
-                android:layout_height="50dp"
-                android:layout_marginEnd="6dp"
-                android:text="&#128202;"
-                android:textSize="18sp"
-                android:textAllCaps="false"
-                android:contentDescription="Portfolio chart" />
+
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnAddStockToPortfolio"
