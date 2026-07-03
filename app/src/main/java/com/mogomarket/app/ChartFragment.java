@@ -86,6 +86,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private static final String KEY_THEME       = "dark_mode";
     private static final String KEY_LAST_SYMBOL = "last_chart_symbol";
 
+    // ערך מחרוזת לבחירת מצב טעינה: "last" = מניה אחרונה, "fixed" = ברירת מחדל קבועה
+    public static final String KEY_SYMBOL_MODE  = "chart_symbol_mode";
+
     private static final int DARK_BG        = 0xFF0B0F14;
     private static final int DARK_CARD      = 0xFF151C2E;
     private static final int DARK_TEXT_PRI  = 0xFFE6EDF3;
@@ -187,7 +190,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private final OkHttpClient client = new OkHttpClient();
     private final String FINNHUB_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
 
-    private String symbol = "SPY"; // ישאר כברירת מחדל, נדרוס ב-onCreateView
+    private String symbol = "SPY";
     private String interval = "1day";
     private boolean isCandleStick = true;
     private final DecimalFormat df = new DecimalFormat("#.##");
@@ -234,8 +237,23 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
         SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         isDarkTheme = prefs.getBoolean(KEY_THEME, true);
-        symbol = prefs.getString(KEY_LAST_SYMBOL, "SPY");
         isChartDark = isDarkTheme;
+
+        // ── בחר מניה לפתיחה לפי הגדרת המשתמש ─────────────────────────────
+        String mode = prefs.getString(KEY_SYMBOL_MODE, "last");
+        if ("fixed".equals(mode)) {
+            symbol = prefs.getString(MainActivity.KEY_DEFAULT_SYMBOL, "SPY");
+            if (symbol.isEmpty()) symbol = "SPY";
+        } else {
+            // "last" = מניה אחרונה שנצפתה
+            symbol = prefs.getString(KEY_LAST_SYMBOL, "SPY");
+            if (symbol.isEmpty()) symbol = "SPY";
+        }
+
+        // אם Fragment הופעל עם argument ספציפי (למשל מ-Watchlist) — override
+        if (getArguments() != null && getArguments().containsKey("symbol")) {
+            symbol = getArguments().getString("symbol", symbol);
+        }
 
         chartRootLayout    = v.findViewById(R.id.chartRootLayout);
         candleStickChart   = v.findViewById(R.id.stock_chart);
@@ -287,12 +305,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         if (progressAI          != null) progressAI.setVisibility(View.GONE);
         if (currentPriceDisplay != null) currentPriceDisplay.setVisibility(View.GONE);
 
-        if (getArguments() != null) {
-            if (getArguments().containsKey("symbol")) {
-                symbol = getArguments().getString("symbol", symbol);
-            }
-        }
-
         updateTickerButtonLabel();
         updateTickerLabelTop();
         updateTimeframePickerLabel();
@@ -319,8 +331,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         tickerLabelTop.setText(display);
     }
 
-    // ─── Timeframe picker ────────────────────────────────────────────────────
-
     private void updateTimeframePickerLabel() {
         if (btnTimeframePicker == null) return;
         btnTimeframePicker.setText(TIMEFRAMES[currentTFIndex][0]);
@@ -329,7 +339,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private void showTimeframeDialog() {
         if (getContext() == null) return;
 
-        // נשמור reference לדיאלוג מראש
         final AlertDialog[] dialogHolder = new AlertDialog[1];
 
         LinearLayout root = new LinearLayout(getContext());
@@ -347,7 +356,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         root.addView(title);
 
         int cols = 3;
-        int tfCounter = 0; // סופר את אינדקס ה-timeframe בנפרד מה-children של root
+        int tfCounter = 0;
 
         for (int row = 0; row < Math.ceil((double) TIMEFRAMES.length / cols); row++) {
             LinearLayout rowLayout = new LinearLayout(getContext());
@@ -359,7 +368,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             rowLayout.setLayoutParams(rowLp);
 
             for (int col = 0; col < cols; col++) {
-                final int idx = tfCounter; // אינדקס אמיתי ב-TIMEFRAMES
+                final int idx = tfCounter;
                 tfCounter++;
 
                 if (idx >= TIMEFRAMES.length) {
@@ -409,7 +418,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 lp.setMargins(col == 0 ? 0 : dpToPx(6), 0, 0, 0);
                 rowLayout.addView(btnWrapper, lp);
 
-                // listener אחד בלבד - עם idx הנכון
                 btnWrapper.setOnClickListener(v -> {
                     currentTFIndex = idx;
                     interval = TIMEFRAMES[currentTFIndex][1];
@@ -441,7 +449,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
         dialogHolder[0] = dialog;
         dialog.show();
-        // *** אין לולאה שנייה - הכל מטופל בתוך הבנייה למעלה ***
     }
 
     @Override
@@ -536,8 +543,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         sheet.setOnTickerSelectedListener(sym -> openChartFromInput(sym));
         sheet.show(getParentFragmentManager(), "ticker_search");
     }
-
-    // ─── Fullscreen ─────────────────────────────────────────────────
 
     private void enterFullscreen() {
         if (isFullscreen || chartContainer == null) return;
