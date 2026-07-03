@@ -7,8 +7,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/bg_primary"
-    tools:context=".MainActivity">
+    android:background="#FF0000"
+    tools:context=".ChartFragment">
 
     <!-- Hidden IDs kept for Java backward-compat (not visible) -->
     <View

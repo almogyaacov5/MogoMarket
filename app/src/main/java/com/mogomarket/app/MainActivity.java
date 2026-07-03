@@ -5,6 +5,8 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
@@ -84,32 +86,22 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void navigateTo(int id) {
-        if (id == currentNavId) return;
-        currentNavId = id;
 
-        Fragment fragment = null;
-        String title = "";
+        Fragment fragment;
 
-        if      (id == R.id.nav_chart)         { fragment = new ChartFragment();        title = "Chart"; }
-        else if (id == R.id.nav_stocks)        { fragment = new WatchlistFragment();    title = "Watchlist"; }
-        else if (id == R.id.nav_portfolio)     { fragment = new PortfolioFragment();    title = "Portfolio"; }
-        else if (id == R.id.nav_closed_trades) { fragment = new ClosedTradesFragment(); title = "Closed Trades"; }
-        else if (id == R.id.nav_simulator)     { fragment = new SimulatorFragment();    title = "Simulator"; }
-        else if (id == R.id.nav_settings)      { fragment = new SettingsFragment();     title = "Settings"; }
+        if (id == R.id.nav_chart) fragment = new ChartFragment();
+        else if (id == R.id.nav_stocks) fragment = new WatchlistFragment();
+        else if (id == R.id.nav_portfolio) fragment = new PortfolioFragment();
+        else if (id == R.id.nav_closed_trades) fragment = new ClosedTradesFragment();
+        else if (id == R.id.nav_simulator) fragment = new SimulatorFragment();
+        else fragment = new SettingsFragment();
 
-        if (fragment != null) {
-            getSupportFragmentManager()
-                    .beginTransaction()
-                    .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
-                    .replace(R.id.fragment_container, fragment)
-                    .commit();
-            setTitle(title);
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.fragment_container, fragment)
+                .commitNow();
 
-            BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
-            if (bottomNav != null && bottomNav.getSelectedItemId() != id) {
-                bottomNav.setSelectedItemId(id);
-            }
-        }
+        Log.d("NAV_TEST", "COMMIT DONE");
     }
 
     public void showChartWithSymbol(String symbol) {

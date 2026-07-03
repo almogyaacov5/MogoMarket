@@ -323,6 +323,15 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         return v;
     }
 
+    @Override
+    public void onViewCreated(View view, Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        view.setBackgroundColor(0xFFFF0000);
+
+        Log.d("CHART", "VISIBLE");
+    }
+
     private void updateTickerLabelTop() {
         if (tickerLabelTop == null) return;
         String display = isCryptoSymbol(symbol)
