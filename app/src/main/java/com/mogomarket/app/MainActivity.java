@@ -10,12 +10,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowCompat;
-import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentTransaction;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
@@ -34,8 +29,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         boolean isDarkMode = prefs.getBoolean(KEY_THEME, true);
         AppCompatDelegate.setDefaultNightMode(
@@ -44,24 +37,14 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_main);
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.fragment_container), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
-
         if (getSupportActionBar() != null) getSupportActionBar().hide();
 
         requestNotificationPermission();
         setupBottomNav();
 
-        // ── הפעלת שירותי רקע ──────────────────────────────────────────────────
-        // שירות התראות מחיר יעד — בודק כל 15 דקות
+        // שירותי רקע
         PriceTargetAlertService.startService(this);
-
-        // תזמון סיכום יומי במייל בכל יום ב-08:00
         DailySummaryEmailService.scheduleDailySummary(this);
-        // ──────────────────────────────────────────────────────────────────────
 
         if (savedInstanceState == null) {
             int startPageId = prefs.getInt(KEY_START_PAGE, R.id.nav_chart);
