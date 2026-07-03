@@ -23,15 +23,21 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
     };
 
     public interface OnTradeEditListener   { void onEditTrade(StockData trade); }
+    public interface OnTradeDeleteListener { void onDeleteTrade(StockData trade); }
     public interface OnSummaryUpdateListener { void onSummaryUpdated(double totalPnl, int wins, int total); }
 
     private final List<StockData> closedTrades;
     private final OnTradeEditListener editListener;
+    private OnTradeDeleteListener deleteListener;
     private OnSummaryUpdateListener summaryListener;
 
     public ClosedTradesAdapter(List<StockData> closedTrades, OnTradeEditListener listener) {
         this.closedTrades = closedTrades;
         this.editListener = listener;
+    }
+
+    public void setDeleteListener(OnTradeDeleteListener listener) {
+        this.deleteListener = listener;
     }
 
     public void setSummaryListener(OnSummaryUpdateListener listener) {
@@ -65,7 +71,6 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
         StockData trade = closedTrades.get(position);
         Context ctx = holder.itemView.getContext();
 
-        // צבעים דינמיים מה-Theme
         int bgCard        = ctx.getColor(R.color.bg_card);
         int textPrimary   = ctx.getColor(R.color.text_primary);
         int textSecondary = ctx.getColor(R.color.text_secondary);
@@ -124,6 +129,12 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
         holder.percentText.setTextColor(pnlColor);
 
         holder.editButton.setOnClickListener(v -> { if (editListener != null) editListener.onEditTrade(trade); });
+
+        if (holder.deleteButton != null) {
+            holder.deleteButton.setOnClickListener(v -> {
+                if (deleteListener != null) deleteListener.onDeleteTrade(trade);
+            });
+        }
     }
 
     @Override
@@ -134,6 +145,7 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
         TextView   pnlView, percentText;
         TextView   buyPriceView, sellPriceView, currPriceView;
         ImageButton editButton;
+        ImageButton deleteButton;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -146,6 +158,7 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
             sellPriceView = itemView.findViewById(R.id.tradeSellingPrice);
             currPriceView = itemView.findViewById(R.id.tradeCurrentPrice);
             editButton    = itemView.findViewById(R.id.btnEditTrade);
+            deleteButton  = itemView.findViewById(R.id.btnDeleteTrade);
         }
     }
 }
