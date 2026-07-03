@@ -58,6 +58,20 @@ android {
         viewBinding = true
         buildConfig = true
     }
+
+    // פתרון לקונפליקט קבצים כפולים מ-JavaMail
+    packaging {
+        resources {
+            excludes += setOf(
+                "META-INF/NOTICE.md",
+                "META-INF/LICENSE.md",
+                "META-INF/NOTICE",
+                "META-INF/LICENSE",
+                "META-INF/NOTICE.txt",
+                "META-INF/LICENSE.txt"
+            )
+        }
+    }
 }
 
 dependencies {
