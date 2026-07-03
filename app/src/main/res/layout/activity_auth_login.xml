@@ -117,6 +117,26 @@
                 app:backgroundTint="#329763"
                 android:stateListAnimator="@null"/>
 
+            <!-- Google Sign-In -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnGoogleSignIn"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="12dp"
+                android:text="כניסה עם Google"
+                android:textAllCaps="false"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="#202124"
+                app:backgroundTint="#FFFFFF"
+                app:strokeColor="#DADCE0"
+                app:strokeWidth="1dp"
+                app:icon="@drawable/ic_google"
+                app:iconGravity="textStart"
+                app:iconSize="20dp"
+                app:iconPadding="8dp"
+                android:stateListAnimator="@null"/>
+
             <!-- כניסה כאורח -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnGuestLogin"
