@@ -1,7 +1,6 @@
 package com.mogomarket.app;
 
 import android.app.AlertDialog;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -43,6 +42,8 @@ public class ClosedTradesFragment extends Fragment {
     private ProgressBar progressBar;
     private TextView totalPnlText;
     private TextView winRateText;
+    private TextView tvClosedTotalPnl;   // סכום כולל לטריידים סגורים
+    private TextView tvClosedTradeCount; // מספר עסקאות סגורות
     private LLMService llmService;
 
     @Nullable
@@ -51,15 +52,15 @@ public class ClosedTradesFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_closed_trades, container, false);
 
-        // אתחול רכיבי
-        btnAnalyze   = v.findViewById(R.id.btnAnalyzeTrades);
-        progressBar  = v.findViewById(R.id.aiProgressBar);
-        totalPnlText = v.findViewById(R.id.totalPnlText);
-        winRateText  = v.findViewById(R.id.winRateText);
+        btnAnalyze        = v.findViewById(R.id.btnAnalyzeTrades);
+        progressBar       = v.findViewById(R.id.aiProgressBar);
+        totalPnlText      = v.findViewById(R.id.totalPnlText);
+        winRateText       = v.findViewById(R.id.winRateText);
+        tvClosedTotalPnl  = v.findViewById(R.id.tvClosedTotalPnl);
+        tvClosedTradeCount = v.findViewById(R.id.tvClosedTradeCount);
 
         llmService = new LLMService();
 
-        // Firebase
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser != null) {
             closedTradesRef = FirebaseDatabase.getInstance()
@@ -68,15 +69,16 @@ public class ClosedTradesFragment extends Fragment {
                     .child("closed-trades");
         }
 
-        // Adapter
         closedTrades = new ArrayList<>();
         adapter = new ClosedTradesAdapter(closedTrades, this::showEditDialog);
 
-        // חיבור summaryListener לעדכון Header
+        // מאזין למחיקה
+        adapter.setDeleteListener(trade -> showDeleteConfirmDialog(trade));
+
         adapter.setSummaryListener((totalPnl, wins, total) -> {
             if (getActivity() == null) return;
             getActivity().runOnUiThread(() -> {
-                // סהכ P&L
+                // סה"כ P&L
                 String pnlStr = String.format("%s$%.2f", totalPnl >= 0 ? "+" : "", totalPnl);
                 totalPnlText.setText(pnlStr);
                 totalPnlText.setTextColor(
@@ -93,6 +95,9 @@ public class ClosedTradesFragment extends Fragment {
                         winRate >= 40 ? 0xFFFFD740 :
                                         0xFFFF5252
                 );
+
+                // סכום כולל סגורים
+                updateClosedSummary(totalPnl, total);
             });
         });
 
@@ -100,7 +105,6 @@ public class ClosedTradesFragment extends Fragment {
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(adapter);
 
-        // Firebase listener
         if (closedTradesRef != null) {
             closedTradesRef.addValueEventListener(new ValueEventListener() {
                 @Override
@@ -111,7 +115,6 @@ public class ClosedTradesFragment extends Fragment {
                         if (data != null) closedTrades.add(data);
                     }
                     adapter.notifyDataSetChanged();
-                    // עדכון ה-Header אחרי רענון
                     adapter.triggerSummaryUpdate();
                 }
 
@@ -127,7 +130,45 @@ public class ClosedTradesFragment extends Fragment {
         return v;
     }
 
-    // --- AI ---
+    // ==================== סכום כולל עסקאות סגורות ====================
+
+    private void updateClosedSummary(double totalPnl, int total) {
+        if (tvClosedTotalPnl != null) {
+            String sign = totalPnl >= 0 ? "+" : "";
+            tvClosedTotalPnl.setText(String.format("%s$%.2f", sign, totalPnl));
+            tvClosedTotalPnl.setTextColor(
+                    totalPnl > 0 ? 0xFF00E676 :
+                    totalPnl < 0 ? 0xFFFF5252 :
+                                   0xFF78909C);
+        }
+        if (tvClosedTradeCount != null) {
+            tvClosedTradeCount.setText(total + " עסקאות");
+        }
+    }
+
+    // ==================== מחיקת עסקה ====================
+
+    private void showDeleteConfirmDialog(StockData trade) {
+        new AlertDialog.Builder(getContext())
+                .setTitle("מחיקת עסקה")
+                .setMessage("האם אתה בטוח שברצונך למחוק את עסקת " + trade.symbol + "?\nהפעולה אינה ניתנת לביטול.")
+                .setPositiveButton("מחק", (dialog, which) -> deleteTradeFromFirebase(trade))
+                .setNegativeButton("ביטול", (d, w) -> d.cancel())
+                .show();
+    }
+
+    private void deleteTradeFromFirebase(StockData trade) {
+        if (closedTradesRef == null || trade.symbol == null) return;
+        String key = trade.symbol.replace(":", "_");
+        closedTradesRef.child(key).removeValue()
+                .addOnSuccessListener(a ->
+                        Toast.makeText(getContext(), "\u2705 העסקה נמחקה בהצלחה", Toast.LENGTH_SHORT).show())
+                .addOnFailureListener(e ->
+                        Toast.makeText(getContext(), "שגיאה במחיקה: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+    }
+
+    // ==================== AI ====================
+
     private void analyzeTradesWithAI() {
         if (closedTrades.isEmpty()) {
             Toast.makeText(getContext(), "אין מספיק נתונים לניתוח. בצע לפחות טרייד אחד.", Toast.LENGTH_SHORT).show();
@@ -194,7 +235,8 @@ public class ClosedTradesFragment extends Fragment {
                 .show();
     }
 
-    // --- עריכה ---
+    // ==================== עריכה ====================
+
     private void showEditDialog(StockData trade) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         builder.setTitle("עריכת עסקה: " + trade.symbol);
