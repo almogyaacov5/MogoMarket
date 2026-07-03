@@ -54,7 +54,9 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Runnable pendingSearch;
 
-    // רשימת פופולריים לברירת מחדל
+    // הטיקר הנוכחי שמוצג בגרף
+    private String currentSymbol = "SPY";
+
     private static final List<ChartFragment.StockSuggestion> POPULAR = Arrays.asList(
         new ChartFragment.StockSuggestion("SPY",  "S&P 500 ETF",        "ETF"),
         new ChartFragment.StockSuggestion("AAPL", "Apple Inc.",          "NASDAQ"),
@@ -68,6 +70,13 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
 
     public void setOnTickerSelectedListener(OnTickerSelectedListener l) {
         this.listener = l;
+    }
+
+    /** קבע את הסימבול הנוכחי שיוצג בגרף */
+    public void setCurrentSymbol(String symbol) {
+        this.currentSymbol = (symbol != null && !symbol.isEmpty()) ? symbol : "SPY";
+        // אם הגרסה כבר נוצרה, עדכן UI
+        if (getView() != null) updateCurrentTickerBar();
     }
 
     @Nullable
@@ -98,6 +107,9 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
         ImageButton btnClear             = view.findViewById(R.id.btnClearSearch);
         ListView resultsList             = view.findViewById(R.id.searchResultsList);
         TextView labelResults            = view.findViewById(R.id.labelResults);
+
+        // עדכן סרטט הטיקר הנוכחי
+        updateCurrentTickerBar();
 
         // Adapter עם עיצוב מותאם
         ArrayAdapter<ChartFragment.StockSuggestion> adapter =
@@ -181,6 +193,15 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
             if (imm != null)
                 imm.showSoftInput(searchInput, InputMethodManager.SHOW_IMPLICIT);
         }, 150);
+    }
+
+    /** עדכון סרטט הטיקר הנוכחי במסך */
+    private void updateCurrentTickerBar() {
+        if (getView() == null) return;
+        TextView txtSymbol = getView().findViewById(R.id.txtCurrentTicker);
+        TextView txtChart  = getView().findViewById(R.id.txtCurrentChart);
+        if (txtSymbol != null) txtSymbol.setText(currentSymbol);
+        if (txtChart  != null) txtChart.setText("Viewing chart");
     }
 
     private void fetchSuggestions(String query,

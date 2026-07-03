@@ -23,7 +23,7 @@
         android:gravity="center_vertical"
         android:paddingStart="8dp"
         android:paddingEnd="16dp"
-        android:paddingBottom="8dp">
+        android:paddingBottom="4dp">
 
         <ImageButton
             android:id="@+id/btnSearchBack"
@@ -43,6 +43,77 @@
             android:textSize="18sp"
             android:textStyle="bold"
             android:paddingStart="4dp"/>
+    </LinearLayout>
+
+    <!-- סרטט מניה נוכחית -->
+    <LinearLayout
+        android:id="@+id/currentTickerBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="10dp"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:background="@drawable/bg_current_ticker">
+
+        <!-- איקון גרף -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="&#128200;"
+            android:textSize="14sp"
+            android:paddingEnd="8dp"/>
+
+        <!-- שם הטיקר -->
+        <TextView
+            android:id="@+id/txtCurrentTicker"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SPY"
+            android:textColor="#FF4DA3FF"
+            android:textSize="15sp"
+            android:textStyle="bold"/>
+
+        <!-- מפריד -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=" · "
+            android:textColor="#FF4A5568"
+            android:textSize="13sp"/>
+
+        <!-- תווית הגרף שרואים -->
+        <TextView
+            android:id="@+id/txtCurrentChart"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Viewing chart"
+            android:textColor="#FF8B98A5"
+            android:textSize="12sp"
+            android:ellipsize="end"
+            android:singleLine="true"/>
+
+        <!-- תג ייטיב -->
+        <TextView
+            android:id="@+id/txtCurrentBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CURRENT"
+            android:textColor="#FF4DA3FF"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.06"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:background="@drawable/bg_badge_blue"/>
     </LinearLayout>
 
     <!-- Search box -->
