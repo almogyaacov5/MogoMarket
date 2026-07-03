@@ -33,7 +33,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="⏱"
+                android:text="&#9201;"
                 android:textSize="16sp" />
         </LinearLayout>
 
@@ -41,147 +41,178 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="בחר טווח זמן"
+            android:text="&#1489;&#1495;&#1512; &#1496;&#1493;&#1493;&#1495; &#1494;&#1502;&#1503;"
             android:textSize="17sp"
             android:textStyle="bold"
             android:textColor="#0D1117"
             android:layout_marginStart="10dp" />
     </LinearLayout>
 
-    <!-- Timeframe Grid -->
-    <GridLayout
+    <!-- Row 1: 1m, 5m, 15m -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:columnCount="3"
-        android:rowCount="3"
-        android:useDefaultMargins="false">
+        android:orientation="horizontal"
+        android:layout_marginBottom="8dp">
 
-        <!-- Row 1 -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn1min"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="52dp"
-            android:layout_columnWeight="1"
-            android:layout_rowWeight="1"
-            android:layout_margin="5dp"
-            android:text="1 דקה"
+            android:layout_weight="1"
+            android:layout_marginEnd="5dp"
+            android:text="1m"
             android:textSize="13sp"
             android:textColor="#0D1117"
             app:cornerRadius="14dp"
             app:strokeColor="#CBD5E0"
             app:strokeWidth="1dp"
-            app:backgroundTint="#FFFFFF"
-            android:tag="false" />
+            app:backgroundTint="#FFFFFF" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn5min"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="52dp"
-            android:layout_columnWeight="1"
-            android:layout_rowWeight="1"
-            android:layout_margin="5dp"
-            android:text="5 דקות"
+            android:layout_weight="1"
+            android:layout_marginStart="5dp"
+            android:layout_marginEnd="5dp"
+            android:text="5m"
             android:textSize="13sp"
             android:textColor="#0D1117"
             app:cornerRadius="14dp"
             app:strokeColor="#CBD5E0"
             app:strokeWidth="1dp"
-            app:backgroundTint="#FFFFFF"
-            android:tag="false" />
+            app:backgroundTint="#FFFFFF" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn15min"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="52dp"
-            android:layout_columnWeight="1"
-            android:layout_rowWeight="1"
-            android:layout_margin="5dp"
-            android:text="15 דקות"
+            android:layout_weight="1"
+            android:layout_marginStart="5dp"
+            android:text="15m"
             android:textSize="13sp"
             android:textColor="#0D1117"
             app:cornerRadius="14dp"
             app:strokeColor="#CBD5E0"
             app:strokeWidth="1dp"
-            app:backgroundTint="#FFFFFF"
-            android:tag="false" />
+            app:backgroundTint="#FFFFFF" />
 
-        <!-- Row 2 -->
+    </LinearLayout>
+
+    <!-- Row 2: 30m, 1H, 4H -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="8dp">
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn65min"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="52dp"
-            android:layout_columnWeight="1"
-            android:layout_rowWeight="1"
-            android:layout_margin="5dp"
-            android:text="65 דקות"
+            android:layout_weight="1"
+            android:layout_marginEnd="5dp"
+            android:text="30m"
             android:textSize="13sp"
             android:textColor="#0D1117"
             app:cornerRadius="14dp"
             app:strokeColor="#CBD5E0"
             app:strokeWidth="1dp"
-            app:backgroundTint="#FFFFFF"
-            android:tag="false" />
+            app:backgroundTint="#FFFFFF" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn1day"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="52dp"
-            android:layout_columnWeight="1"
-            android:layout_rowWeight="1"
-            android:layout_margin="5dp"
-            android:text="יום"
+            android:layout_weight="1"
+            android:layout_marginStart="5dp"
+            android:layout_marginEnd="5dp"
+            android:text="1H"
             android:textSize="13sp"
             android:textColor="#0D1117"
             app:cornerRadius="14dp"
             app:strokeColor="#CBD5E0"
             app:strokeWidth="1dp"
-            app:backgroundTint="#FFFFFF"
-            android:tag="false" />
+            app:backgroundTint="#FFFFFF" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn1week"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="52dp"
-            android:layout_columnWeight="1"
-            android:layout_rowWeight="1"
-            android:layout_margin="5dp"
-            android:text="שבוע"
+            android:layout_weight="1"
+            android:layout_marginStart="5dp"
+            android:text="4H"
             android:textSize="13sp"
             android:textColor="#0D1117"
             app:cornerRadius="14dp"
             app:strokeColor="#CBD5E0"
             app:strokeWidth="1dp"
-            app:backgroundTint="#FFFFFF"
-            android:tag="false" />
+            app:backgroundTint="#FFFFFF" />
 
-        <!-- Row 3 - month full width -->
+    </LinearLayout>
+
+    <!-- Row 3: 1D, 1W, 1M -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn1month"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="52dp"
-            android:layout_columnSpan="3"
-            android:layout_columnWeight="1"
-            android:layout_rowWeight="1"
-            android:layout_margin="5dp"
-            android:text="חודש"
+            android:layout_weight="1"
+            android:layout_marginEnd="5dp"
+            android:text="1D"
             android:textSize="13sp"
             android:textColor="#0D1117"
             app:cornerRadius="14dp"
             app:strokeColor="#CBD5E0"
             app:strokeWidth="1dp"
-            app:backgroundTint="#FFFFFF"
-            android:tag="false" />
+            app:backgroundTint="#FFFFFF" />
 
-    </GridLayout>
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnExtraW"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:layout_marginStart="5dp"
+            android:layout_marginEnd="5dp"
+            android:text="1W"
+            android:textSize="13sp"
+            android:textColor="#0D1117"
+            app:cornerRadius="14dp"
+            app:strokeColor="#CBD5E0"
+            app:strokeWidth="1dp"
+            app:backgroundTint="#FFFFFF" />
 
-    <!-- Hidden RadioGroup to keep original logic compatibility -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnExtraM"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:layout_marginStart="5dp"
+            android:text="1M"
+            android:textSize="13sp"
+            android:textColor="#0D1117"
+            app:cornerRadius="14dp"
+            app:strokeColor="#CBD5E0"
+            app:strokeWidth="1dp"
+            app:backgroundTint="#FFFFFF" />
+
+    </LinearLayout>
+
+    <!-- Hidden RadioGroup for backward compat -->
     <RadioGroup
         android:id="@+id/radioGroupTimeframes"
         android:layout_width="0dp"
