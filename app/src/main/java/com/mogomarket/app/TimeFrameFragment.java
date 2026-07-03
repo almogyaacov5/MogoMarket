@@ -44,32 +44,37 @@ public class TimeFrameFragment extends DialogFragment {
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_timeframe, container, false);
 
+        // סדר הלחצנים תואם בדיוק לסדר ב-XML: שורה 1, שורה 2, שורה 3
         List<MaterialButton> buttons = Arrays.asList(
-            view.findViewById(R.id.btn1min),
-            view.findViewById(R.id.btn5min),
-            view.findViewById(R.id.btn15min),
-            view.findViewById(R.id.btn65min),
-            view.findViewById(R.id.btn1day),
-            view.findViewById(R.id.btn1week),
-            view.findViewById(R.id.btn1month)
+            view.findViewById(R.id.btn1min),    // 1m
+            view.findViewById(R.id.btn5min),    // 5m
+            view.findViewById(R.id.btn15min),   // 15m
+            view.findViewById(R.id.btn65min),   // 30m
+            view.findViewById(R.id.btn1day),    // 1H
+            view.findViewById(R.id.btn1week),   // 4H
+            view.findViewById(R.id.btn1month),  // 1D
+            view.findViewById(R.id.btnExtraW),  // 1W
+            view.findViewById(R.id.btnExtraM)   // 1M
         );
 
-        String[] intervals = {"1min", "5min", "15min", "60min", "1day", "1week", "1month"};
+        String[] intervals = {"1min", "5min", "15min", "30min", "60min", "4h", "1day", "1week", "1month"};
 
         for (int i = 0; i < buttons.size(); i++) {
             final MaterialButton btn = buttons.get(i);
+            if (btn == null) continue;
             final String interval = intervals[i];
 
             btn.setOnClickListener(v -> {
-                // Reset all buttons to normal style
+                // Reset all buttons
                 for (MaterialButton b : buttons) {
+                    if (b == null) continue;
                     b.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFFFFF")));
                     b.setTextColor(Color.parseColor("#0D1117"));
                     b.setStrokeColor(ColorStateList.valueOf(Color.parseColor("#CBD5E0")));
                     b.setStrokeWidth(dpToPx(1));
                 }
 
-                // Highlight selected button
+                // Highlight selected
                 btn.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#4DA3FF")));
                 btn.setTextColor(Color.WHITE);
                 btn.setStrokeWidth(0);
@@ -82,7 +87,7 @@ public class TimeFrameFragment extends DialogFragment {
             });
         }
 
-        // Keep RadioGroup hidden but functional for backward compat
+        // RadioGroup hidden for backward compat
         RadioGroup radioGroup = view.findViewById(R.id.radioGroupTimeframes);
         if (radioGroup != null) radioGroup.setVisibility(View.GONE);
 
