@@ -97,26 +97,31 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp">
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp">
 
+            <!-- Ticker button (LEFT) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnTickerSelect"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:text="SPY"
+                android:textStyle="bold"
+                android:textSize="15sp"
+                android:textAllCaps="false"
+                android:layout_marginEnd="12dp" />
+
+            <!-- Price + Change (RIGHT) -->
             <LinearLayout
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <!-- Hidden tickerText kept for backward compat -->
-                <TextView
-                    android:id="@+id/tickerText"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text=""
-                    android:visibility="gone" />
+                android:layout_weight="1"
+                android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/priceText"
@@ -127,35 +132,44 @@
                     android:textStyle="bold"
                     android:textColor="?attr/colorPrimary"
                     android:letterSpacing="0.02"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/changeText"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="--"
+                        android:textSize="11sp"
+                        android:textColor="@color/gain"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.02"/>
+
+                    <TextView
+                        android:id="@+id/currentPriceDisplay"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text=""
+                        android:textSize="11sp"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:visibility="gone"/>
+
+                    <!-- Hidden tickerText kept for backward compat -->
+                    <TextView
+                        android:id="@+id/tickerText"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:text=""
+                        android:visibility="gone" />
+
+                </LinearLayout>
             </LinearLayout>
 
-            <!-- change row -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <TextView
-                    android:id="@+id/changeText"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="--"
-                    android:textSize="11sp"
-                    android:textColor="@color/gain"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.02"/>
-
-                <TextView
-                    android:id="@+id/currentPriceDisplay"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text=""
-                    android:textSize="11sp"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:visibility="gone"/>
-            </LinearLayout>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -274,18 +288,6 @@
             android:padding="6dp"
             android:layoutDirection="ltr">
 
-            <!-- Ticker button -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnTickerSelect"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="0dp"
-                android:layout_height="40dp"
-                android:layout_weight="1.2"
-                android:text="SPY"
-                android:textStyle="bold"
-                android:textSize="13sp"
-                android:textAllCaps="false" />
-
             <!-- Timeframe picker button -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnTimeframePicker"
@@ -293,7 +295,6 @@
                 android:layout_width="0dp"
                 android:layout_height="40dp"
                 android:layout_weight="1"
-                android:layout_marginStart="4dp"
                 android:text="1D"
                 android:textSize="12sp"
                 android:textAllCaps="false"
@@ -319,8 +320,6 @@
                 android:text="Line"
                 android:textAllCaps="false"
                 android:textSize="12sp" />
-
-            <!-- Portfolio chart button -->
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnAIAnalysis"
