@@ -53,8 +53,8 @@ public class DailySummaryEmailService extends BroadcastReceiver {
     private static final String TAG = "DailySummaryEmail";
 
     // ── החלף כאן בפרטי חשבון Gmail שייעודי לשליחה ──────────────────────────
-    private static final String SENDER_EMAIL    = "your-app-email@gmail.com";
-    private static final String SENDER_PASSWORD = "your-app-password"; // App Password
+    private static final String SENDER_EMAIL    = "shoomdavar123@gmail.com";
+    private static final String SENDER_PASSWORD = "oexf zibc nsjw ynfz"; // App Password
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
