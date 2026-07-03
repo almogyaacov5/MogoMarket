@@ -74,6 +74,7 @@
                     android:layout_marginBottom="14dp"
                     android:background="@color/colorDivider" />
 
+                <!-- English -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -86,12 +87,13 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="MogoMarket is a smart stock market trading app that lets you track real-time prices, manage your portfolio, simulate trades, and analyze your performance using AI."
+                    android:text="MogoMarket is a smart stock market trading app that lets you track real-time prices, manage your portfolio, simulate trades, and analyze your performance using AI. It supports a watchlist with price alerts, closed trades history, and a built-in trading simulator."
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="14sp"
                     android:lineSpacingExtra="4dp"
                     android:layout_marginBottom="16dp" />
 
+                <!-- Hebrew -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -104,7 +106,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="MogoMarket &#1492;&#1497;&#1488; &#1488;&#1508;&#1500;&#1497;&#1511;&#1510;&#1497;&#1492; &#1495;&#1499;&#1502;&#1492; &#1500;&#1502;&#1505;&#1495;&#1512; &#1489;&#1513;&#1493;&#1511; &#1492;&#1492;&#1493;&#1503;."
+                    android:text="MogoMarket &#1492;&#1497;&#1488; &#1488;&#1508;&#1500;&#1497;&#1511;&#1510;&#1497;&#1492; &#1495;&#1499;&#1502;&#1492; &#1500;&#1502;&#1505;&#1495;&#1512; &#1489;&#1513;&#1493;&#1511; &#1492;&#1492;&#1493;&#1503; &#1492;&#1502;&#1488;&#1508;&#1513;&#1512;&#1514; &#1500;&#1499;&#1501; &#1500;&#1506;&#1511;&#1493;&#1489; &#1488;&#1495;&#1512; &#1502;&#1495;&#1497;&#1512;&#1497;&#1501; &#1489;&#1494;&#1502;&#1503; &#1488;&#1502;&#1514;, &#1500;&#1504;&#1492;&#1500; &#1488;&#1514; &#1514;&#1497;&#1511; &#1492;&#1492;&#1513;&#1511;&#1506;&#1493;&#1514; &#1513;&#1500;&#1499;&#1501;, &#1500;&#1489;&#1510;&#1506; &#1505;&#1497;&#1502;&#1493;&#1500;&#1510;&#1497;&#1493;&#1514; &#1502;&#1505;&#1495;&#1512; &#1493;&#1500;&#1504;&#1514;&#1495; &#1488;&#1514; &#1492;&#1489;&#1497;&#1510;&#1493;&#1506;&#1497;&#1501; &#1513;&#1500;&#1499;&#1501; &#1489;&#1506;&#1494;&#1512;&#1514; &#1489;&#1497;&#1504;&#1492; &#1502;&#1500;&#1488;&#1499;&#1493;&#1514;&#1497;&#1514;. &#1514;&#1493;&#1502;&#1499;&#1514; &#1489;&#1512;&#1513;&#1497;&#1502;&#1514; &#1502;&#1506;&#1511;&#1489; &#1506;&#1501; &#1492;&#1514;&#1512;&#1488;&#1493;&#1514; &#1502;&#1495;&#1497;&#1512;, &#1492;&#1497;&#1505;&#1496;&#1493;&#1512;&#1497;&#1497;&#1514; &#1506;&#1505;&#1511;&#1488;&#1493;&#1514; &#1505;&#1490;&#1493;&#1512;&#1493;&#1514; &#1493;&#1505;&#1497;&#1502;&#1493;&#1500;&#1496;&#1493;&#1512; &#1502;&#1505;&#1495;&#1512; &#1502;&#1493;&#1489;&#1504;&#1492;."
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="14sp"
                     android:lineSpacingExtra="4dp"
@@ -139,6 +141,7 @@
                     android:textStyle="bold"
                     android:layout_marginBottom="14dp" />
 
+                <!-- Dark/Light Toggle Row -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -170,6 +173,7 @@
 
                     </LinearLayout>
 
+                    <!-- Theme Toggle Button -->
                     <LinearLayout
                         android:id="@+id/layoutThemeToggle"
                         android:layout_width="120dp"
@@ -237,7 +241,7 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- Default Chart Symbol Card -->
+        <!-- Navigation + Keyboard Settings Card -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -256,20 +260,135 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="&#128200;  Default Chart Symbol"
+                    android:text="&#127987;  Navigation"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="16sp"
                     android:textStyle="bold"
-                    android:layout_marginBottom="6dp" />
+                    android:layout_marginBottom="14dp" />
+
+                <!-- Watchlist -> Chart Toggle -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="16dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Tap stock opens Chart tab"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Tapping a stock in the watchlist navigates to the Chart tab"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textSize="12sp"
+                            android:layout_marginTop="2dp" />
+
+                    </LinearLayout>
+
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/switchWatchlistNav"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true" />
+
+                </LinearLayout>
+
+                <!-- Divider -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginBottom="16dp"
+                    android:background="@color/colorDivider" />
+
+                <!-- Hide Keyboard on Add Toggle -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Hide keyboard after adding stock"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Keyboard dismisses automatically after adding a stock to the watchlist"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textSize="12sp"
+                            android:layout_marginTop="2dp" />
+
+                    </LinearLayout>
+
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchHideKeyboardOnAdd"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Default Symbol Card -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="4dp"
+            app:cardUseCompatPadding="true"
+            app:cardBackgroundColor="?attr/colorSurface">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="The symbol that appears when opening the Chart tab for the first time"
+                    android:text="&#128200;  Default Symbol"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="The symbol loaded by default in the Chart tab"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="12sp"
-                    android:layout_marginBottom="14dp" />
+                    android:layout_marginBottom="12dp" />
 
+                <!-- Input + Save button row -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -279,23 +398,28 @@
                     <EditText
                         android:id="@+id/etDefaultSymbol"
                         android:layout_width="0dp"
-                        android:layout_height="48dp"
+                        android:layout_height="52dp"
                         android:layout_weight="1"
-                        android:hint="e.g. SPY, AAPL, BTC"
+                        android:hint="e.g. AAPL, TSLA, BTC"
                         android:inputType="textCapCharacters"
-                        android:singleLine="true"
                         android:textSize="15sp"
-                        android:layout_marginEnd="10dp"
-                        android:background="?attr/editTextBackground"
-                        android:padding="10dp" />
+                        android:textColor="?attr/colorOnSurface"
+                        android:textColorHint="?attr/colorOnSurfaceVariant"
+                        android:padding="12dp"
+                        android:background="@drawable/bg_search_input"
+                        android:singleLine="true"
+                        android:imeOptions="actionDone" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnSaveDefaultSymbol"
                         android:layout_width="wrap_content"
-                        android:layout_height="48dp"
+                        android:layout_height="52dp"
+                        android:layout_marginStart="10dp"
                         android:text="Save"
                         android:textAllCaps="false"
-                        app:cornerRadius="12dp" />
+                        android:paddingStart="18dp"
+                        android:paddingEnd="18dp"
+                        app:cornerRadius="14dp" />
 
                 </LinearLayout>
 
@@ -330,10 +454,255 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Choose which tab opens when the app starts"
+                    android:text="Choose which tab opens when you launch the app"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="12sp"
                     android:layout_marginBottom="14dp" />
 
-                <!-- Row 1: Chart | Watchlist -->
-                <LinearLa
+                <!-- Row 1: Chart + Watchlist -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="10dp">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnStartChart"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="6dp"
+                        android:text="&#128200; Chart"
+                        android:textAllCaps="false"
+                        android:textSize="13sp"
+                        app:cornerRadius="12dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnStartWatchlist"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="6dp"
+                        android:text="&#9734; Watchlist"
+                        android:textAllCaps="false"
+                        android:textSize="13sp"
+                        app:cornerRadius="12dp" />
+
+                </LinearLayout>
+
+                <!-- Row 2: Portfolio + Trades -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="10dp">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnStartPortfolio"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="6dp"
+                        android:text="&#128188; Portfolio"
+                        android:textAllCaps="false"
+                        android:textSize="13sp"
+                        app:cornerRadius="12dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnStartTrades"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="6dp"
+                        android:text="&#128203; Trades"
+                        android:textAllCaps="false"
+                        android:textSize="13sp"
+                        app:cornerRadius="12dp" />
+
+                </LinearLayout>
+
+                <!-- Row 3: Settings (full width) -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnStartSettings"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:text="&#9881; Settings"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"
+                    app:cornerRadius="12dp" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Account Card -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="4dp"
+            app:cardUseCompatPadding="true"
+            app:cardBackgroundColor="?attr/colorSurface">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="&#128100;  Account"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="14dp" />
+
+                <!-- Email Row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="12dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Logged in as:"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:id="@+id/tvUserEmail"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="..."
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginBottom="12dp"
+                    android:background="@color/colorDivider" />
+
+                <!-- Logout Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSettingsLogout"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:text="Log Out"
+                    android:textAllCaps="false"
+                    android:textColor="@color/white"
+                    app:backgroundTint="@color/colorLoss" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- App Info Card -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:layout_marginBottom="8dp"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="4dp"
+            app:cardUseCompatPadding="true"
+            app:cardBackgroundColor="?attr/colorSurface">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="&#8505;&#65039;  App Info"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="14dp" />
+
+                <!-- Version -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="8dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Version"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="14sp" />
+                    <TextView
+                        android:id="@+id/tvAppVersion"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="1.0"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Developer -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="8dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Developer"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="14sp" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="MogoMarket Team"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Tech Stack -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Built with"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="14sp" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Firebase · Gemini AI"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+    </LinearLayout>
+</ScrollView>
