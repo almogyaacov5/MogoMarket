@@ -1028,7 +1028,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 if (getActivity() != null) getActivity().runOnUiThread(() -> {
                     if (progressAI   != null) progressAI.setVisibility(View.GONE);
                     if (btnAIAnalysis != null) btnAIAnalysis.setEnabled(true);
-                    Toast.makeText(requireContext(), "AI error: " + error, Toast.LENGTH_SHORT).show());
+                    Toast.makeText(requireContext(), "AI error: " + error, Toast.LENGTH_SHORT).show();
                 });
             }
         });
