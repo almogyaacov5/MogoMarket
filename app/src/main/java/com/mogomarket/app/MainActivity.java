@@ -16,25 +16,25 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class MainActivity extends AppCompatActivity {
 
-    public static final String PREFS_NAME        = "app_prefs";
-    public static final String KEY_THEME         = "dark_mode";
-    public static final String KEY_LAST_SYMBOL   = "last_chart_symbol";
-    public static final String KEY_DEFAULT_SYMBOL= "default_chart_symbol";
-    public static final String KEY_START_PAGE    = "start_page_nav_id";
+    public static final String PREFS_NAME         = "app_prefs";
+    public static final String KEY_THEME          = "dark_mode";
+    public static final String KEY_LAST_SYMBOL    = "last_chart_symbol";
+    public static final String KEY_DEFAULT_SYMBOL = "default_chart_symbol";
+    public static final String KEY_START_PAGE     = "start_page_nav_id";
 
     private static final int RC_NOTIF = 1002;
     private int currentNavId = -1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
+        // ✅ חובה להגדיר את ה-mode לפני super.onCreate כדי למנוע recreation
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         boolean isDarkMode = prefs.getBoolean(KEY_THEME, true);
         AppCompatDelegate.setDefaultNightMode(
                 isDarkMode ? AppCompatDelegate.MODE_NIGHT_YES
                            : AppCompatDelegate.MODE_NIGHT_NO);
 
+        super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         if (getSupportActionBar() != null) getSupportActionBar().hide();
@@ -46,10 +46,22 @@ public class MainActivity extends AppCompatActivity {
         PriceTargetAlertService.startService(this);
         DailySummaryEmailService.scheduleDailySummary(this);
 
+        // ✅ טען פרגמנט רק אם זו הפעם הראשונה (לא recreation)
         if (savedInstanceState == null) {
             int startPageId = prefs.getInt(KEY_START_PAGE, R.id.nav_chart);
             navigateTo(startPageId);
+        } else {
+            // ✅ אחרי recreation — שחזר את ה-currentNavId ואת הבחירה ב-BottomNav
+            currentNavId = savedInstanceState.getInt("currentNavId", R.id.nav_chart);
+            BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
+            if (bottomNav != null) bottomNav.setSelectedItemId(currentNavId);
         }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt("currentNavId", currentNavId);
     }
 
     private void requestNotificationPermission() {
