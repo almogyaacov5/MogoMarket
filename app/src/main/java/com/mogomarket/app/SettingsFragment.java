@@ -22,8 +22,10 @@ import com.google.firebase.auth.FirebaseUser;
 
 public class SettingsFragment extends Fragment {
 
-    private static final String PREFS_NAME = "app_prefs";
-    private static final String KEY_THEME  = "dark_mode";
+    private static final String PREFS_NAME             = "app_prefs";
+    private static final String KEY_THEME              = "dark_mode";
+    private static final String KEY_PRICE_ALERTS       = "price_alerts_enabled";
+    private static final String KEY_DAILY_EMAIL        = "daily_email_enabled";
 
     private LinearLayout btnLightMode, btnDarkMode;
     private TextView tvThemeStatus;
@@ -84,6 +86,77 @@ public class SettingsFragment extends Fragment {
             switchHideKeyboard.setChecked(prefs.getBoolean(WatchlistFragment.KEY_WATCHLIST_HIDE_KB, true));
             switchHideKeyboard.setOnCheckedChangeListener((btn, isChecked) ->
                     prefs.edit().putBoolean(WatchlistFragment.KEY_WATCHLIST_HIDE_KB, isChecked).apply());
+        }
+
+        // ── Switch: התראות מחיר יעד ────────────────────────────────────────────
+        SwitchMaterial switchPriceAlerts = v.findViewById(R.id.switchPriceAlerts);
+        if (switchPriceAlerts != null) {
+            boolean alertsEnabled = prefs.getBoolean(KEY_PRICE_ALERTS, false);
+            switchPriceAlerts.setChecked(alertsEnabled);
+            // הפעל או בטל את ה-scheduler בהתאם למצב השמור
+            if (alertsEnabled) {
+                PriceAlertScheduler.schedule(requireContext());
+            }
+            switchPriceAlerts.setOnCheckedChangeListener((btn, isChecked) -> {
+                prefs.edit().putBoolean(KEY_PRICE_ALERTS, isChecked).apply();
+                if (isChecked) {
+                    PriceAlertScheduler.schedule(requireContext());
+                    Toast.makeText(requireContext(),
+                            "✅ התראות מחיר יעד הופעלו", Toast.LENGTH_SHORT).show();
+                } else {
+                    PriceAlertScheduler.cancel(requireContext());
+                    Toast.makeText(requireContext(),
+                            "🔕 התראות מחיר יעד בוטלו", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        // ── Switch: סיכום יומי אוטומטי במייל ──────────────────────────────────
+        SwitchMaterial switchDailyEmail = v.findViewById(R.id.switchDailyEmail);
+        if (switchDailyEmail != null) {
+            boolean dailyEnabled = prefs.getBoolean(KEY_DAILY_EMAIL, false);
+            switchDailyEmail.setChecked(dailyEnabled);
+            if (dailyEnabled) {
+                DailySummaryEmailService.scheduleDailySummary(requireContext());
+            }
+            switchDailyEmail.setOnCheckedChangeListener((btn, isChecked) -> {
+                prefs.edit().putBoolean(KEY_DAILY_EMAIL, isChecked).apply();
+                if (isChecked) {
+                    DailySummaryEmailService.scheduleDailySummary(requireContext());
+                    Toast.makeText(requireContext(),
+                            "✅ סיכום יומי במייל הופעל (כל יום ב-08:00)", Toast.LENGTH_LONG).show();
+                } else {
+                    // ביטול ה-AlarmManager
+                    android.app.AlarmManager alarmManager = (android.app.AlarmManager)
+                            requireContext().getSystemService(android.content.Context.ALARM_SERVICE);
+                    Intent cancelIntent = new Intent(requireContext(), DailySummaryEmailService.class);
+                    android.app.PendingIntent pi = android.app.PendingIntent.getBroadcast(
+                            requireContext(), 0, cancelIntent,
+                            android.app.PendingIntent.FLAG_UPDATE_CURRENT |
+                            android.app.PendingIntent.FLAG_IMMUTABLE);
+                    if (alarmManager != null) alarmManager.cancel(pi);
+                    Toast.makeText(requireContext(),
+                            "🔕 סיכום יומי במייל בוטל", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        // ── כפתור: שלח סיכום יומי עכשיו ──────────────────────────────────────
+        MaterialButton btnSendEmailNow = v.findViewById(R.id.btnSendDailyEmailNow);
+        if (btnSendEmailNow != null) {
+            btnSendEmailNow.setOnClickListener(view -> {
+                FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+                if (user == null || user.isAnonymous()) {
+                    Toast.makeText(requireContext(),
+                            "⚠️ יש להתחבר עם חשבון כדי לשלוח מייל", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                // שליחה ידנית מיידית
+                Intent emailIntent = new Intent(requireContext(), DailySummaryEmailService.class);
+                requireContext().sendBroadcast(emailIntent);
+                Toast.makeText(requireContext(),
+                        "📧 הסיכום נשלח לכתובת " + user.getEmail(), Toast.LENGTH_LONG).show();
+            });
         }
 
         // ── Default symbol + mode toggle ───────────────────────────────────────
