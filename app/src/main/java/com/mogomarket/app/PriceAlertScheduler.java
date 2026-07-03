@@ -7,19 +7,15 @@ import android.content.Intent;
 import android.os.Build;
 
 /**
- * מחלקת עזר לתזמון בדיקות מחיר תקופתיות עם AlarmManager.
- * קוראים ל-schedule() בעלייה, ול-cancel() אם רוצים לעצור.
+ * מתזמן בדיקות מחיר תקופתיות עם AlarmManager.
+ * משתמש ב-inexact alarm כדי לא לדרוש הרשאת SCHEDULE_EXACT_ALARM שפותחת הגדרות.
  */
 public class PriceAlertScheduler {
 
-    private static final long INTERVAL_MS = 15 * 60 * 1000L; // 15 דקות
-    private static final String ACTION = "com.example.chart.CHECK_PRICE_ALERTS";
+    private static final long INTERVAL_MS = 15 * 60 * 1000L;
+    private static final String ACTION    = "com.example.chart.CHECK_PRICE_ALERTS";
     private static final int REQUEST_CODE = 1001;
 
-    /**
-     * מתזמן בדיקת מחיר חוזרת כל 15 דקות.
-     * אם אין הרשאת Exact Alarm — משתמשים ב-setAndAllowWhileIdle (לא פותחים הגדרות).
-     */
     public static void schedule(Context context) {
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarmManager == null) return;
@@ -27,34 +23,21 @@ public class PriceAlertScheduler {
         PendingIntent pendingIntent = buildPendingIntent(context);
         long triggerAtMillis = System.currentTimeMillis() + INTERVAL_MS;
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Android 12+ — משתמשים ב-Exact רק אם יש הרשאה, אחרת Inexact (ללא פתיחת הגדרות)
-            if (alarmManager.canScheduleExactAlarms()) {
-                alarmManager.setExactAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
-            } else {
-                alarmManager.setAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
-            }
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            // Android 6–11
-            alarmManager.setExactAndAllowWhileIdle(
+        // תמיד משתמשים ב-inexact (ללא צורך בהרשאה מיוחדת)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmManager.setAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
         } else {
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
+            alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
         }
     }
 
-    /**
-     * מבטל את כל ה-Alarms הקיימים.
-     */
     public static void cancel(Context context) {
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarmManager == null) return;
         alarmManager.cancel(buildPendingIntent(context));
     }
 
-    // בניית PendingIntent שמפעיל את PriceAlertReceiver
     private static PendingIntent buildPendingIntent(Context context) {
         Intent intent = new Intent(context, PriceAlertReceiver.class);
         intent.setAction(ACTION);

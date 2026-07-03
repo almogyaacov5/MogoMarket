@@ -1,10 +1,15 @@
 package com.mogomarket.app;
 
+import android.Manifest;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -18,6 +23,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String PREFS_NAME = "app_prefs";
     private static final String KEY_THEME  = "dark_mode";
+    private static final int    RC_NOTIF   = 1002;
 
     private int currentNavId = -1;
 
@@ -25,7 +31,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Edge-to-Edge support for Android 15+
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
@@ -36,7 +41,6 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_main);
 
-        // Apply window insets padding to avoid overlap with system bars
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.fragment_container), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
@@ -45,11 +49,24 @@ public class MainActivity extends AppCompatActivity {
 
         if (getSupportActionBar() != null) getSupportActionBar().hide();
 
-        PriceAlertScheduler.schedule(this);
+        // בקש הרשאת POST_NOTIFICATIONS בלבד (לא Exact Alarm — לא פותח הגדרות)
+        requestNotificationPermission();
+
         setupBottomNav();
 
         if (savedInstanceState == null) {
             navigateTo(R.id.nav_chart);
+        }
+    }
+
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                        RC_NOTIF);
+            }
         }
     }
 
@@ -78,15 +95,11 @@ public class MainActivity extends AppCompatActivity {
         if (fragment != null) {
             FragmentTransaction tx = getSupportFragmentManager()
                     .beginTransaction()
-                    .setCustomAnimations(
-                            android.R.anim.fade_in,
-                            android.R.anim.fade_out
-                    )
+                    .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
                     .replace(R.id.fragment_container, fragment);
             tx.commit();
             setTitle(title);
 
-            // sync bottom nav selected item
             BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
             if (bottomNav != null && bottomNav.getSelectedItemId() != id) {
                 bottomNav.setSelectedItemId(id);
@@ -113,20 +126,15 @@ public class MainActivity extends AppCompatActivity {
         if (bottomNav != null) bottomNav.setSelectedItemId(R.id.nav_chart);
     }
 
-    // ── Public helper so any fragment can open P&L Calculator ────────────────
     public void openPnlCalculator() {
         getSupportFragmentManager()
                 .beginTransaction()
-                .setCustomAnimations(
-                        android.R.anim.slide_in_left,
-                        android.R.anim.slide_out_right
-                )
+                .setCustomAnimations(android.R.anim.slide_in_left, android.R.anim.slide_out_right)
                 .replace(R.id.fragment_container, new PnlCalculatorFragment())
                 .addToBackStack(null)
                 .commit();
     }
 
-    // — Public helper so any fragment can open Settings ——————————
     public void openSettings() {
         navigateTo(R.id.nav_settings);
     }
