@@ -188,7 +188,7 @@ public class PortfolioFragment extends Fragment {
             }
             requireActivity().getSupportFragmentManager()
                     .beginTransaction()
-                    .replace(R.id.fragmentContainer,
+                    .replace(R.id.fragment_container,   // ✅ תוקן: fragment_container
                             new PortfolioAddStockFragment())
                     .addToBackStack(null)
                     .commit();
