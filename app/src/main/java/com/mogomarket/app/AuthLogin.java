@@ -8,6 +8,9 @@ import android.util.Log;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.biometric.BiometricManager;
@@ -17,8 +20,16 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GoogleAuthProvider;
 
 import java.util.concurrent.Executor;
 
@@ -29,6 +40,10 @@ public class AuthLogin extends AppCompatActivity {
     private FirebaseAuth refAuth;
     private BiometricPrompt biometricPrompt;
     private BiometricPrompt.PromptInfo promptInfo;
+
+    // Google Sign-In
+    private GoogleSignInClient googleSignInClient;
+    private ActivityResultLauncher<Intent> googleSignInLauncher;
 
     @Override
     protected void onStart() {
@@ -56,6 +71,25 @@ public class AuthLogin extends AppCompatActivity {
         editTextPassword     = findViewById(R.id.editTextPassword);
         refAuth              = FirebaseAuth.getInstance();
 
+        // ── Google Sign-In Setup ──────────────────────────────────────────────
+        // IMPORTANT: Replace "YOUR_WEB_CLIENT_ID" with the Web Client ID from:
+        // Firebase Console → Project Settings → General → Your apps → Web client ID
+        // (also found in google-services.json under client → oauth_client → client_id where client_type == 3)
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id))
+                .requestEmail()
+                .build();
+        googleSignInClient = GoogleSignIn.getClient(this, gso);
+
+        googleSignInLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                this::handleGoogleSignInResult);
+
+        android.view.View btnGoogle = findViewById(R.id.btnGoogleSignIn);
+        if (btnGoogle != null) {
+            btnGoogle.setOnClickListener(v -> signInWithGoogle());
+        }
+
         // כניסה רגילה
         findViewById(R.id.button).setOnClickListener(v -> loginUser());
 
@@ -63,9 +97,7 @@ public class AuthLogin extends AppCompatActivity {
         findViewById(R.id.btnNoUser).setOnClickListener(v ->
                 startActivity(new Intent(AuthLogin.this, AuthRegister.class)));
 
-        // ── כניסה כאורח (Anonymous Auth) ──────────────────────────────────────
-        // אם Anonymous Auth לא מופעל ב-Firebase Console:
-        // Firebase Console → Authentication → Sign-in methods → Anonymous → Enable
+        // ── כניסה כאורח ──────────────────────────────────────────────────────
         android.view.View btnGuest = findViewById(R.id.btnGuestLogin);
         if (btnGuest != null) {
             btnGuest.setOnClickListener(v -> loginAsGuest());
@@ -94,7 +126,53 @@ public class AuthLogin extends AppCompatActivity {
         }
     }
 
-    // ── כניסה אנונימית ──────────────────────────────────────────────────────
+    // ── Google Sign-In ────────────────────────────────────────────────────────
+    private void signInWithGoogle() {
+        // נתק חשבון קודם כדי לאפשר בחירת חשבון מחדש
+        googleSignInClient.signOut().addOnCompleteListener(this, task ->
+                googleSignInLauncher.launch(googleSignInClient.getSignInIntent()));
+    }
+
+    private void handleGoogleSignInResult(ActivityResult result) {
+        Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(result.getData());
+        try {
+            GoogleSignInAccount account = task.getResult(ApiException.class);
+            if (account == null) return;
+            firebaseAuthWithGoogle(account.getIdToken());
+        } catch (ApiException e) {
+            Log.e(TAG, "Google Sign-In failed: " + e.getStatusCode(), e);
+            Toast.makeText(this, "כניסה עם Google נכשלה: " + e.getStatusCode(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void firebaseAuthWithGoogle(String idToken) {
+        ProgressDialog pd = new ProgressDialog(this);
+        pd.setTitle("כניסה עם Google");
+        pd.setMessage("מתחבר...");
+        pd.setCancelable(false);
+        pd.show();
+
+        AuthCredential credential = GoogleAuthProvider.getCredential(idToken, null);
+        refAuth.signInWithCredential(credential).addOnCompleteListener(this, task -> {
+            pd.dismiss();
+            if (task.isSuccessful()) {
+                FirebaseUser user = refAuth.getCurrentUser();
+                String name = (user != null && user.getDisplayName() != null)
+                        ? user.getDisplayName() : "";
+                Log.d(TAG, "Google Sign-In OK: " + name);
+                Toast.makeText(this, "ברוך הבא, " + name + "!", Toast.LENGTH_SHORT).show();
+                startActivity(new Intent(AuthLogin.this, MainActivity.class));
+                finish();
+            } else {
+                String err = task.getException() != null
+                        ? task.getException().getMessage() : "Unknown error";
+                Log.e(TAG, "Firebase Google auth failed: " + err);
+                Toast.makeText(this, "שגיאה: " + err, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    // ── כניסה אנונימית ────────────────────────────────────────────────────────
     private void loginAsGuest() {
         ProgressDialog pd = new ProgressDialog(this);
         pd.setTitle("כניסה כאורח");
@@ -113,8 +191,6 @@ public class AuthLogin extends AppCompatActivity {
                 Exception ex = task.getException();
                 String err = ex != null ? ex.getMessage() : "Unknown error";
                 Log.e(TAG, "Guest login failed: " + err, ex);
-
-                // הסבר ידידותי אם Anonymous Auth לא מופעל
                 String msg = (err != null && err.contains("CONFIGURATION_NOT_FOUND"))
                         ? "כניסה כאורח לא מופעלת.\nפנה למנהל האפליקציה."
                         : "שגיאה: " + err;
@@ -123,7 +199,7 @@ public class AuthLogin extends AppCompatActivity {
         });
     }
 
-    // ── כניסה רגילה ─────────────────────────────────────────────────────────
+    // ── כניסה רגילה ──────────────────────────────────────────────────────────
     private void loginUser() {
         String email = editTextEmailAddress.getText().toString().trim();
         String pass  = editTextPassword.getText().toString().trim();
@@ -158,7 +234,7 @@ public class AuthLogin extends AppCompatActivity {
                 });
     }
 
-    // ── Biometric ────────────────────────────────────────────────────────────
+    // ── Biometric ─────────────────────────────────────────────────────────────
     private void setupBiometricPrompt() {
         Executor executor = ContextCompat.getMainExecutor(this);
         biometricPrompt = new BiometricPrompt(this, executor,
