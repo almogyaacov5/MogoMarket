@@ -5,7 +5,6 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
-import android.provider.Settings;
 
 /**
  * מחלקת עזר לתזמון בדיקות מחיר תקופתיות עם AlarmManager.
@@ -13,13 +12,13 @@ import android.provider.Settings;
  */
 public class PriceAlertScheduler {
 
-    private static final long INTERVAL_MS = 15 * 60 * 1000L; //15 דקות במילישניות
+    private static final long INTERVAL_MS = 15 * 60 * 1000L; // 15 דקות
     private static final String ACTION = "com.example.chart.CHECK_PRICE_ALERTS";
     private static final int REQUEST_CODE = 1001;
 
     /**
      * מתזמן בדיקת מחיר חוזרת כל 15 דקות.
-     * מפעיל את PriceAlertReceiver גם כשהאפליקציה סגורה (RTC_WAKEUP).
+     * אם אין הרשאת Exact Alarm — משתמשים ב-setAndAllowWhileIdle (לא פותחים הגדרות).
      */
     public static void schedule(Context context) {
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
@@ -29,18 +28,16 @@ public class PriceAlertScheduler {
         long triggerAtMillis = System.currentTimeMillis() + INTERVAL_MS;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Android 12+ — חובה לבדוק הרשאה לפני Exact Alarm
+            // Android 12+ — משתמשים ב-Exact רק אם יש הרשאה, אחרת Inexact (ללא פתיחת הגדרות)
             if (alarmManager.canScheduleExactAlarms()) {
                 alarmManager.setExactAndAllowWhileIdle(
                         AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
             } else {
-                // מפנה את המשתמש להגדרות הרשאה
-                Intent permIntent = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
-                permIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                context.startActivity(permIntent);
+                alarmManager.setAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
             }
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            // Android 6–11 — setExactAndAllowWhileIdle ללא צורך בהרשאה
+            // Android 6–11
             alarmManager.setExactAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent);
         } else {
