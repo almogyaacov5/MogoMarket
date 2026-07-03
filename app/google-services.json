@@ -160,6 +160,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "686946641629-9sfdpd24e8ct2pdhmqq0hhln3d4h8nho.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mogomarket.app",
+            "certificate_hash": "13e795b8dc44d950852176e926e6a79b677a5b78"
+          }
+        },
+        {
+          "client_id": "686946641629-rkrb4cje23nc1b3kjd27ljfeplmi1jts.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mogomarket.app",
+            "certificate_hash": "9e23e216068f61b83edb514cdb84ca6f9af77d0d"
+          }
+        },
+        {
           "client_id": "686946641629-c3mepucfrshg95ng1rlkdnr19ltlsnno.apps.googleusercontent.com",
           "client_type": 3
         }
