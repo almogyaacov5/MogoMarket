@@ -371,15 +371,75 @@
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="16sp"
                     android:textStyle="bold"
-                    android:layout_marginBottom="8dp" />
+                    android:layout_marginBottom="4dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Choose which symbol loads when you open the Chart tab"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="12sp"
+                    android:layout_marginBottom="14dp" />
+
+                <!-- Mode toggle row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="14dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Startup symbol mode"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Tap to switch between last viewed &#128260; and fixed default &#128204;"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textSize="11sp"
+                            android:layout_marginTop="2dp" />
+
+                    </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSymbolMode"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:text="&#128260; Last"
+                        android:textAllCaps="false"
+                        android:textSize="13sp"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginBottom="14dp"
+                    android:background="@color/colorDivider" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="The symbol loaded by default in the Chart tab"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textSize="12sp"
-                    android:layout_marginBottom="12dp" />
+                    android:text="Fixed default symbol"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp" />
 
                 <EditText
                     android:id="@+id/etDefaultSymbol"
@@ -399,7 +459,7 @@
                     android:id="@+id/btnSaveDefaultSymbol"
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
-                    android:layout_marginTop="12dp"
+                    android:layout_marginTop="10dp"
                     android:text="Save Default Symbol"
                     android:textAllCaps="false"
                     app:backgroundTint="?attr/colorPrimary" />
@@ -407,7 +467,7 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- Start Page Card — גריד אלגנטי 2x3 -->
+        <!-- Start Page Card -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
