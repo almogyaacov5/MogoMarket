@@ -1,5 +1,7 @@
 package com.mogomarket.app;
 
+import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.Navigation;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
@@ -56,6 +58,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
+
 public class WatchlistFragment extends Fragment {
 
     private static final String ALERT_CHANNEL_ID      = "stock_price_alerts";
@@ -108,7 +111,22 @@ public class WatchlistFragment extends Fragment {
                 .getReference("users").child(user.getUid()).child("watchlist-stocks");
 
         adapter = new WatchlistAdapter(new WatchlistAdapter.OnWatchStockClickListener() {
-            @Override public void onStockClick(String symbol)       { handleStockClick(symbol); }
+            @Override
+            public void onStockClick(String symbol) {
+                SharedViewModel vm = new ViewModelProvider(requireActivity())
+                        .get(SharedViewModel.class);
+
+                vm.setSelectedSymbol(symbol);
+
+                SharedPreferences prefs = requireActivity()
+                        .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+
+                boolean navigateToChart = prefs.getBoolean(KEY_WATCHLIST_NAV, true);
+
+                if (navigateToChart) {
+                    Navigation.findNavController(requireView()).navigate(R.id.nav_chart);
+                }
+            }
             @Override public void onStockDelete(String symbol)      { deleteStock(symbol); }
             @Override public void onSetPriceAlert(StockWatchData s) { showPriceAlertDialog(s); }
             @Override public void onAlertStateChanged(String sym, boolean t) {
@@ -385,10 +403,18 @@ public class WatchlistFragment extends Fragment {
     // ─── Helpers ─────────────────────────────────────────────────────────────────────────────
 
     private void handleStockClick(String symbol) {
-        SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        SharedViewModel vm = new ViewModelProvider(requireActivity())
+                .get(SharedViewModel.class);
+
+        vm.setSelectedSymbol(symbol);
+
+        SharedPreferences prefs = requireActivity()
+                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+
         boolean navigateToChart = prefs.getBoolean(KEY_WATCHLIST_NAV, true);
-        if (navigateToChart && getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).showChartWithSymbol(symbol);
+
+        if (navigateToChart) {
+            Navigation.findNavController(requireView()).navigate(R.id.nav_chart);
         }
     }
 

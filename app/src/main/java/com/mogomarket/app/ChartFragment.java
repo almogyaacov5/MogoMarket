@@ -36,6 +36,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.mogomarket.app.TradingMarkerView;
 import com.github.mikephil.charting.charts.CandleStickChart;
@@ -324,12 +325,33 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     }
 
     @Override
-    public void onViewCreated(View view, Bundle savedInstanceState) {
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        view.setBackgroundColor(0xFFFF0000);
+        SharedViewModel vm = new ViewModelProvider(requireActivity())
+                .get(SharedViewModel.class);
 
-        Log.d("CHART", "VISIBLE");
+        vm.getSelectedSymbol().observe(getViewLifecycleOwner(), symbol -> {
+            if (symbol != null && !symbol.trim().isEmpty()) {
+                loadChartForSymbol(symbol.trim());
+            }
+        });
+
+        Bundle args = getArguments();
+        if (args != null && args.containsKey("symbol")) {
+            String symbolFromArgs = args.getString("symbol");
+            if (symbolFromArgs != null && !symbolFromArgs.trim().isEmpty()) {
+                vm.setSelectedSymbol(symbolFromArgs.trim());
+            }
+        }
+
+        SharedPreferences prefs = requireActivity()
+                .getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE);
+
+        String lastSymbol = prefs.getString(MainActivity.KEY_LAST_SYMBOL, null);
+        if (lastSymbol != null && !lastSymbol.trim().isEmpty()) {
+            vm.setSelectedSymbol(lastSymbol.trim());
+        }
     }
 
     private void updateTickerLabelTop() {

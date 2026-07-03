@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/nav_chart">
+
+    <fragment
+        android:id="@+id/nav_chart"
+        android:name="com.mogomarket.app.ChartFragment"
+        android:label="Chart" />
+
+    <fragment
+        android:id="@+id/nav_stocks"
+        android:name="com.mogomarket.app.WatchlistFragment"
+        android:label="Watchlist" />
+
+    <fragment
+        android:id="@+id/nav_portfolio"
+        android:name="com.mogomarket.app.PortfolioFragment"
+        android:label="Portfolio" />
+
+    <fragment
+        android:id="@+id/nav_closed_trades"
+        android:name="com.mogomarket.app.ClosedTradesFragment"
+        android:label="Closed Trades" />
+
+    <fragment
+        android:id="@+id/nav_simulator"
+        android:name="com.mogomarket.app.SimulatorFragment"
+        android:label="Simulator" />
+
+    <fragment
+        android:id="@+id/nav_settings"
+        android:name="com.mogomarket.app.SettingsFragment"
+        android:label="Settings" />
+
+    <!-- PnlCalculator כ-destination נפרד עם backstack -->
+    <fragment
+        android:id="@+id/pnlCalculatorFragment"
+        android:name="com.mogomarket.app.PnlCalculatorFragment"
+        android:label="PnL Calculator" />
+
+</navigation>

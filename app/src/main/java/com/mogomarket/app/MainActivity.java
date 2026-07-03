@@ -5,14 +5,14 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.fragment.app.Fragment;
+import androidx.navigation.NavController;
+import androidx.navigation.fragment.NavHostFragment;
+import androidx.navigation.ui.NavigationUI;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
@@ -25,16 +25,16 @@ public class MainActivity extends AppCompatActivity {
     public static final String KEY_START_PAGE     = "start_page_nav_id";
 
     private static final int RC_NOTIF = 1002;
-    private int currentNavId = -1;
+    private NavController navController;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // ✅ חובה להגדיר את ה-mode לפני super.onCreate כדי למנוע recreation
+        // ✅ חובה לפני super.onCreate כדי למנוע recreation
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         boolean isDarkMode = prefs.getBoolean(KEY_THEME, true);
         AppCompatDelegate.setDefaultNightMode(
                 isDarkMode ? AppCompatDelegate.MODE_NIGHT_YES
-                           : AppCompatDelegate.MODE_NIGHT_NO);
+                        : AppCompatDelegate.MODE_NIGHT_NO);
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -42,28 +42,28 @@ public class MainActivity extends AppCompatActivity {
         if (getSupportActionBar() != null) getSupportActionBar().hide();
 
         requestNotificationPermission();
-        setupBottomNav();
+
+        // ✅ Navigation Component Setup
+        NavHostFragment navHostFragment =
+                (NavHostFragment) getSupportFragmentManager()
+                        .findFragmentById(R.id.nav_host);
+
+        navController = navHostFragment.getNavController();
+
+        BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
+        NavigationUI.setupWithNavController(bottomNav, navController);
+
+        // ✅ עמוד התחלה לפי הגדרות המשתמש
+        if (savedInstanceState == null) {
+            int startPageId = prefs.getInt(KEY_START_PAGE, R.id.nav_chart);
+            if (startPageId != R.id.nav_chart) {
+                navController.navigate(startPageId);
+            }
+        }
 
         // שירותי רקע
         PriceTargetAlertService.startService(this);
         DailySummaryEmailService.scheduleDailySummary(this);
-
-        // ✅ טען פרגמנט רק אם זו הפעם הראשונה (לא recreation)
-        if (savedInstanceState == null) {
-            int startPageId = prefs.getInt(KEY_START_PAGE, R.id.nav_chart);
-            navigateTo(startPageId);
-        } else {
-            // ✅ אחרי recreation — שחזר את ה-currentNavId ואת הבחירה ב-BottomNav
-            currentNavId = savedInstanceState.getInt("currentNavId", R.id.nav_chart);
-            BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
-            if (bottomNav != null) bottomNav.setSelectedItemId(currentNavId);
-        }
-    }
-
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putInt("currentNavId", currentNavId);
     }
 
     private void requestNotificationPermission() {
@@ -77,65 +77,34 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void setupBottomNav() {
-        BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
-        bottomNav.setOnItemSelectedListener(item -> {
-            navigateTo(item.getItemId());
-            return true;
-        });
-    }
-
-    public void navigateTo(int id) {
-
-        Fragment fragment;
-
-        if (id == R.id.nav_chart) fragment = new ChartFragment();
-        else if (id == R.id.nav_stocks) fragment = new WatchlistFragment();
-        else if (id == R.id.nav_portfolio) fragment = new PortfolioFragment();
-        else if (id == R.id.nav_closed_trades) fragment = new ClosedTradesFragment();
-        else if (id == R.id.nav_simulator) fragment = new SimulatorFragment();
-        else fragment = new SettingsFragment();
-
-        getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.fragment_container, fragment)
-                .commitNow();
-
-        Log.d("NAV_TEST", "COMMIT DONE");
-    }
-
+    /**
+     * ניווט לגרף עם סמל ספציפי — נשמר ב-SharedPreferences,
+     * ה-ChartFragment יקרא את הסמל ב-onViewCreated דרך SharedViewModel.
+     */
     public void showChartWithSymbol(String symbol) {
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
                 .putString(KEY_LAST_SYMBOL, symbol).apply();
 
-        ChartFragment chartFragment = new ChartFragment();
-        Bundle args = new Bundle();
-        args.putString("symbol", symbol);
-        chartFragment.setArguments(args);
+        // ✅ עדכון SharedViewModel כדי שכל הפרגמנטים יסתנכרנו
+        SharedViewModel vm = new androidx.lifecycle.ViewModelProvider(this)
+                .get(SharedViewModel.class);
+        vm.setSelectedSymbol(symbol);
 
-        getSupportFragmentManager()
-                .beginTransaction()
-                .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
-                .replace(R.id.fragment_container, chartFragment)
-                .commit();
-
-        setTitle("Chart");
-        currentNavId = R.id.nav_chart;
-
-        BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
-        if (bottomNav != null) bottomNav.setSelectedItemId(R.id.nav_chart);
+        // ✅ Navigation Component — ניווט בטוח ללא FragmentTransaction ידני
+        navController.navigate(R.id.nav_chart);
     }
 
+    /**
+     * פתיחת PnL Calculator עם backstack תקין
+     */
     public void openPnlCalculator() {
-        getSupportFragmentManager()
-                .beginTransaction()
-                .setCustomAnimations(android.R.anim.slide_in_left, android.R.anim.slide_out_right)
-                .replace(R.id.fragment_container, new PnlCalculatorFragment())
-                .addToBackStack(null)
-                .commit();
+        navController.navigate(R.id.pnlCalculatorFragment);
     }
 
+    /**
+     * פתיחת Settings
+     */
     public void openSettings() {
-        navigateTo(R.id.nav_settings);
+        navController.navigate(R.id.nav_settings);
     }
 }

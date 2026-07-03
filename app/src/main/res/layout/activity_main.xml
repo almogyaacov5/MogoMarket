@@ -7,12 +7,15 @@
     android:orientation="vertical"
     android:fitsSystemWindows="true">
 
-    <!-- Fragment Container -->
-    <FrameLayout
-        android:id="@+id/fragment_container"
+    <!-- NavHostFragment — מחליף את FrameLayout הישן -->
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/nav_host"
+        android:name="androidx.navigation.fragment.NavHostFragment"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1"
+        app:defaultNavHost="true"
+        app:navGraph="@navigation/nav_graph" />
 
     <!-- Material3 Bottom Navigation Bar -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
