@@ -21,10 +21,13 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String PREFS_NAME = "app_prefs";
-    private static final String KEY_THEME  = "dark_mode";
-    private static final int    RC_NOTIF   = 1002;
+    public static final String PREFS_NAME        = "app_prefs";
+    public static final String KEY_THEME         = "dark_mode";
+    public static final String KEY_LAST_SYMBOL   = "last_chart_symbol";
+    public static final String KEY_DEFAULT_SYMBOL= "default_chart_symbol";
+    public static final String KEY_START_PAGE    = "start_page_nav_id";
 
+    private static final int RC_NOTIF = 1002;
     private int currentNavId = -1;
 
     @Override
@@ -49,13 +52,13 @@ public class MainActivity extends AppCompatActivity {
 
         if (getSupportActionBar() != null) getSupportActionBar().hide();
 
-        // בקש הרשאת POST_NOTIFICATIONS בלבד (לא Exact Alarm — לא פותח הגדרות)
         requestNotificationPermission();
-
         setupBottomNav();
 
         if (savedInstanceState == null) {
-            navigateTo(R.id.nav_chart);
+            // פתח דף לפי הגדרת המשתמש (ברירת מחדל: גרף)
+            int startPageId = prefs.getInt(KEY_START_PAGE, R.id.nav_chart);
+            navigateTo(startPageId);
         }
     }
 
@@ -78,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void navigateTo(int id) {
+    public void navigateTo(int id) {
         if (id == currentNavId) return;
         currentNavId = id;
 
@@ -93,11 +96,11 @@ public class MainActivity extends AppCompatActivity {
         else if (id == R.id.nav_settings)      { fragment = new SettingsFragment();     title = "Settings"; }
 
         if (fragment != null) {
-            FragmentTransaction tx = getSupportFragmentManager()
+            getSupportFragmentManager()
                     .beginTransaction()
                     .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
-                    .replace(R.id.fragment_container, fragment);
-            tx.commit();
+                    .replace(R.id.fragment_container, fragment)
+                    .commit();
             setTitle(title);
 
             BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
@@ -108,16 +111,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void showChartWithSymbol(String symbol) {
+        // שמור כסימבול אחרון
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                .putString(KEY_LAST_SYMBOL, symbol).apply();
+
         ChartFragment chartFragment = new ChartFragment();
         Bundle args = new Bundle();
         args.putString("symbol", symbol);
         chartFragment.setArguments(args);
 
-        FragmentTransaction tx = getSupportFragmentManager()
+        getSupportFragmentManager()
                 .beginTransaction()
                 .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
-                .replace(R.id.fragment_container, chartFragment);
-        tx.commit();
+                .replace(R.id.fragment_container, chartFragment)
+                .commit();
 
         setTitle("Chart");
         currentNavId = R.id.nav_chart;

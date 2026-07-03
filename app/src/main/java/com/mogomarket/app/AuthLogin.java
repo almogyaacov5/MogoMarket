@@ -4,6 +4,7 @@ import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -23,6 +24,7 @@ import java.util.concurrent.Executor;
 
 public class AuthLogin extends AppCompatActivity {
 
+    private static final String TAG = "AuthLogin";
     private android.widget.EditText editTextEmailAddress, editTextPassword;
     private FirebaseAuth refAuth;
     private BiometricPrompt biometricPrompt;
@@ -61,28 +63,38 @@ public class AuthLogin extends AppCompatActivity {
         findViewById(R.id.btnNoUser).setOnClickListener(v ->
                 startActivity(new Intent(AuthLogin.this, AuthRegister.class)));
 
-        // כניסה כאורח
-        findViewById(R.id.btnGuestLogin).setOnClickListener(v -> loginAsGuest());
+        // ── כניסה כאורח (Anonymous Auth) ──────────────────────────────────────
+        // אם Anonymous Auth לא מופעל ב-Firebase Console:
+        // Firebase Console → Authentication → Sign-in methods → Anonymous → Enable
+        android.view.View btnGuest = findViewById(R.id.btnGuestLogin);
+        if (btnGuest != null) {
+            btnGuest.setOnClickListener(v -> loginAsGuest());
+        } else {
+            Log.e(TAG, "btnGuestLogin not found in layout!");
+        }
 
         setupBiometricPrompt();
 
         // ביומטרי
-        findViewById(R.id.btnBiometricLogin).setOnClickListener(v -> {
-            BiometricManager manager = BiometricManager.from(this);
-            int canAuth = manager.canAuthenticate(
-                    BiometricManager.Authenticators.BIOMETRIC_STRONG
-                            | BiometricManager.Authenticators.DEVICE_CREDENTIAL);
-            if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
-                biometricPrompt.authenticate(promptInfo);
-            } else {
-                Toast.makeText(this,
-                        "המכשיר לא תומך או שלא מוגדרת טביעת אצבע",
-                        Toast.LENGTH_SHORT).show();
-            }
-        });
+        android.view.View btnBio = findViewById(R.id.btnBiometricLogin);
+        if (btnBio != null) {
+            btnBio.setOnClickListener(v -> {
+                BiometricManager manager = BiometricManager.from(this);
+                int canAuth = manager.canAuthenticate(
+                        BiometricManager.Authenticators.BIOMETRIC_STRONG
+                                | BiometricManager.Authenticators.DEVICE_CREDENTIAL);
+                if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
+                    biometricPrompt.authenticate(promptInfo);
+                } else {
+                    Toast.makeText(this,
+                            "המכשיר לא תומך או שלא מוגדרת טביעת אצבע",
+                            Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
     }
 
-    // ── כניסה אנונימית ──────────────────────────────────────────────────
+    // ── כניסה אנונימית ──────────────────────────────────────────────────────
     private void loginAsGuest() {
         ProgressDialog pd = new ProgressDialog(this);
         pd.setTitle("כניסה כאורח");
@@ -93,18 +105,25 @@ public class AuthLogin extends AppCompatActivity {
         refAuth.signInAnonymously().addOnCompleteListener(this, task -> {
             pd.dismiss();
             if (task.isSuccessful()) {
+                Log.d(TAG, "Guest login OK");
                 Toast.makeText(this, "נכנסת כאורח", Toast.LENGTH_SHORT).show();
                 startActivity(new Intent(AuthLogin.this, MainActivity.class));
                 finish();
             } else {
-                String err = task.getException() != null
-                        ? task.getException().getMessage() : "Unknown error";
-                Toast.makeText(this, "שגיאה: " + err, Toast.LENGTH_LONG).show();
+                Exception ex = task.getException();
+                String err = ex != null ? ex.getMessage() : "Unknown error";
+                Log.e(TAG, "Guest login failed: " + err, ex);
+
+                // הסבר ידידותי אם Anonymous Auth לא מופעל
+                String msg = (err != null && err.contains("CONFIGURATION_NOT_FOUND"))
+                        ? "כניסה כאורח לא מופעלת.\nפנה למנהל האפליקציה."
+                        : "שגיאה: " + err;
+                Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
             }
         });
     }
 
-    // ── כניסה רגילה ─────────────────────────────────────────────────────
+    // ── כניסה רגילה ─────────────────────────────────────────────────────────
     private void loginUser() {
         String email = editTextEmailAddress.getText().toString().trim();
         String pass  = editTextPassword.getText().toString().trim();
@@ -139,7 +158,7 @@ public class AuthLogin extends AppCompatActivity {
                 });
     }
 
-    // ── Biometric ────────────────────────────────────────────────────────
+    // ── Biometric ────────────────────────────────────────────────────────────
     private void setupBiometricPrompt() {
         Executor executor = ContextCompat.getMainExecutor(this);
         biometricPrompt = new BiometricPrompt(this, executor,

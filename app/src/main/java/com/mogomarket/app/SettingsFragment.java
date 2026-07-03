@@ -8,6 +8,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -29,8 +30,6 @@ public class SettingsFragment extends Fragment {
     private boolean isDark;
     private SharedPreferences prefs;
 
-    // Listener מבטיח שכאשר ChartFragment משנה את הtheme,
-    // דף ההגדרות יתעדכן מיידית גם בלי לעזוב ולחזור
     private final SharedPreferences.OnSharedPreferenceChangeListener prefListener =
             (sharedPreferences, key) -> {
                 if (KEY_THEME.equals(key)) {
@@ -72,31 +71,54 @@ public class SettingsFragment extends Fragment {
             updateThemeUI(true);
         });
 
-        // ── Toggle: Watchlist → Chart navigation ───────────────────────────────
+        // ── Toggle: Watchlist nav ──────────────────────────────────────────────
         SwitchMaterial switchWatchlistNav = v.findViewById(R.id.switchWatchlistNav);
         if (switchWatchlistNav != null) {
-            boolean navEnabled = prefs.getBoolean(WatchlistFragment.KEY_WATCHLIST_NAV, true);
-            switchWatchlistNav.setChecked(navEnabled);
+            switchWatchlistNav.setChecked(prefs.getBoolean(WatchlistFragment.KEY_WATCHLIST_NAV, true));
             switchWatchlistNav.setOnCheckedChangeListener((btn, isChecked) ->
                     prefs.edit().putBoolean(WatchlistFragment.KEY_WATCHLIST_NAV, isChecked).apply());
         }
 
-        // ── Toggle: Hide keyboard after adding stock ────────────────────────────
         SwitchMaterial switchHideKeyboard = v.findViewById(R.id.switchHideKeyboardOnAdd);
         if (switchHideKeyboard != null) {
-            boolean hideKb = prefs.getBoolean(WatchlistFragment.KEY_WATCHLIST_HIDE_KB, true);
-            switchHideKeyboard.setChecked(hideKb);
+            switchHideKeyboard.setChecked(prefs.getBoolean(WatchlistFragment.KEY_WATCHLIST_HIDE_KB, true));
             switchHideKeyboard.setOnCheckedChangeListener((btn, isChecked) ->
                     prefs.edit().putBoolean(WatchlistFragment.KEY_WATCHLIST_HIDE_KB, isChecked).apply());
         }
+
+        // ── מניה ברירת מחדל בגרף ──────────────────────────────────────────────
+        // שדה טקסט לשינוי מניה ברירת מחדל
+        android.widget.EditText etDefaultSymbol = v.findViewById(R.id.etDefaultSymbol);
+        MaterialButton btnSaveSymbol = v.findViewById(R.id.btnSaveDefaultSymbol);
+        if (etDefaultSymbol != null) {
+            String current = prefs.getString(MainActivity.KEY_DEFAULT_SYMBOL, "SPY");
+            etDefaultSymbol.setText(current);
+        }
+        if (btnSaveSymbol != null) {
+            btnSaveSymbol.setOnClickListener(view -> {
+                if (etDefaultSymbol == null) return;
+                String sym = etDefaultSymbol.getText().toString().trim().toUpperCase();
+                if (sym.isEmpty()) { sym = "SPY"; }
+                prefs.edit().putString(MainActivity.KEY_DEFAULT_SYMBOL, sym).apply();
+                Toast.makeText(requireContext(),
+                        "✅ מניה ברירת מחדל: " + sym, Toast.LENGTH_SHORT).show();
+            });
+        }
+
+        // ── דף פתיחה ────────────────────────────────────────────────────────────
+        setupStartPageSelector(v);
 
         // ── Email + Version ────────────────────────────────────────────────────
         TextView tvEmail = v.findViewById(R.id.tvUserEmail);
         if (tvEmail != null) {
             tvEmail.setTextColor(requireContext().getColor(R.color.primary));
             FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-            tvEmail.setText(user != null && user.getEmail() != null
-                    ? user.getEmail() : "Guest");
+            if (user != null && user.isAnonymous()) {
+                tvEmail.setText("Guest (אורח)");
+            } else {
+                tvEmail.setText(user != null && user.getEmail() != null
+                        ? user.getEmail() : "Guest");
+            }
         }
 
         TextView tvVersion = v.findViewById(R.id.tvAppVersion);
@@ -129,24 +151,65 @@ public class SettingsFragment extends Fragment {
         return v;
     }
 
+    /** בחירת דף פתיחה עם 5 כפתורים */
+    private void setupStartPageSelector(View v) {
+        int[] btnIds = {
+            R.id.btnStartChart,
+            R.id.btnStartWatchlist,
+            R.id.btnStartPortfolio,
+            R.id.btnStartTrades,
+            R.id.btnStartSettings
+        };
+        int[] navIds = {
+            R.id.nav_chart,
+            R.id.nav_stocks,
+            R.id.nav_portfolio,
+            R.id.nav_closed_trades,
+            R.id.nav_settings
+        };
+
+        int savedNavId = prefs.getInt(MainActivity.KEY_START_PAGE, R.id.nav_chart);
+
+        for (int i = 0; i < btnIds.length; i++) {
+            final int navId = navIds[i];
+            MaterialButton btn = v.findViewById(btnIds[i]);
+            if (btn == null) continue;
+
+            // סמן כפתור נבחר
+            btn.setStrokeColorResource(navId == savedNavId ? R.color.primary : R.color.text_secondary);
+            btn.setStrokeWidth(navId == savedNavId ? 4 : 1);
+
+            btn.setOnClickListener(click -> {
+                prefs.edit().putInt(MainActivity.KEY_START_PAGE, navId).apply();
+                Toast.makeText(requireContext(),
+                        "✅ דף פתיחה נשמר", Toast.LENGTH_SHORT).show();
+                // עדכן ויזואלי
+                for (int j = 0; j < btnIds.length; j++) {
+                    MaterialButton b = v.findViewById(btnIds[j]);
+                    if (b == null) continue;
+                    boolean selected = navIds[j] == navId;
+                    b.setStrokeColorResource(selected ? R.color.primary : R.color.text_secondary);
+                    b.setStrokeWidth(selected ? 4 : 1);
+                }
+            });
+        }
+    }
+
     @Override
     public void onStart() {
         super.onStart();
-        // רשום listener כדי לקבל עדכונים מיידיים כשChartFragment משנה את הtheme
         if (prefs != null) prefs.registerOnSharedPreferenceChangeListener(prefListener);
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        // בטל רישום כדי למנוע memory leak
         if (prefs != null) prefs.unregisterOnSharedPreferenceChangeListener(prefListener);
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        // Re-read SharedPreferences so if Chart toggled the theme, Settings reflects it
         if (prefs == null) return;
         isDark = prefs.getBoolean(KEY_THEME, true);
         updateThemeUI(isDark);
