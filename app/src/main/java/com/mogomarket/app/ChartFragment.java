@@ -100,10 +100,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private static final long DOUBLE_TAP_TIMEOUT_MS = 350;
     private long lastTapTime = 0;
 
-    // Timeframe definitions: label, interval string, Yahoo interval, Yahoo range, Binance interval
-    // Each timeframe always shows 252 candles
     private static final String[][] TIMEFRAMES = {
-        // {label, internalInterval, yahooInterval, yahooRange, binanceInterval}
         {"1m",  "1min",   "1m",  "1d",  "1m"},
         {"5m",  "5min",   "5m",  "5d",  "5m"},
         {"15m", "15min",  "15m", "5d",  "15m"},
@@ -153,10 +150,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private boolean isFullscreen = false;
     private boolean isCrosshairActive = false;
 
-    // Current timeframe index into TIMEFRAMES array (default = "1D" = index 6)
     private int currentTFIndex = 6;
 
-    // Kept for backward compat (not used for display)
     private com.google.android.material.button.MaterialButton btnTF1D, btnTF1W, btnTF1M, btnTF3M, btnTF1Y;
     private com.google.android.material.button.MaterialButton activeTFButton = null;
 
@@ -180,6 +175,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private FrameLayout chartContainer;
     private View chartRootLayout;
     private TextView timeFrameText, tickerText, priceText, changeText, currentPriceDisplay;
+    private TextView tickerLabelTop; // <-- שם הטיקר בכרטיס העליון
     private ProgressBar progressAI;
 
     private LinearLayout crosshairInfoBar;
@@ -251,8 +247,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         btnChartThemeToggle= v.findViewById(R.id.btnChartThemeToggle);
         btnTickerSelect    = v.findViewById(R.id.btnTickerSelect);
         btnTimeframePicker = v.findViewById(R.id.btnTimeframePicker);
+        tickerLabelTop     = v.findViewById(R.id.tickerLabelTop);
 
-        // Backward-compat TF buttons (hidden)
         btnTF1D = v.findViewById(R.id.btnTF1D);
         btnTF1W = v.findViewById(R.id.btnTF1W);
         btnTF1M = v.findViewById(R.id.btnTF1M);
@@ -295,6 +291,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
 
         updateTickerButtonLabel();
+        updateTickerLabelTop();
         updateTimeframePickerLabel();
         if (getActivity() != null) getActivity().setTitle("Chart: " + symbol);
 
@@ -304,12 +301,20 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         setupClickListeners();
         setupChartGestures();
 
-        // sync interval from currentTFIndex
         interval = TIMEFRAMES[currentTFIndex][1];
         fetchStockData(symbol, interval);
 
         updateChartThemeToggleLabel();
         return v;
+    }
+
+    /** מעדכן את שם הטיקר בטקסט שבכרטיס העליון */
+    private void updateTickerLabelTop() {
+        if (tickerLabelTop == null) return;
+        String display = isCryptoSymbol(symbol)
+                ? symbol.substring(symbol.indexOf(':') + 1)
+                : symbol;
+        tickerLabelTop.setText(display);
     }
 
     // ─── Timeframe picker ────────────────────────────────────────────────────
@@ -322,14 +327,12 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private void showTimeframeDialog() {
         if (getContext() == null) return;
 
-        // ─── Root container ───────────────────────────────────────────────────
         LinearLayout root = new LinearLayout(getContext());
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(isDarkTheme ? 0xFF151C2E : 0xFFFFFFFF);
         int ph = dpToPx(20);
         root.setPadding(ph, dpToPx(20), ph, dpToPx(16));
 
-        // ─── כותרת ────────────────────────────────────────────────────────────
         TextView title = new TextView(getContext());
         title.setText("Select Timeframe");
         title.setTextSize(16f);
@@ -338,8 +341,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         title.setPadding(dpToPx(4), 0, 0, dpToPx(16));
         root.addView(title);
 
-        // ─── Grid של כפתורי טיים-פריים ────────────────────────────────────────
-        // שורה אחרי שורה, 3 כפתורים בשורה
         int cols = 3;
         for (int row = 0; row < Math.ceil((double) TIMEFRAMES.length / cols); row++) {
             LinearLayout rowLayout = new LinearLayout(getContext());
@@ -354,7 +355,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 int idx = row * cols + col;
 
                 if (idx >= TIMEFRAMES.length) {
-                    // תא ריק למילוי שורה
                     android.widget.Space spacer = new android.widget.Space(getContext());
                     LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(0,
                             android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
@@ -367,7 +367,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 String label = TIMEFRAMES[idx][0];
                 final int finalIdx = idx;
 
-                // כפתור
                 android.widget.FrameLayout btnWrapper = new android.widget.FrameLayout(getContext());
 
                 android.graphics.drawable.GradientDrawable btnBg =
@@ -403,8 +402,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 lp.setMargins(col == 0 ? 0 : dpToPx(6), 0, 0, 0);
                 rowLayout.addView(btnWrapper, lp);
 
-                // ─── AlertDialog reference for dismiss ───────────────────────
-                // נשמור ref ב-array חד-איברי כדי לגשת מתוך lambda
                 final AlertDialog[] dialogRef = new AlertDialog[1];
                 btnWrapper.setOnClickListener(v -> {
                     currentTFIndex = finalIdx;
@@ -415,13 +412,11 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     if (dialogRef[0] != null) dialogRef[0].dismiss();
                 });
 
-                // שמור ref לאחר יצירת dialog
                 root.setTag(btnWrapper);
             }
             root.addView(rowLayout);
         }
 
-        // ─── Divider ──────────────────────────────────────────────────────────
         View divider = new View(getContext());
         divider.setBackgroundColor(isDarkTheme ? 0xFF1E2A3A : 0xFFE5E7EB);
         LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(
@@ -429,7 +424,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         divLp.setMargins(0, dpToPx(8), 0, dpToPx(12));
         root.addView(divider, divLp);
 
-        // ─── Dialog ───────────────────────────────────────────────────────────
         AlertDialog dialog = new AlertDialog.Builder(getContext())
                 .setView(root)
                 .setNegativeButton("Cancel", null)
@@ -442,7 +436,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
         dialog.show();
 
-        // עדכן את כל ה-listeners עם ה-dialog האמיתי
         for (int i = 0; i < root.getChildCount(); i++) {
             android.view.View child = root.getChildAt(i);
             if (child instanceof LinearLayout) {
@@ -468,7 +461,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
     }
 
-    // Not used anymore but kept to satisfy TimeFrameFragment.TimeFrameListener interface
     @Override
     public void onTimeFrameSelected(String tf) {
         interval = tf;
@@ -476,7 +468,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         fetchStockData(symbol, interval);
     }
 
-    // Kept for backward compat
     private void setActiveTFButton(com.google.android.material.button.MaterialButton selected) {
         activeTFButton = selected;
     }
@@ -838,7 +829,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
     }
 
-    // Returns {yahooInterval, yahooRange} for the current timeframe index
     private String[] getYahooParams() {
         String yahooInterval = TIMEFRAMES[currentTFIndex][2];
         String yahooRange    = TIMEFRAMES[currentTFIndex][3];
@@ -890,7 +880,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     List<CandleEntry> entries = new ArrayList<>();
                     SimpleDateFormat sdf = dateFormatFor(p[0]);
                     float lc = 0f, pc = 0f; int vc = 0;
-                    // Take last 252 candles
                     int startIdx = Math.max(0, size - 252);
                     for (int i = startIdx; i < size; i++) {
                         if (cls.isNull(i)||opens.isNull(i)||highs.isNull(i)||lows.isNull(i)) continue;
@@ -977,7 +966,14 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 changeText.setText(changeStr);
                 changeText.setTextColor(gain ? COLOR_GAIN : COLOR_LOSS);
             }
-            if (tickerText  != null) tickerText.setText(sym);
+            if (tickerText     != null) tickerText.setText(sym);
+            // עדכון שם הטיקר בכרטיס העליון
+            if (tickerLabelTop != null) {
+                String display = isCryptoSymbol(sym)
+                        ? sym.substring(sym.indexOf(':') + 1)
+                        : sym;
+                tickerLabelTop.setText(display);
+            }
             if (getActivity() != null) getActivity().setTitle("Chart: " + sym);
             hideCrosshairInfo();
             if (isCandleStick) updateCandleChart(entries);
@@ -990,6 +986,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         String cryptoSym = CRYPTO_MAP.get(upper);
         symbol = (cryptoSym != null) ? cryptoSym : upper;
         updateTickerButtonLabel();
+        updateTickerLabelTop();
         hideCrosshairInfo();
         fetchStockData(symbol, interval);
     }
@@ -1031,7 +1028,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 if (getActivity() != null) getActivity().runOnUiThread(() -> {
                     if (progressAI   != null) progressAI.setVisibility(View.GONE);
                     if (btnAIAnalysis != null) btnAIAnalysis.setEnabled(true);
-                    Toast.makeText(requireContext(), "AI error: " + error, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), "AI error: " + error, Toast.LENGTH_SHORT).show());
                 });
             }
         });
