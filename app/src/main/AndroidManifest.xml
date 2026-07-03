@@ -32,6 +32,17 @@
             </intent-filter>
         </receiver>
 
+        <!-- BroadcastReceiver לסיכומי אימייל יומיים ושבועיים -->
+        <receiver
+            android:name=".EmailSummaryService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.mogomarket.app.DAILY_SUMMARY" />
+                <action android:name="com.mogomarket.app.WEEKLY_SUMMARY" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
         <activity
             android:name=".AuthLogin"
             android:exported="true"
