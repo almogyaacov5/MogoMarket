@@ -4,4 +4,15 @@
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
+
+    <!--
+        Web Client ID for Google Sign-In.
+        ⚠️ עדכן ערך זה מ-Firebase Console:
+        Project Settings ➜ General ➜ Your apps ➜ Web client ID
+        (או מ-google-services.json: oauth_client עם client_type=3)
+        כרגע אין Web OAuth client ב-google-services.json שלך —
+        יש להוסיף Google Sign-In provider ב-Firebase Console ולהוריד
+        google-services.json מחדש.
+    -->
+    <string name="default_web_client_id">YOUR_WEB_CLIENT_ID_HERE</string>
 </resources>

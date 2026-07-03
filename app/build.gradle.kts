@@ -81,4 +81,11 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("androidx.biometric:biometric:1.2.0-alpha05")
     implementation("com.google.firebase:firebase-database:20.3.0")
+
+    // Google Sign-In
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+
+    // JavaMail for Android — שליחת מייל יומי
+    implementation("com.sun.mail:android-mail:1.6.7")
+    implementation("com.sun.mail:android-activation:1.6.7")
 }

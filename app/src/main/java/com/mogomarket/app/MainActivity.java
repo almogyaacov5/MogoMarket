@@ -55,8 +55,15 @@ public class MainActivity extends AppCompatActivity {
         requestNotificationPermission();
         setupBottomNav();
 
+        // ── הפעלת שירותי רקע ──────────────────────────────────────────────────
+        // שירות התראות מחיר יעד — בודק כל 15 דקות
+        PriceTargetAlertService.startService(this);
+
+        // תזמון סיכום יומי במייל בכל יום ב-08:00
+        DailySummaryEmailService.scheduleDailySummary(this);
+        // ──────────────────────────────────────────────────────────────────────
+
         if (savedInstanceState == null) {
-            // פתח דף לפי הגדרת המשתמש (ברירת מחדל: גרף)
             int startPageId = prefs.getInt(KEY_START_PAGE, R.id.nav_chart);
             navigateTo(startPageId);
         }
@@ -111,7 +118,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void showChartWithSymbol(String symbol) {
-        // שמור כסימבול אחרון
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
                 .putString(KEY_LAST_SYMBOL, symbol).apply();
 

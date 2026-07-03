@@ -8,7 +8,8 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.SET_EXACT_ALARM" />
-
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <application
         android:allowBackup="true"
@@ -21,18 +22,17 @@
         android:theme="@style/Theme.Chart"
         tools:targetApi="31">
 
-        <!-- BroadcastReceiver להתראות מחיר ברקע -->
+        <!-- BroadcastReceiver להתראות מחיר ברקע (קיים) -->
         <receiver
             android:name=".PriceAlertReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.example.chart.CHECK_PRICE_ALERTS" />
-                <!-- הפעלה מחדש אחרי ריבוט -->
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
 
-        <!-- BroadcastReceiver לסיכומי אימייל יומיים ושבועיים -->
+        <!-- BroadcastReceiver לסיכומי אימייל יומיים ושבועיים (קיים) -->
         <receiver
             android:name=".EmailSummaryService"
             android:exported="false">
@@ -42,6 +42,17 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <!-- BroadcastReceiver לסיכום יומי חדש -->
+        <receiver
+            android:name=".DailySummaryEmailService"
+            android:exported="false" />
+
+        <!-- שירות רקע לבדיקת מחיר יעד -->
+        <service
+            android:name=".PriceTargetAlertService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <activity
             android:name=".AuthLogin"
