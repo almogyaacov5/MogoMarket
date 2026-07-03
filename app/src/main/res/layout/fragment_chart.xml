@@ -32,7 +32,6 @@
         android:visibility="gone"
         android:minWidth="0dp" />
 
-    <!-- btnSettings - hidden for backward-compat -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnSettings"
         android:layout_width="0dp"
@@ -55,7 +54,6 @@
         android:layout_height="0dp"
         android:visibility="gone" />
 
-    <!-- Hidden TF buttons kept for backward-compat only -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnTF1D"
         android:layout_width="0dp"
@@ -104,17 +102,32 @@
             android:paddingTop="10dp"
             android:paddingBottom="10dp">
 
-            <!-- Ticker button (LEFT) -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnTickerSelect"
-                style="@style/Widget.Material3.Button.TonalButton"
+            <!-- Ticker label (text only, LEFT) -->
+            <LinearLayout
                 android:layout_width="wrap_content"
-                android:layout_height="44dp"
-                android:text="SPY"
-                android:textStyle="bold"
-                android:textSize="15sp"
-                android:textAllCaps="false"
-                android:layout_marginEnd="12dp" />
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginEnd="14dp">
+
+                <TextView
+                    android:id="@+id/tickerLabelTop"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SPY"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFE6EDF3"
+                    android:letterSpacing="0.03" />
+
+                <!-- Hidden tickerText kept for backward compat -->
+                <TextView
+                    android:id="@+id/tickerText"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:visibility="gone" />
+
+            </LinearLayout>
 
             <!-- Price + Change (RIGHT) -->
             <LinearLayout
@@ -131,7 +144,7 @@
                     android:textSize="22sp"
                     android:textStyle="bold"
                     android:textColor="?attr/colorPrimary"
-                    android:letterSpacing="0.02"/>
+                    android:letterSpacing="0.02" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -148,7 +161,7 @@
                         android:textSize="11sp"
                         android:textColor="@color/gain"
                         android:textStyle="bold"
-                        android:letterSpacing="0.02"/>
+                        android:letterSpacing="0.02" />
 
                     <TextView
                         android:id="@+id/currentPriceDisplay"
@@ -157,14 +170,6 @@
                         android:text=""
                         android:textSize="11sp"
                         android:textColor="?attr/colorOnSurfaceVariant"
-                        android:visibility="gone"/>
-
-                    <!-- Hidden tickerText kept for backward compat -->
-                    <TextView
-                        android:id="@+id/tickerText"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:text=""
                         android:visibility="gone" />
 
                 </LinearLayout>
@@ -173,7 +178,7 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- ===== CHART AREA (weight=1 fills ALL remaining space) ===== -->
+    <!-- ===== CHART AREA ===== -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/chartContainer"
         android:layout_width="match_parent"
@@ -204,7 +209,6 @@
                 android:background="?attr/colorSurface"
                 android:visibility="gone" />
 
-            <!-- Portfolio Line Chart -->
             <com.github.mikephil.charting.charts.LineChart
                 android:id="@+id/portfolio_chart"
                 android:layout_width="match_parent"
@@ -288,6 +292,18 @@
             android:padding="6dp"
             android:layoutDirection="ltr">
 
+            <!-- Ticker button (opens search sheet) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnTickerSelect"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1.2"
+                android:text="SPY"
+                android:textStyle="bold"
+                android:textSize="13sp"
+                android:textAllCaps="false" />
+
             <!-- Timeframe picker button -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnTimeframePicker"
@@ -295,6 +311,7 @@
                 android:layout_width="0dp"
                 android:layout_height="40dp"
                 android:layout_weight="1"
+                android:layout_marginStart="4dp"
                 android:text="1D"
                 android:textSize="12sp"
                 android:textAllCaps="false"
