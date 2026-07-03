@@ -111,7 +111,7 @@
         android:layout_marginBottom="8dp">
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn65min"
+            android:id="@+id/btn30min"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="52dp"
@@ -126,7 +126,7 @@
             app:backgroundTint="#FFFFFF" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn1day"
+            android:id="@+id/btn1hour"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="52dp"
@@ -142,7 +142,7 @@
             app:backgroundTint="#FFFFFF" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn1week"
+            android:id="@+id/btn4hour"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="52dp"
@@ -165,7 +165,7 @@
         android:orientation="horizontal">
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn1month"
+            android:id="@+id/btn1day"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="52dp"
@@ -180,7 +180,7 @@
             app:backgroundTint="#FFFFFF" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnExtraW"
+            android:id="@+id/btn1week"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="52dp"
@@ -196,7 +196,7 @@
             app:backgroundTint="#FFFFFF" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnExtraM"
+            android:id="@+id/btn1month"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="52dp"
