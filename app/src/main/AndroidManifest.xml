@@ -19,10 +19,9 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Chart"
+        android:theme="@style/Theme.MogoMarket"
         tools:targetApi="31">
 
-        <!-- BroadcastReceiver להתראות מחיר ברקע -->
         <receiver
             android:name=".PriceAlertReceiver"
             android:exported="false">
@@ -32,7 +31,6 @@
             </intent-filter>
         </receiver>
 
-        <!-- BroadcastReceiver לסיכומי אימייל יומיים ושבועיים -->
         <receiver
             android:name=".EmailSummaryService"
             android:exported="false">
@@ -43,18 +41,16 @@
             </intent-filter>
         </receiver>
 
-        <!-- BroadcastReceiver לסיכום יומי חדש -->
         <receiver
             android:name=".DailySummaryEmailService"
             android:exported="false" />
 
-        <!-- שירות רקע לבדיקת מחיר יעד -->
         <service
             android:name=".PriceTargetAlertService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
-        <!-- ✅ SplashActivity — LAUNCHER ראשי, מחליף את AuthLogin כנקודת כניסה -->
+        <!-- SplashActivity — LAUNCHER -->
         <activity
             android:name=".SplashActivity"
             android:exported="true"
@@ -66,7 +62,6 @@
             </intent-filter>
         </activity>
 
-        <!-- AuthLogin — כבר לא ה-LAUNCHER, רק Activity רגיל -->
         <activity
             android:name=".AuthLogin"
             android:exported="false"
@@ -77,10 +72,11 @@
             android:exported="false"
             android:windowSoftInputMode="stateHidden|adjustResize" />
 
+        <!-- הוסרה uiMode מ-configChanges כדי לאפשר Recreation תקין -->
         <activity
             android:name=".MainActivity"
             android:exported="false"
-            android:configChanges="uiMode|orientation|screenSize|screenLayout|smallestScreenSize"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
             android:windowSoftInputMode="stateHidden|adjustResize" />
 
     </application>

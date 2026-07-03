@@ -19,15 +19,20 @@
         <item name="android:textColor">@color/text_primary</item>
         <item name="materialCardViewStyle">@style/CardStyle</item>
         <item name="android:statusBarColor">@color/bg_primary</item>
-        <!-- Light mode: status bar icons are DARK (black) because background is light -->
         <item name="android:windowLightStatusBar">true</item>
-        <!-- Bottom Nav -->
         <item name="bottomNavigationStyle">@style/BottomNavStyle</item>
     </style>
 
     <style name="Theme.MogoMarket" parent="Base.Theme.MogoMarket" />
     <style name="Theme.Chart" parent="Base.Theme.MogoMarket" />
     <style name="Base.Theme.Chart" parent="Base.Theme.MogoMarket" />
+
+    <!-- ✅ Theme.Splash — נדרש ע"י SplashActivity ב-Manifest -->
+    <style name="Theme.Splash" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/bg_primary</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowFullscreen">false</item>
+    </style>
 
     <!-- Material Card -->
     <style name="CardStyle" parent="Widget.Material3.CardView.Elevated">
@@ -46,7 +51,7 @@
         <item name="itemActiveIndicatorStyle">@style/BottomNavIndicatorStyle</item>
     </style>
 
-    <!-- Bottom Nav Active Indicator - hidden (transparent, zero size) -->
+    <!-- Bottom Nav Active Indicator - hidden -->
     <style name="BottomNavIndicatorStyle" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
         <item name="android:color">@android:color/transparent</item>
         <item name="android:width">0dp</item>
