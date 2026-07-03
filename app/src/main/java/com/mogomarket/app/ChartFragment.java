@@ -967,6 +967,12 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         String upper = raw.toUpperCase(Locale.US).trim();
         String cryptoSym = CRYPTO_MAP.get(upper);
         symbol = (cryptoSym != null) ? cryptoSym : upper;
+
+        requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY_LAST_SYMBOL, symbol)
+                .apply();
+
         updateTickerButtonLabel();
         updateTickerLabelTop();
         hideCrosshairInfo();
