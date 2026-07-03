@@ -4,9 +4,6 @@ import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.util.Log;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -19,9 +16,6 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
@@ -29,12 +23,8 @@ import java.util.concurrent.Executor;
 
 public class AuthLogin extends AppCompatActivity {
 
-    private EditText editTextEmailAddress, editTextPassword;
-    private Button button;
-    private Button btnBiometricLogin;
-    private Button btnNoUser;
+    private android.widget.EditText editTextEmailAddress, editTextPassword;
     private FirebaseAuth refAuth;
-
     private BiometricPrompt biometricPrompt;
     private BiometricPrompt.PromptInfo promptInfo;
 
@@ -43,8 +33,7 @@ public class AuthLogin extends AppCompatActivity {
         super.onStart();
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser != null) {
-            Intent intent = new Intent(AuthLogin.this, MainActivity.class);
-            startActivity(intent);
+            startActivity(new Intent(AuthLogin.this, MainActivity.class));
             finish();
         }
     }
@@ -62,28 +51,27 @@ public class AuthLogin extends AppCompatActivity {
         });
 
         editTextEmailAddress = findViewById(R.id.editTextEmailAddress);
-        editTextPassword = findViewById(R.id.editTextPassword);
-        button = findViewById(R.id.button);
-        btnBiometricLogin = findViewById(R.id.btnBiometricLogin);
-        btnNoUser = findViewById(R.id.btnNoUser);
+        editTextPassword     = findViewById(R.id.editTextPassword);
+        refAuth              = FirebaseAuth.getInstance();
 
-        refAuth = FirebaseAuth.getInstance();
+        // כניסה רגילה
+        findViewById(R.id.button).setOnClickListener(v -> loginUser());
 
-        button.setOnClickListener(v -> loginUser());
+        // הרשמה
+        findViewById(R.id.btnNoUser).setOnClickListener(v ->
+                startActivity(new Intent(AuthLogin.this, AuthRegister.class)));
 
-        btnNoUser.setOnClickListener(v -> {
-            Intent intent = new Intent(AuthLogin.this, AuthRegister.class);
-            startActivity(intent);
-        });
+        // כניסה כאורח
+        findViewById(R.id.btnGuestLogin).setOnClickListener(v -> loginAsGuest());
 
         setupBiometricPrompt();
 
-        btnBiometricLogin.setOnClickListener(v -> {
+        // ביומטרי
+        findViewById(R.id.btnBiometricLogin).setOnClickListener(v -> {
             BiometricManager manager = BiometricManager.from(this);
             int canAuth = manager.canAuthenticate(
                     BiometricManager.Authenticators.BIOMETRIC_STRONG
                             | BiometricManager.Authenticators.DEVICE_CREDENTIAL);
-
             if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
                 biometricPrompt.authenticate(promptInfo);
             } else {
@@ -94,9 +82,32 @@ public class AuthLogin extends AppCompatActivity {
         });
     }
 
+    // ── כניסה אנונימית ──────────────────────────────────────────────────
+    private void loginAsGuest() {
+        ProgressDialog pd = new ProgressDialog(this);
+        pd.setTitle("כניסה כאורח");
+        pd.setMessage("מתחבר...");
+        pd.setCancelable(false);
+        pd.show();
+
+        refAuth.signInAnonymously().addOnCompleteListener(this, task -> {
+            pd.dismiss();
+            if (task.isSuccessful()) {
+                Toast.makeText(this, "נכנסת כאורח", Toast.LENGTH_SHORT).show();
+                startActivity(new Intent(AuthLogin.this, MainActivity.class));
+                finish();
+            } else {
+                String err = task.getException() != null
+                        ? task.getException().getMessage() : "Unknown error";
+                Toast.makeText(this, "שגיאה: " + err, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    // ── כניסה רגילה ─────────────────────────────────────────────────────
     private void loginUser() {
         String email = editTextEmailAddress.getText().toString().trim();
-        String pass = editTextPassword.getText().toString().trim();
+        String pass  = editTextPassword.getText().toString().trim();
 
         if (email.isEmpty() || pass.isEmpty()) {
             Toast.makeText(this, "Please fill out all the fields", Toast.LENGTH_SHORT).show();
@@ -110,75 +121,51 @@ public class AuthLogin extends AppCompatActivity {
         pd.show();
 
         refAuth.signInWithEmailAndPassword(email, pass)
-                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<AuthResult> task) {
-                        pd.dismiss();
-                        if (task.isSuccessful()) {
-                            Log.i("AuthLogin", "signInWithEmailAndPassword: success");
-
-                            SharedPreferences prefs = getSharedPreferences("auth_prefs", MODE_PRIVATE);
-                            prefs.edit()
-                                    .putString("email", email)
-                                    .putString("password", pass)
-                                    .apply();
-
-                            Toast.makeText(getApplicationContext(),
-                                    "User logged in successfully",
-                                    Toast.LENGTH_SHORT).show();
-
-                            Intent intent = new Intent(AuthLogin.this, MainActivity.class);
-                            startActivity(intent);
-                            finish();
-                        } else {
-                            String errorMsg = task.getException() != null ? task.getException().getMessage() : "Unknown error";
-                            Log.e("AuthLogin", "failure: " + errorMsg);
-                            Toast.makeText(getApplicationContext(),
-                                    errorMsg,
-                                    Toast.LENGTH_LONG).show();
-                        }
+                .addOnCompleteListener(this, task -> {
+                    pd.dismiss();
+                    if (task.isSuccessful()) {
+                        getSharedPreferences("auth_prefs", MODE_PRIVATE).edit()
+                                .putString("email", email)
+                                .putString("password", pass)
+                                .apply();
+                        Toast.makeText(this, "User logged in successfully", Toast.LENGTH_SHORT).show();
+                        startActivity(new Intent(AuthLogin.this, MainActivity.class));
+                        finish();
+                    } else {
+                        String err = task.getException() != null
+                                ? task.getException().getMessage() : "Unknown error";
+                        Toast.makeText(this, err, Toast.LENGTH_LONG).show();
                     }
                 });
     }
 
+    // ── Biometric ────────────────────────────────────────────────────────
     private void setupBiometricPrompt() {
         Executor executor = ContextCompat.getMainExecutor(this);
-
-        biometricPrompt = new BiometricPrompt(
-                this,
-                executor,
+        biometricPrompt = new BiometricPrompt(this, executor,
                 new BiometricPrompt.AuthenticationCallback() {
                     @Override
-                    public void onAuthenticationSucceeded(
-                            @NonNull BiometricPrompt.AuthenticationResult result) {
+                    public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
                         super.onAuthenticationSucceeded(result);
                         loginWithSavedCredentials();
                     }
-
                     @Override
-                    public void onAuthenticationError(int errorCode,
-                                                      @NonNull CharSequence errString) {
+                    public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
                         super.onAuthenticationError(errorCode, errString);
-                        // errorCode 10 = USER_CANCELED - לא נציג הודעת שגיאה
                         if (errorCode != BiometricPrompt.ERROR_USER_CANCELED
                                 && errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
                             Toast.makeText(getApplicationContext(),
-                                    "Biometric error: " + errString,
-                                    Toast.LENGTH_SHORT).show();
+                                    "Biometric error: " + errString, Toast.LENGTH_SHORT).show();
                         }
                     }
-
                     @Override
                     public void onAuthenticationFailed() {
                         super.onAuthenticationFailed();
                         Toast.makeText(getApplicationContext(),
-                                "Authentication failed",
-                                Toast.LENGTH_SHORT).show();
+                                "Authentication failed", Toast.LENGTH_SHORT).show();
                     }
-                }
-        );
+                });
 
-        // תיקון הקריסה: כשמשתמשים ב-DEVICE_CREDENTIAL אסור להגדיר NegativeButton
         promptInfo = new BiometricPrompt.PromptInfo.Builder()
                 .setTitle("כניסה עם טביעת אצבע")
                 .setSubtitle("אשר זהות כדי להיכנס לחשבון ההשקעות")
@@ -191,7 +178,7 @@ public class AuthLogin extends AppCompatActivity {
     private void loginWithSavedCredentials() {
         SharedPreferences prefs = getSharedPreferences("auth_prefs", MODE_PRIVATE);
         String savedEmail = prefs.getString("email", null);
-        String savedPass = prefs.getString("password", null);
+        String savedPass  = prefs.getString("password", null);
 
         if (savedEmail == null || savedPass == null) {
             Toast.makeText(this,
@@ -210,16 +197,11 @@ public class AuthLogin extends AppCompatActivity {
                 .addOnCompleteListener(this, task -> {
                     pd.dismiss();
                     if (task.isSuccessful()) {
-                        Toast.makeText(getApplicationContext(),
-                                "Logged in with biometrics",
-                                Toast.LENGTH_SHORT).show();
-                        Intent intent = new Intent(AuthLogin.this, MainActivity.class);
-                        startActivity(intent);
+                        Toast.makeText(this, "Logged in with biometrics", Toast.LENGTH_SHORT).show();
+                        startActivity(new Intent(AuthLogin.this, MainActivity.class));
                         finish();
                     } else {
-                        Toast.makeText(getApplicationContext(),
-                                "Firebase login failed",
-                                Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "Firebase login failed", Toast.LENGTH_SHORT).show();
                     }
                 });
     }

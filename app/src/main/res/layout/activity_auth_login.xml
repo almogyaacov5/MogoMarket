@@ -10,7 +10,6 @@
     android:layoutDirection="rtl"
     tools:context=".AuthLogin">
 
-    <!-- Card מרכזי -->
     <com.google.android.material.card.MaterialCardView
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -25,7 +24,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- שמים את הגרדיאנט על התוכן בתוך הכרטיס -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -92,6 +90,7 @@
                 android:background="#2F1F9990"
                 android:layout_marginBottom="24dp" />
 
+            <!-- Log In -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/button"
                 android:layout_width="match_parent"
@@ -104,11 +103,12 @@
                 app:backgroundTint="#329763"
                 android:stateListAnimator="@null"/>
 
+            <!-- Biometric -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnBiometricLogin"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="12dp"
                 android:text="Biometric Log In"
                 android:textAllCaps="false"
                 android:textSize="16sp"
@@ -117,22 +117,44 @@
                 app:backgroundTint="#329763"
                 android:stateListAnimator="@null"/>
 
+            <!-- כניסה כאורח -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnGuestLogin"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="12dp"
+                android:text="&#128100;  כניסה כאורח"
+                android:textAllCaps="false"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="#E5E7EB"
+                app:backgroundTint="#1F2A3A"
+                app:strokeColor="#4DA3FF"
+                app:strokeWidth="1.5dp"
+                android:stateListAnimator="@null"/>
+
+            <!-- Divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#22FFFFFF"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="14dp"/>
+
+            <!-- אין לך חשבון? הירשם -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnNoUser"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:layout_marginTop="16dp"
-                android:text="I don't have an account"
+                android:text="אין לך חשבון? הירשם"
                 android:textAllCaps="false"
-                android:textSize="16sp"
+                android:textSize="14sp"
                 android:textStyle="bold"
-                android:textColor="#FFFFFF"
-                app:backgroundTint="#329763"
+                android:textColor="#4DA3FF"
+                app:backgroundTint="@android:color/transparent"
                 android:stateListAnimator="@null"/>
 
-
         </LinearLayout>
-
     </com.google.android.material.card.MaterialCardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
