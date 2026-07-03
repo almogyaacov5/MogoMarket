@@ -86,10 +86,10 @@ public class SettingsFragment extends Fragment {
                     prefs.edit().putBoolean(WatchlistFragment.KEY_WATCHLIST_HIDE_KB, isChecked).apply());
         }
 
-        // ── מניה ברירת מחדל + מצב טעינה ──────────────────────────────────────
+        // ── Default symbol + mode toggle ───────────────────────────────────────
         setupDefaultSymbolSection(v);
 
-        // ── דף פתיחה ────────────────────────────────────────────────────────────
+        // ── Start page selector ────────────────────────────────────────────────
         setupStartPageSelector(v);
 
         // ── Email + Version ────────────────────────────────────────────────────
@@ -98,7 +98,7 @@ public class SettingsFragment extends Fragment {
             tvEmail.setTextColor(requireContext().getColor(R.color.primary));
             FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
             if (user != null && user.isAnonymous()) {
-                tvEmail.setText("Guest (\u05d0\u05d5\u05e8\u05d7)");
+                tvEmail.setText("Guest");
             } else {
                 tvEmail.setText(user != null && user.getEmail() != null
                         ? user.getEmail() : "Guest");
@@ -136,7 +136,7 @@ public class SettingsFragment extends Fragment {
     }
 
     /**
-     * סקשן ברירת מחדל: שדה טקסט + כפתור שמירה + טוגל מצב טעינה
+     * Default symbol section: text field + save button + mode toggle
      * ("Last Viewed" vs "Fixed Default")
      */
     private void setupDefaultSymbolSection(View v) {
@@ -144,33 +144,28 @@ public class SettingsFragment extends Fragment {
         MaterialButton btnSaveSymbol  = v.findViewById(R.id.btnSaveDefaultSymbol);
         MaterialButton btnSymbolMode  = v.findViewById(R.id.btnSymbolMode);
 
-        // טען ערך נוכחי לשדה
         if (etDefaultSymbol != null) {
             String current = prefs.getString(MainActivity.KEY_DEFAULT_SYMBOL, "SPY");
             etDefaultSymbol.setText(current);
         }
 
-        // עדכן תצוגת כפתור מצב
         updateSymbolModeButton(btnSymbolMode);
 
-        // כפתור שמירת מניה
         if (btnSaveSymbol != null) {
             btnSaveSymbol.setOnClickListener(view -> {
                 if (etDefaultSymbol == null) return;
                 String sym = etDefaultSymbol.getText().toString().trim().toUpperCase();
                 if (sym.isEmpty()) sym = "SPY";
                 prefs.edit().putString(MainActivity.KEY_DEFAULT_SYMBOL, sym).apply();
-                // אם המצב הוא "fixed" — גם שמור כ-KEY_LAST_SYMBOL כדי שיתעדכן מיד
                 if ("fixed".equals(prefs.getString(ChartFragment.KEY_SYMBOL_MODE, "last"))) {
                     prefs.edit().putString(MainActivity.KEY_LAST_SYMBOL, sym).apply();
                 }
                 Toast.makeText(requireContext(),
-                        "\u2705 \u05d1\u05e8\u05d9\u05e8\u05ea \u05de\u05d7\u05d3\u05dc: " + sym,
+                        "\u2705 Default symbol saved: " + sym,
                         Toast.LENGTH_SHORT).show();
             });
         }
 
-        // כפתור החלפת מצב
         if (btnSymbolMode != null) {
             btnSymbolMode.setOnClickListener(view -> {
                 String current = prefs.getString(ChartFragment.KEY_SYMBOL_MODE, "last");
@@ -178,14 +173,14 @@ public class SettingsFragment extends Fragment {
                 prefs.edit().putString(ChartFragment.KEY_SYMBOL_MODE, next).apply();
                 updateSymbolModeButton(btnSymbolMode);
                 String msg = "fixed".equals(next)
-                        ? "\uD83D\uDCCC \u05d9\u05d8\u05e2\u05df \u05d1\u05e8\u05d9\u05e8\u05ea \u05de\u05d7\u05d3\u05dc \u05e7\u05d1\u05d5\u05e2"
-                        : "\uD83D\uDD04 \u05d9\u05d8\u05e2\u05df \u05d4\u05de\u05e0\u05d9\u05d4 \u05d4\u05d0\u05d7\u05e8\u05d5\u05e0\u05d4";
+                        ? "\uD83D\uDCCC Switched to fixed default symbol"
+                        : "\uD83D\uDD04 Switched to last viewed symbol";
                 Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
             });
         }
     }
 
-    /** עדכן טקסט ועיצוב כפתור מצב הטעינה */
+    /** Update text and style of the symbol mode button */
     private void updateSymbolModeButton(MaterialButton btn) {
         if (btn == null) return;
         String mode = prefs.getString(ChartFragment.KEY_SYMBOL_MODE, "last");
@@ -200,7 +195,7 @@ public class SettingsFragment extends Fragment {
         }
     }
 
-    /** בחירת דף פתיחה עם 5 כפתורים */
+    /** Start page selector — 5 buttons */
     private void setupStartPageSelector(View v) {
         int[] btnIds = {
             R.id.btnStartChart,
@@ -230,7 +225,7 @@ public class SettingsFragment extends Fragment {
             btn.setOnClickListener(click -> {
                 prefs.edit().putInt(MainActivity.KEY_START_PAGE, navId).apply();
                 Toast.makeText(requireContext(),
-                        "\u2705 \u05d3\u05e3 \u05e4\u05ea\u05d9\u05d7\u05d4 \u05e0\u05e9\u05de\u05e8",
+                        "\u2705 Start page saved",
                         Toast.LENGTH_SHORT).show();
                 for (int j = 0; j < btnIds.length; j++) {
                     MaterialButton b = v.findViewById(btnIds[j]);
