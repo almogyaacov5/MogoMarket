@@ -48,6 +48,7 @@ public class PortfolioFragment extends Fragment {
     private TextView tvOpenCount;
     private TextView tvDailyPnl;
     private TextView tvDailyPct;
+    private TextView tvTotalInvested;
 
     private List<StockData> stocksList;
     private StocksAdapter adapter;
@@ -57,7 +58,6 @@ public class PortfolioFragment extends Fragment {
     private final OkHttpClient httpClient = new OkHttpClient();
     private static final String FINNHUB_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
 
-    // ─── Helper: בדיקה אם המשתמש הנוכחי הוא אורח אנונימי ───────────────────────
     private boolean isGuest() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         return user != null && user.isAnonymous();
@@ -79,6 +79,7 @@ public class PortfolioFragment extends Fragment {
         tvOpenCount            = v.findViewById(R.id.tvOpenCount);
         tvDailyPnl             = v.findViewById(R.id.tvDailyPnl);
         tvDailyPct             = v.findViewById(R.id.tvDailyPct);
+        tvTotalInvested        = v.findViewById(R.id.tvTotalInvested);
 
         stocksList = new ArrayList<>();
 
@@ -103,7 +104,6 @@ public class PortfolioFragment extends Fragment {
 
             @Override
             public void onStockDelete(String symbol, double sellPrice) {
-                // חסימת אורחים
                 if (isGuest()) {
                     Toast.makeText(getContext(),
                             "כניסה כאורח — לא ניתן לבצע שינויים. התחבר עם חשבון.",
@@ -125,7 +125,6 @@ public class PortfolioFragment extends Fragment {
 
             @Override
             public void onStockEdit(StockData updatedStock, String oldSymbol) {
-                // חסימת אורחים
                 if (isGuest()) {
                     Toast.makeText(getContext(),
                             "כניסה כאורח — לא ניתן לערוך עסקאות. התחבר עם חשבון.",
@@ -138,10 +137,21 @@ public class PortfolioFragment extends Fragment {
                     portfolioRef.child(oldKey).removeValue();
                 }
                 portfolioRef.child(newKey).setValue(updatedStock);
+                updateTotalInvested();
             }
         });
 
-        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        // מאזין לשינויים בסה"כ הושקע
+        adapter.setTotalInvestedListener(totalInvested -> {
+            if (getActivity() == null) return;
+            getActivity().runOnUiThread(() -> {
+                if (tvTotalInvested != null) {
+                    tvTotalInvested.setText(String.format(Locale.US, "$%,.2f", totalInvested));
+                }
+            });
+        });
+
+        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(adapter);
 
         portfolioRef.addValueEventListener(new ValueEventListener() {
@@ -150,183 +160,136 @@ public class PortfolioFragment extends Fragment {
                 stocksList.clear();
                 for (DataSnapshot ds : snapshot.getChildren()) {
                     StockData data = ds.getValue(StockData.class);
-                    if (data == null) continue;
-                    if (data.symbol == null || data.symbol.isEmpty()) {
-                        String key = ds.getKey();
-                        if (key != null) data.symbol = key.replace("_BINANCE", ":BINANCE")
-                                .replaceFirst("BINANCE_", "BINANCE:");
-                    }
-                    stocksList.add(data);
+                    if (data != null) stocksList.add(data);
                 }
                 adapter.notifyDataSetChanged();
-                updateSummary();
+                tvOpenCount.setText(String.valueOf(stocksList.size()));
+                updateTotalInvested();
+                refreshPortfolioPnl();
             }
 
             @Override
-            public void onCancelled(@NonNull DatabaseError error) { }
-        });
-
-        btnAddStockToPortfolio.setOnClickListener(view -> {
-            // חסימת אורחים
-            if (isGuest()) {
-                Toast.makeText(getContext(),
-                        "כניסה כאורח — אין אפשרות לשמור פורטפוליו. התחבר עם חשבון.",
-                        Toast.LENGTH_LONG).show();
-                return;
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(getContext(), "שגיאה בטעינת נתונים", Toast.LENGTH_SHORT).show();
             }
-            requireActivity().getSupportFragmentManager().beginTransaction()
-                    .setCustomAnimations(R.anim.fade_in_fast, R.anim.fade_out_fast)
-                    .replace(R.id.fragment_container, new PortfolioAddStockFragment())
-                    .addToBackStack(null)
-                    .commit();
         });
 
         btnRefreshPortfolio.setOnClickListener(view -> {
             adapter.refreshPrices();
-            updateSummary();
+            refreshPortfolioPnl();
         });
 
-        if (btnPortfolioChart != null) {
-            btnPortfolioChart.setOnClickListener(view -> {
-                ChartFragment chartFragment = new ChartFragment();
-                Bundle args = new Bundle();
-                args.putBoolean("portfolioMode", true);
-                chartFragment.setArguments(args);
-                requireActivity().getSupportFragmentManager().beginTransaction()
-                        .setCustomAnimations(R.anim.fade_in_fast, R.anim.fade_out_fast)
-                        .replace(R.id.fragment_container, chartFragment)
-                        .addToBackStack(null)
-                        .commit();
-            });
-        }
+        btnAddStockToPortfolio.setOnClickListener(view -> {
+            if (isGuest()) {
+                Toast.makeText(getContext(),
+                        "כניסה כאורח — לא ניתן להוסיף עסקאות. התחבר עם חשבון.",
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+            requireActivity().getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.fragmentContainer,
+                            new PortfolioAddStockFragment())
+                    .addToBackStack(null)
+                    .commit();
+        });
 
         return v;
     }
 
-    // ==================== סיכום PnL ====================
-
-    private void updateSummary() {
-        if (tvOpenCount != null) {
-            tvOpenCount.setText(String.valueOf(stocksList.size()));
-        }
-        if (stocksList.isEmpty()) {
-            if (tvTotalPnl  != null) tvTotalPnl.setText("$0.00");
-            if (tvTotalPct  != null) tvTotalPct.setText("+0.00%");
-            if (tvDailyPnl  != null) tvDailyPnl.setText("$0.00");
-            if (tvDailyPct  != null) tvDailyPct.setText("+0.00%");
-            return;
-        }
-
-        List<StockData> withAmount = new ArrayList<>();
+    private void updateTotalInvested() {
+        if (stocksList == null || tvTotalInvested == null) return;
+        double total = 0;
         for (StockData s : stocksList) {
-            if (s.tradeAmount > 0) withAmount.add(s);
+            total += s.tradeAmount;
         }
-        if (withAmount.isEmpty()) {
-            if (tvTotalPnl != null) tvTotalPnl.setText("N/A");
-            if (tvTotalPct != null) tvTotalPct.setText("-");
-            if (tvDailyPnl != null) tvDailyPnl.setText("N/A");
-            if (tvDailyPct != null) tvDailyPct.setText("-");
-            return;
-        }
-
-        final double[] totalPnl      = {0.0};
-        final double[] dailyPnl      = {0.0};
-        final double[] totalInvested = {0.0};
-        final AtomicInteger remaining = new AtomicInteger(withAmount.size());
-
-        for (StockData stock : withAmount) {
-            totalInvested[0] += stock.tradeAmount;
-
-            if (CryptoHelper.isCryptoSymbol(stock.symbol)) {
-                String pair = CryptoHelper.getPair(stock.symbol);
-                String url  = "https://api.binance.com/api/v3/ticker/24hr?symbol=" + pair;
-                httpClient.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
-                    @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                        if (remaining.decrementAndGet() == 0)
-                            showSummary(totalPnl[0], dailyPnl[0], totalInvested[0]);
-                    }
-                    @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                        try {
-                            JSONObject obj = new JSONObject(response.body().string());
-                            float currentPrice   = (float) obj.getDouble("lastPrice");
-                            float dailyChangePct = (float) obj.getDouble("priceChangePercent");
-                            if (currentPrice > 0 && stock.buyPrice != 0f) {
-                                float totalPct = (currentPrice - stock.buyPrice) / stock.buyPrice * 100f;
-                                double pnl  = stock.tradeAmount * (totalPct / 100.0);
-                                double dPnl = stock.tradeAmount * (1 + totalPct / 100.0) * (dailyChangePct / 100.0);
-                                synchronized (totalPnl) {
-                                    totalPnl[0] += pnl;
-                                    dailyPnl[0] += dPnl;
-                                }
-                            }
-                        } catch (Exception ignored) {}
-                        if (remaining.decrementAndGet() == 0)
-                            showSummary(totalPnl[0], dailyPnl[0], totalInvested[0]);
-                    }
-                });
-            } else {
-                String url = "https://finnhub.io/api/v1/quote?symbol=" + stock.symbol + "&token=" + FINNHUB_KEY;
-                httpClient.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
-                    @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                        if (remaining.decrementAndGet() == 0)
-                            showSummary(totalPnl[0], dailyPnl[0], totalInvested[0]);
-                    }
-                    @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                        try {
-                            JSONObject obj = new JSONObject(response.body().string());
-                            float currentPrice   = (float) obj.getDouble("c");
-                            float dailyChangePct = (float) obj.getDouble("dp");
-                            if (currentPrice > 0 && stock.buyPrice != 0f) {
-                                float totalPct = (currentPrice - stock.buyPrice) / stock.buyPrice * 100f;
-                                double pnl  = stock.tradeAmount * (totalPct / 100.0);
-                                double dPnl = stock.tradeAmount * (1 + totalPct / 100.0) * (dailyChangePct / 100.0);
-                                synchronized (totalPnl) {
-                                    totalPnl[0] += pnl;
-                                    dailyPnl[0] += dPnl;
-                                }
-                            }
-                        } catch (Exception ignored) {}
-                        if (remaining.decrementAndGet() == 0)
-                            showSummary(totalPnl[0], dailyPnl[0], totalInvested[0]);
-                    }
-                });
-            }
+        double finalTotal = total;
+        if (getActivity() != null) {
+            getActivity().runOnUiThread(() ->
+                    tvTotalInvested.setText(String.format(Locale.US, "$%,.2f", finalTotal)));
         }
     }
 
-    private void showSummary(double totalPnl, double dailyPnl, double totalInvested) {
+    private void refreshPortfolioPnl() {
+        if (stocksList == null || stocksList.isEmpty()) {
+            if (tvTotalPnl != null) tvTotalPnl.setText("$0.00");
+            if (tvTotalPct != null) tvTotalPct.setText("+0.00%");
+            if (tvDailyPnl != null) tvDailyPnl.setText("$0.00");
+            if (tvDailyPct != null) tvDailyPct.setText("+0.00%");
+            return;
+        }
+
+        AtomicInteger pending = new AtomicInteger(stocksList.size());
+        double[] totalPnlArr  = {0};
+        double[] totalInvArr  = {0};
+        double[] dailyPnlArr  = {0};
+        double[] dailyInvArr  = {0};
+
+        for (StockData stock : stocksList) {
+            if (stock.tradeAmount <= 0) {
+                if (pending.decrementAndGet() == 0) updatePnlUI(totalPnlArr[0], totalInvArr[0], dailyPnlArr[0], dailyInvArr[0]);
+                continue;
+            }
+            String sym = stock.symbol != null ? stock.symbol.trim() : "";
+            boolean isCrypto = CryptoHelper.isCryptoSymbol(sym);
+            String url = isCrypto
+                    ? "https://api.binance.com/api/v3/ticker/24hr?symbol=" + CryptoHelper.getPair(sym)
+                    : "https://finnhub.io/api/v1/quote?symbol=" + sym + "&token=" + FINNHUB_KEY;
+
+            httpClient.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
+                @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                    if (pending.decrementAndGet() == 0) updatePnlUI(totalPnlArr[0], totalInvArr[0], dailyPnlArr[0], dailyInvArr[0]);
+                }
+                @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                    try {
+                        JSONObject obj = new JSONObject(response.body().string());
+                        float currentPrice, dailyChangePct;
+                        if (isCrypto) {
+                            currentPrice   = (float) obj.getDouble("lastPrice");
+                            dailyChangePct = (float) obj.getDouble("priceChangePercent");
+                        } else {
+                            currentPrice   = (float) obj.getDouble("c");
+                            dailyChangePct = (float) obj.getDouble("dp");
+                        }
+                        if (currentPrice > 0) {
+                            float totalChangePct = (stock.buyPrice != 0)
+                                    ? (currentPrice - stock.buyPrice) / stock.buyPrice * 100f : 0f;
+                            double currentValue = stock.tradeAmount * (1 + totalChangePct / 100.0);
+                            synchronized (totalPnlArr) {
+                                totalPnlArr[0] += stock.tradeAmount * (totalChangePct / 100.0);
+                                totalInvArr[0] += stock.tradeAmount;
+                                dailyPnlArr[0] += currentValue * (dailyChangePct / 100.0);
+                                dailyInvArr[0] += currentValue;
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                    if (pending.decrementAndGet() == 0) updatePnlUI(totalPnlArr[0], totalInvArr[0], dailyPnlArr[0], dailyInvArr[0]);
+                }
+            });
+        }
+    }
+
+    private void updatePnlUI(double totalPnl, double totalInv, double dailyPnl, double dailyInv) {
         if (getActivity() == null) return;
         getActivity().runOnUiThread(() -> {
-            try {
-                int colorGain = requireContext().getColor(R.color.gain);
-                int colorLoss = requireContext().getColor(R.color.loss);
+            if (tvTotalPnl == null) return;
+            String pnlSign = totalPnl >= 0 ? "+" : "";
+            tvTotalPnl.setText(String.format(Locale.US, "%s$%.2f", pnlSign, totalPnl));
+            tvTotalPnl.setTextColor(totalPnl >= 0 ? 0xFF00E676 : 0xFFFF5252);
 
-                if (tvTotalPnl != null) {
-                    String sign = totalPnl >= 0 ? "+" : "";
-                    tvTotalPnl.setText(String.format(Locale.US, "%s$%.2f", sign, totalPnl));
-                    tvTotalPnl.setTextColor(totalPnl >= 0 ? colorGain : colorLoss);
-                }
+            double totalPct = (totalInv > 0) ? (totalPnl / totalInv * 100) : 0;
+            String pctSign = totalPct >= 0 ? "+" : "";
+            tvTotalPct.setText(String.format(Locale.US, "%s%.2f%%", pctSign, totalPct));
+            tvTotalPct.setTextColor(totalPct >= 0 ? 0xFF00E676 : 0xFFFF5252);
 
-                if (tvTotalPct != null && totalInvested > 0) {
-                    double totalPct = (totalPnl / totalInvested) * 100.0;
-                    String pctSign  = totalPct >= 0 ? "+" : "";
-                    tvTotalPct.setText(String.format(Locale.US, "%s%.2f%%", pctSign, totalPct));
-                    tvTotalPct.setTextColor(totalPct >= 0 ? colorGain : colorLoss);
-                }
+            String dSign = dailyPnl >= 0 ? "+" : "";
+            tvDailyPnl.setText(String.format(Locale.US, "%s$%.2f", dSign, dailyPnl));
+            tvDailyPnl.setTextColor(dailyPnl >= 0 ? 0xFF00E676 : 0xFFFF5252);
 
-                if (tvDailyPnl != null) {
-                    String sign = dailyPnl >= 0 ? "+" : "";
-                    tvDailyPnl.setText(String.format(Locale.US, "%s$%.2f", sign, dailyPnl));
-                    tvDailyPnl.setTextColor(dailyPnl >= 0 ? colorGain : colorLoss);
-                }
-
-                if (tvDailyPct != null && totalInvested > 0) {
-                    double dailyPct = (dailyPnl / totalInvested) * 100.0;
-                    String pctSign  = dailyPct >= 0 ? "+" : "";
-                    tvDailyPct.setText(String.format(Locale.US, "%s%.2f%%", pctSign, dailyPct));
-                    tvDailyPct.setTextColor(dailyPct >= 0 ? colorGain : colorLoss);
-                }
-            } catch (Exception ignored) {}
+            double dailyPct = (dailyInv > 0) ? (dailyPnl / dailyInv * 100) : 0;
+            String dPctSign = dailyPct >= 0 ? "+" : "";
+            tvDailyPct.setText(String.format(Locale.US, "%s%.2f%%", dPctSign, dailyPct));
+            tvDailyPct.setTextColor(dailyPct >= 0 ? 0xFF00E676 : 0xFFFF5252);
         });
     }
 }

@@ -42,8 +42,9 @@ public class ClosedTradesFragment extends Fragment {
     private ProgressBar progressBar;
     private TextView totalPnlText;
     private TextView winRateText;
-    private TextView tvClosedTotalPnl;   // סכום כולל לטריידים סגורים
-    private TextView tvClosedTradeCount; // מספר עסקאות סגורות
+    private TextView tvClosedTotalPnl;
+    private TextView tvClosedTradeCount;
+    private TextView tvClosedTotalInvested;
     private LLMService llmService;
 
     @Nullable
@@ -52,12 +53,13 @@ public class ClosedTradesFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_closed_trades, container, false);
 
-        btnAnalyze        = v.findViewById(R.id.btnAnalyzeTrades);
-        progressBar       = v.findViewById(R.id.aiProgressBar);
-        totalPnlText      = v.findViewById(R.id.totalPnlText);
-        winRateText       = v.findViewById(R.id.winRateText);
-        tvClosedTotalPnl  = v.findViewById(R.id.tvClosedTotalPnl);
-        tvClosedTradeCount = v.findViewById(R.id.tvClosedTradeCount);
+        btnAnalyze              = v.findViewById(R.id.btnAnalyzeTrades);
+        progressBar             = v.findViewById(R.id.aiProgressBar);
+        totalPnlText            = v.findViewById(R.id.totalPnlText);
+        winRateText             = v.findViewById(R.id.winRateText);
+        tvClosedTotalPnl        = v.findViewById(R.id.tvClosedTotalPnl);
+        tvClosedTradeCount      = v.findViewById(R.id.tvClosedTradeCount);
+        tvClosedTotalInvested   = v.findViewById(R.id.tvClosedTotalInvested);
 
         llmService = new LLMService();
 
@@ -72,10 +74,9 @@ public class ClosedTradesFragment extends Fragment {
         closedTrades = new ArrayList<>();
         adapter = new ClosedTradesAdapter(closedTrades, this::showEditDialog);
 
-        // מאזין למחיקה
         adapter.setDeleteListener(trade -> showDeleteConfirmDialog(trade));
 
-        adapter.setSummaryListener((totalPnl, wins, total) -> {
+        adapter.setSummaryListener((totalPnl, wins, total, totalInvested) -> {
             if (getActivity() == null) return;
             getActivity().runOnUiThread(() -> {
                 // סה"כ P&L
@@ -96,8 +97,8 @@ public class ClosedTradesFragment extends Fragment {
                                         0xFFFF5252
                 );
 
-                // סכום כולל סגורים
-                updateClosedSummary(totalPnl, total);
+                // סכום כולל סגורים + invested
+                updateClosedSummary(totalPnl, total, totalInvested);
             });
         });
 
@@ -132,7 +133,7 @@ public class ClosedTradesFragment extends Fragment {
 
     // ==================== סכום כולל עסקאות סגורות ====================
 
-    private void updateClosedSummary(double totalPnl, int total) {
+    private void updateClosedSummary(double totalPnl, int total, double totalInvested) {
         if (tvClosedTotalPnl != null) {
             String sign = totalPnl >= 0 ? "+" : "";
             tvClosedTotalPnl.setText(String.format("%s$%.2f", sign, totalPnl));
@@ -142,7 +143,14 @@ public class ClosedTradesFragment extends Fragment {
                                    0xFF78909C);
         }
         if (tvClosedTradeCount != null) {
-            tvClosedTradeCount.setText(total + " עסקאות");
+            tvClosedTradeCount.setText(String.valueOf(total));
+        }
+        if (tvClosedTotalInvested != null) {
+            if (totalInvested > 0) {
+                tvClosedTotalInvested.setText(String.format("$%,.2f", totalInvested));
+            } else {
+                tvClosedTotalInvested.setText("$0.00");
+            }
         }
     }
 
@@ -259,17 +267,27 @@ public class ClosedTradesFragment extends Fragment {
         inputSell.setText(String.valueOf(trade.sellPrice));
         layout.addView(inputSell);
 
+        final EditText inputAmount = new EditText(getContext());
+        inputAmount.setHint("סכום הושקע ($)");
+        inputAmount.setInputType(android.text.InputType.TYPE_CLASS_NUMBER |
+                android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        inputAmount.setText(trade.tradeAmount > 0 ? String.valueOf(trade.tradeAmount) : "");
+        layout.addView(inputAmount);
+
         builder.setView(layout);
         builder.setPositiveButton("שמור שינויים", (dialog, which) -> {
             try {
-                String buyStr  = inputBuy.getText().toString();
-                String sellStr = inputSell.getText().toString();
+                String buyStr    = inputBuy.getText().toString();
+                String sellStr   = inputSell.getText().toString();
+                String amountStr = inputAmount.getText().toString();
                 if (buyStr.isEmpty() || sellStr.isEmpty()) {
                     Toast.makeText(getContext(), "נא למלא את כל השדות", Toast.LENGTH_SHORT).show();
                     return;
                 }
                 updateTradeInFirebase(trade.symbol,
-                        Double.parseDouble(buyStr), Double.parseDouble(sellStr));
+                        Double.parseDouble(buyStr),
+                        Double.parseDouble(sellStr),
+                        amountStr.isEmpty() ? 0 : Double.parseDouble(amountStr));
             } catch (NumberFormatException e) {
                 Toast.makeText(getContext(), "נא להזין מספרים תקינים בלבד", Toast.LENGTH_SHORT).show();
             }
@@ -278,11 +296,12 @@ public class ClosedTradesFragment extends Fragment {
         builder.show();
     }
 
-    private void updateTradeInFirebase(String symbol, double buyPrice, double sellPrice) {
+    private void updateTradeInFirebase(String symbol, double buyPrice, double sellPrice, double tradeAmount) {
         if (closedTradesRef == null) return;
         Map<String, Object> updates = new HashMap<>();
-        updates.put("buyPrice",  buyPrice);
-        updates.put("sellPrice", sellPrice);
+        updates.put("buyPrice",    buyPrice);
+        updates.put("sellPrice",   sellPrice);
+        updates.put("tradeAmount", tradeAmount);
         closedTradesRef.child(symbol).updateChildren(updates)
                 .addOnSuccessListener(a ->
                         Toast.makeText(getContext(), "העסקה עודכנה בהצלחה", Toast.LENGTH_SHORT).show())

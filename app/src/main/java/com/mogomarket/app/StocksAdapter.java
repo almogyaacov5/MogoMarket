@@ -39,14 +39,34 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         void onStockEdit(StockData updatedStock, String oldSymbol);
     }
 
+    // Callback לעדכון סה"כ הושקע בפורטפוליו
+    public interface OnTotalInvestedListener {
+        void onTotalInvestedChanged(double totalInvested);
+    }
+
     private final List<StockData> stocks;
     private final OnStockClickListener listener;
+    private OnTotalInvestedListener totalInvestedListener;
     private final OkHttpClient client = new OkHttpClient();
     private static final String FINNHUB_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
 
     public StocksAdapter(List<StockData> stocks, OnStockClickListener listener) {
         this.stocks = stocks;
         this.listener = listener;
+    }
+
+    public void setTotalInvestedListener(OnTotalInvestedListener listener) {
+        this.totalInvestedListener = listener;
+    }
+
+    /** מחשב סה"כ הושקע מכל המניות ומודיע ל-listener */
+    public void notifyTotalInvested() {
+        if (totalInvestedListener == null || stocks == null) return;
+        double total = 0;
+        for (StockData s : stocks) {
+            total += s.tradeAmount;
+        }
+        totalInvestedListener.onTotalInvestedChanged(total);
     }
 
     @NonNull
@@ -93,6 +113,14 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
             holder.notesText.setVisibility(View.VISIBLE);
         } else {
             holder.notesText.setVisibility(View.GONE);
+        }
+
+        // הצגת סכום הושקע
+        if (stock.tradeAmount > 0) {
+            holder.investedAmountText.setText(String.format(Locale.US, "$%,.2f", stock.tradeAmount));
+            holder.layoutInvested.setVisibility(View.VISIBLE);
+        } else {
+            holder.layoutInvested.setVisibility(View.GONE);
         }
 
         holder.currentPriceText.setText("...");
@@ -189,12 +217,9 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
         float totalChangePercent = (stock.buyPrice != 0f)
                 ? ((currentPrice - stock.buyPrice) / stock.buyPrice * 100f) : 0f;
 
-        // רווח/הפסד כולל בדולרים (מהכניסה)
         double pnlDollar = (stock.tradeAmount > 0)
                 ? stock.tradeAmount * (totalChangePercent / 100.0) : 0;
 
-        // רווח/הפסד יומי בדולרים:
-        // שווי נוכחי של ההשקעה * dailyChangePct / 100
         double currentValue    = (stock.tradeAmount > 0) ? stock.tradeAmount * (1 + totalChangePercent / 100.0) : 0;
         double dailyPnlDollar  = (stock.tradeAmount > 0) ? currentValue * (dailyChangePercent / 100.0) : 0;
 
@@ -209,7 +234,6 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
             holder.currentPriceText.setTextColor(textPrimary);
         });
 
-        // שורה 1: אחוז יומי + דולרים יומיים
         holder.changePercentText.post(() -> {
             String dailyDollarSign = dailyPnlDollar >= 0 ? "+" : "-";
             String dailyText;
@@ -225,14 +249,12 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
             holder.changePercentText.setTextColor(dailyGainLossColor);
         });
 
-        // שורה 2: אחוז כולל vs כניסה
         holder.changePercentDetailText.post(() -> {
             holder.changePercentDetailText.setText(
                     String.format(Locale.US, "%s%.2f%% vs Entry", totalSign, Math.abs(totalChangePercent)));
             holder.changePercentDetailText.setTextColor(gainLossColor);
         });
 
-        // PnL בדולרים (כולל)
         if (stock.tradeAmount > 0) {
             holder.pnlDollarText.post(() -> {
                 String sign = pnlDollar >= 0 ? "+" : "-";
@@ -316,6 +338,7 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
 
             listener.onStockEdit(stock, oldSymbol);
             notifyDataSetChanged();
+            notifyTotalInvested();
             Toast.makeText(context, "\u2705 " + newSymbol + " updated successfully", Toast.LENGTH_SHORT).show();
         });
 
@@ -360,6 +383,8 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
     static class StockViewHolder extends RecyclerView.ViewHolder {
         TextView symbolText, currentPriceText, changePercentText;
         TextView changePercentDetailText, buyPriceText, targetPriceText, pnlDollarText, stockNameText, notesText;
+        TextView investedAmountText;
+        LinearLayout layoutInvested;
         ImageButton btnEdit, btnDelete;
         ImageView stockLogoBackground;
 
@@ -374,6 +399,8 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
             pnlDollarText           = itemView.findViewById(R.id.stockPnlDollar);
             stockNameText           = itemView.findViewById(R.id.stockName);
             notesText               = itemView.findViewById(R.id.stockNotes);
+            investedAmountText      = itemView.findViewById(R.id.tvInvestedAmount);
+            layoutInvested          = itemView.findViewById(R.id.layoutInvested);
             btnEdit                 = itemView.findViewById(R.id.btnEditStock);
             btnDelete               = itemView.findViewById(R.id.btnDeleteStock);
             stockLogoBackground     = itemView.findViewById(R.id.stockLogoBackground);

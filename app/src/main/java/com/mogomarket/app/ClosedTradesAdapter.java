@@ -7,6 +7,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -24,7 +25,9 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
 
     public interface OnTradeEditListener   { void onEditTrade(StockData trade); }
     public interface OnTradeDeleteListener { void onDeleteTrade(StockData trade); }
-    public interface OnSummaryUpdateListener { void onSummaryUpdated(double totalPnl, int wins, int total); }
+    public interface OnSummaryUpdateListener {
+        void onSummaryUpdated(double totalPnl, int wins, int total, double totalInvested);
+    }
 
     private final List<StockData> closedTrades;
     private final OnTradeEditListener editListener;
@@ -49,13 +52,16 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
 
     private void notifySummary() {
         if (summaryListener == null || closedTrades == null) return;
-        double total = 0; int wins = 0;
+        double totalPnl = 0;
+        double totalInvested = 0;
+        int wins = 0;
         for (StockData t : closedTrades) {
             double pnl = t.sellPrice - t.buyPrice;
-            total += pnl;
+            totalPnl += pnl;
             if (pnl > 0) wins++;
+            totalInvested += t.tradeAmount;
         }
-        summaryListener.onSummaryUpdated(total, wins, closedTrades.size());
+        summaryListener.onSummaryUpdated(totalPnl, wins, closedTrades.size(), totalInvested);
     }
 
     @NonNull
@@ -128,6 +134,14 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
         holder.percentText.setText(String.format(Locale.US, "%s%.2f%%", pnlSign, pnlPercent));
         holder.percentText.setTextColor(pnlColor);
 
+        // הצגת סכום הושקע בטרייד הסגור
+        if (trade.tradeAmount > 0) {
+            holder.investedAmountText.setText(String.format(Locale.US, "$%,.2f", trade.tradeAmount));
+            holder.layoutClosedInvested.setVisibility(View.VISIBLE);
+        } else {
+            holder.layoutClosedInvested.setVisibility(View.GONE);
+        }
+
         holder.editButton.setOnClickListener(v -> { if (editListener != null) editListener.onEditTrade(trade); });
 
         if (holder.deleteButton != null) {
@@ -144,21 +158,25 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
         TextView   symbolInitial, symbolText, tradeDateText;
         TextView   pnlView, percentText;
         TextView   buyPriceView, sellPriceView, currPriceView;
+        TextView   investedAmountText;
+        LinearLayout layoutClosedInvested;
         ImageButton editButton;
         ImageButton deleteButton;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
-            symbolInitial = itemView.findViewById(R.id.symbolInitial);
-            symbolText    = itemView.findViewById(R.id.tradeSymbolText);
-            tradeDateText = itemView.findViewById(R.id.tradeDateText);
-            pnlView       = itemView.findViewById(R.id.pnlView);
-            percentText   = itemView.findViewById(R.id.tradeChangePercent);
-            buyPriceView  = itemView.findViewById(R.id.tradeBuyPrice);
-            sellPriceView = itemView.findViewById(R.id.tradeSellingPrice);
-            currPriceView = itemView.findViewById(R.id.tradeCurrentPrice);
-            editButton    = itemView.findViewById(R.id.btnEditTrade);
-            deleteButton  = itemView.findViewById(R.id.btnDeleteTrade);
+            symbolInitial        = itemView.findViewById(R.id.symbolInitial);
+            symbolText           = itemView.findViewById(R.id.tradeSymbolText);
+            tradeDateText        = itemView.findViewById(R.id.tradeDateText);
+            pnlView              = itemView.findViewById(R.id.pnlView);
+            percentText          = itemView.findViewById(R.id.tradeChangePercent);
+            buyPriceView         = itemView.findViewById(R.id.tradeBuyPrice);
+            sellPriceView        = itemView.findViewById(R.id.tradeSellingPrice);
+            currPriceView        = itemView.findViewById(R.id.tradeCurrentPrice);
+            investedAmountText   = itemView.findViewById(R.id.tvClosedInvestedAmount);
+            layoutClosedInvested = itemView.findViewById(R.id.layoutClosedInvested);
+            editButton           = itemView.findViewById(R.id.btnEditTrade);
+            deleteButton         = itemView.findViewById(R.id.btnDeleteTrade);
         }
     }
 }
