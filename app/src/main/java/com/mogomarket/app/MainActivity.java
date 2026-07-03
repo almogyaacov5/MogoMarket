@@ -1,16 +1,10 @@
 package com.mogomarket.app;
 
-import android.Manifest;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
-import android.os.Build;
 import android.os.Bundle;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
-import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -26,10 +20,6 @@ public class MainActivity extends AppCompatActivity {
     private static final String KEY_THEME  = "dark_mode";
 
     private int currentNavId = -1;
-
-    private final ActivityResultLauncher<String> notificationPermissionLauncher =
-            registerForActivityResult(new ActivityResultContracts.RequestPermission(),
-                    isGranted -> { if (isGranted) PriceAlertScheduler.schedule(this); });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,7 +45,6 @@ public class MainActivity extends AppCompatActivity {
 
         if (getSupportActionBar() != null) getSupportActionBar().hide();
 
-        requestNotificationPermissionIfNeeded();
         PriceAlertScheduler.schedule(this);
         setupBottomNav();
 
@@ -135,14 +124,6 @@ public class MainActivity extends AppCompatActivity {
                 .replace(R.id.fragment_container, new PnlCalculatorFragment())
                 .addToBackStack(null)
                 .commit();
-    }
-
-    private void requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                        != PackageManager.PERMISSION_GRANTED) {
-            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
-        }
     }
 
     // — Public helper so any fragment can open Settings ——————————

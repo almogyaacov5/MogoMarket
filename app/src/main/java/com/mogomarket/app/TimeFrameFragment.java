@@ -49,12 +49,12 @@ public class TimeFrameFragment extends DialogFragment {
             view.findViewById(R.id.btn1min),    // 1m
             view.findViewById(R.id.btn5min),    // 5m
             view.findViewById(R.id.btn15min),   // 15m
-            view.findViewById(R.id.btn65min),   // 30m
-            view.findViewById(R.id.btn1day),    // 1H
-            view.findViewById(R.id.btn1week),   // 4H
-            view.findViewById(R.id.btn1month),  // 1D
-            view.findViewById(R.id.btnExtraW),  // 1W
-            view.findViewById(R.id.btnExtraM)   // 1M
+            view.findViewById(R.id.btn30min),   // 30m
+            view.findViewById(R.id.btn1hour),   // 1H
+            view.findViewById(R.id.btn4hour),   // 4H
+            view.findViewById(R.id.btn1day),    // 1D
+            view.findViewById(R.id.btn1week),   // 1W
+            view.findViewById(R.id.btn1month)   // 1M
         );
 
         String[] intervals = {"1min", "5min", "15min", "30min", "60min", "4h", "1day", "1week", "1month"};
