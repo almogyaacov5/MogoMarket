@@ -13,7 +13,12 @@
           "package_name": "co.example.firebaseex"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "686946641629-c3mepucfrshg95ng1rlkdnr19ltlsnno.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyB2zFaaeruLPOsuEgQBbuvnyM4f6_IXIFw"
@@ -21,7 +26,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "686946641629-4l0jrksjm32svnt3p6t8k1qdgctiaeu7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     },
@@ -32,7 +42,12 @@
           "package_name": "co.example.guess"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "686946641629-c3mepucfrshg95ng1rlkdnr19ltlsnno.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyB2zFaaeruLPOsuEgQBbuvnyM4f6_IXIFw"
@@ -40,7 +55,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "686946641629-4l0jrksjm32svnt3p6t8k1qdgctiaeu7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     },
@@ -51,7 +71,12 @@
           "package_name": "co.example.trade"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "686946641629-c3mepucfrshg95ng1rlkdnr19ltlsnno.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyB2zFaaeruLPOsuEgQBbuvnyM4f6_IXIFw"
@@ -59,7 +84,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "686946641629-4l0jrksjm32svnt3p6t8k1qdgctiaeu7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     },
@@ -67,10 +97,15 @@
       "client_info": {
         "mobilesdk_app_id": "1:686946641629:android:54335f56c9c06b8258dd34",
         "android_client_info": {
-          "package_name": "com.mogomarket.app"
+          "package_name": "com.example.chart"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "686946641629-c3mepucfrshg95ng1rlkdnr19ltlsnno.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyB2zFaaeruLPOsuEgQBbuvnyM4f6_IXIFw"
@@ -78,7 +113,70 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "686946641629-4l0jrksjm32svnt3p6t8k1qdgctiaeu7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:686946641629:android:0e3809341280744258dd34",
+        "android_client_info": {
+          "package_name": "com.example.geminiapi"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "686946641629-c3mepucfrshg95ng1rlkdnr19ltlsnno.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2zFaaeruLPOsuEgQBbuvnyM4f6_IXIFw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "686946641629-4l0jrksjm32svnt3p6t8k1qdgctiaeu7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:686946641629:android:943b96a192133e5558dd34",
+        "android_client_info": {
+          "package_name": "com.mogomarket.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "686946641629-c3mepucfrshg95ng1rlkdnr19ltlsnno.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2zFaaeruLPOsuEgQBbuvnyM4f6_IXIFw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "686946641629-4l0jrksjm32svnt3p6t8k1qdgctiaeu7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
