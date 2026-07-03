@@ -78,10 +78,15 @@ public class WatchlistFragment extends Fragment {
     private String             latestQuery       = "";
     private boolean            isManualSelection = false;
 
-    // נעקוב איזה chip נבחר אחרון כדי לאפשר לחיצה שנייה לאפס את המיון
     private int lastCheckedChipId = View.NO_ID;
 
     private ArrayAdapter<ChartFragment.StockSuggestion> suggestionAdapter;
+
+    // ─── Helper: בדיקה אם המשתמש הנוכחי הוא אורח אנונימי ───────────────────────
+    private boolean isGuest() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        return user != null && user.isAnonymous();
+    }
 
     // ─── Lifecycle ───────────────────────────────────────────────────────────────────────────
 
@@ -116,7 +121,6 @@ public class WatchlistFragment extends Fragment {
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(adapter);
 
-        // ── Drag-to-reorder with ItemTouchHelper ──
         ItemTouchHelper.SimpleCallback dragCallback = new ItemTouchHelper.SimpleCallback(
                 ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
             @Override
@@ -143,6 +147,14 @@ public class WatchlistFragment extends Fragment {
 
         if (addStockBtn != null) {
             addStockBtn.setOnClickListener(view -> {
+                // חסימת אורחים
+                if (isGuest()) {
+                    Toast.makeText(getContext(),
+                            "כניסה כאורח — אין אפשרות לשמור רשימת מעקב. התחבר עם חשבון.",
+                            Toast.LENGTH_LONG).show();
+                    return;
+                }
+
                 String raw = "";
                 if (autoInput != null) {
                     raw = autoInput.getText().toString().trim();
@@ -195,14 +207,12 @@ public class WatchlistFragment extends Fragment {
             });
         }
 
-        // ── Sort chips ──
         ChipGroup sortChipGroup = v.findViewById(R.id.sortChipGroup);
         Chip chipOrder = v.findViewById(R.id.chipSortOrder);
 
         if (sortChipGroup != null) {
             sortChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
                 if (checkedIds.isEmpty()) {
-                    // אין chip נבחר → ברירת מחדל (order לפי גרירה)
                     adapter.setFilter("default");
                     lastCheckedChipId = View.NO_ID;
                     return;
@@ -211,7 +221,6 @@ public class WatchlistFragment extends Fragment {
                 int id = checkedIds.get(0);
 
                 if (id == lastCheckedChipId) {
-                    // לחיצה שנייה על אותו chip → אפס ל-default
                     group.clearCheck();
                     adapter.setFilter("default");
                     lastCheckedChipId = View.NO_ID;
@@ -222,23 +231,17 @@ public class WatchlistFragment extends Fragment {
 
                 if (id == R.id.chipSortGain) {
                     adapter.setFilter("gain");
-
                 } else if (id == R.id.chipSortLoss) {
                     adapter.setFilter("loss");
-
                 } else if (id == R.id.chipSortAlpha) {
                     adapter.setFilter("alpha");
-
                 } else if (id == R.id.chipSortOrder) {
-                    // החלפת כיוון בכל לחיצה
                     adapter.toggleSortOrder();
-                    // עדכון שם הכפתור
                     if (chipOrder != null) {
                         chipOrder.setText(adapter.isSortAscending()
-                                ? "▲ עולה"
-                                : "▼ יורד");
+                                ? "\u25b2 \u05e2\u05d5\u05dc\u05d4"
+                                : "\u25bc \u05d9\u05d5\u05e8\u05d3");
                     }
-                    // מיון כל המניות לפי % שינוי
                     adapter.setFilter("order");
                 }
             });
@@ -390,6 +393,13 @@ public class WatchlistFragment extends Fragment {
     }
 
     private void deleteStock(String symbol) {
+        // חסימת אורחים
+        if (isGuest()) {
+            Toast.makeText(getContext(),
+                    "כניסה כאורח — לא ניתן לבצע שינויים. התחבר עם חשבון.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
         if (watchlistRef == null) return;
         String key = symbol.replace(":", "_");
         watchlistRef.child(key).removeValue();
@@ -397,6 +407,13 @@ public class WatchlistFragment extends Fragment {
     }
 
     private void showPriceAlertDialog(StockWatchData stock) {
+        // חסימת אורחים
+        if (isGuest()) {
+            Toast.makeText(getContext(),
+                    "כניסה כאורח — לא ניתן להגדיר התראות. התחבר עם חשבון.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
         if (getContext() == null) return;
         EditText et = new EditText(getContext());
         et.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);

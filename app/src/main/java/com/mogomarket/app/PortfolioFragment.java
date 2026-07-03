@@ -6,6 +6,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -43,7 +44,7 @@ public class PortfolioFragment extends Fragment {
     private MaterialButton btnAddStockToPortfolio;
     private MaterialButton btnPortfolioChart;
     private TextView tvTotalPnl;
-    private TextView tvTotalPct;   // אחוז שינוי כולל של התיק
+    private TextView tvTotalPct;
     private TextView tvOpenCount;
     private TextView tvDailyPnl;
     private TextView tvDailyPct;
@@ -55,6 +56,12 @@ public class PortfolioFragment extends Fragment {
 
     private final OkHttpClient httpClient = new OkHttpClient();
     private static final String FINNHUB_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
+
+    // ─── Helper: בדיקה אם המשתמש הנוכחי הוא אורח אנונימי ───────────────────────
+    private boolean isGuest() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        return user != null && user.isAnonymous();
+    }
 
     @Nullable
     @Override
@@ -97,6 +104,13 @@ public class PortfolioFragment extends Fragment {
 
             @Override
             public void onStockDelete(String symbol, double sellPrice) {
+                // חסימת אורחים
+                if (isGuest()) {
+                    Toast.makeText(getContext(),
+                            "כניסה כאורח — לא ניתן לבצע שינויים. התחבר עם חשבון.",
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 String firebaseKey = symbol.replace(":", "_");
                 portfolioRef.child(firebaseKey).get().addOnSuccessListener(snapshot -> {
                     if (snapshot.exists()) {
@@ -112,6 +126,13 @@ public class PortfolioFragment extends Fragment {
 
             @Override
             public void onStockEdit(StockData updatedStock, String oldSymbol) {
+                // חסימת אורחים
+                if (isGuest()) {
+                    Toast.makeText(getContext(),
+                            "כניסה כאורח — לא ניתן לערוך עסקאות. התחבר עם חשבון.",
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 String oldKey = oldSymbol.replace(":", "_");
                 String newKey = updatedStock.symbol.replace(":", "_");
                 if (!newKey.equals(oldKey)) {
@@ -147,6 +168,13 @@ public class PortfolioFragment extends Fragment {
         });
 
         btnAddStockToPortfolio.setOnClickListener(view -> {
+            // חסימת אורחים
+            if (isGuest()) {
+                Toast.makeText(getContext(),
+                        "כניסה כאורח — אין אפשרות לשמור פורטפוליו. התחבר עם חשבון.",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
             requireActivity().getSupportFragmentManager().beginTransaction()
                     .setCustomAnimations(R.anim.fade_in_fast, R.anim.fade_out_fast)
                     .replace(R.id.fragment_container, new PortfolioAddStockFragment())
@@ -274,14 +302,12 @@ public class PortfolioFragment extends Fragment {
                 int colorGain = requireContext().getColor(R.color.gain);
                 int colorLoss = requireContext().getColor(R.color.loss);
 
-                // Total P&L בדולרים
                 if (tvTotalPnl != null) {
                     String sign = totalPnl >= 0 ? "+" : "";
                     tvTotalPnl.setText(String.format(Locale.US, "%s$%.2f", sign, totalPnl));
                     tvTotalPnl.setTextColor(totalPnl >= 0 ? colorGain : colorLoss);
                 }
 
-                // Total P&L באחוזים (pnl / totalInvested)
                 if (tvTotalPct != null && totalInvested > 0) {
                     double totalPct = (totalPnl / totalInvested) * 100.0;
                     String pctSign  = totalPct >= 0 ? "+" : "";
@@ -289,14 +315,12 @@ public class PortfolioFragment extends Fragment {
                     tvTotalPct.setTextColor(totalPct >= 0 ? colorGain : colorLoss);
                 }
 
-                // Daily P&L בדולרים
                 if (tvDailyPnl != null) {
                     String sign = dailyPnl >= 0 ? "+" : "";
                     tvDailyPnl.setText(String.format(Locale.US, "%s$%.2f", sign, dailyPnl));
                     tvDailyPnl.setTextColor(dailyPnl >= 0 ? colorGain : colorLoss);
                 }
 
-                // Daily P&L באחוזים
                 if (tvDailyPct != null && totalInvested > 0) {
                     double dailyPct = (dailyPnl / totalInvested) * 100.0;
                     String pctSign  = dailyPct >= 0 ? "+" : "";
