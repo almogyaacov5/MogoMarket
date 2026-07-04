@@ -577,4 +577,87 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
     private int dpToPx(int dp) {
         return Math.round(dp * requireContext().getResources().getDisplayMetrics().density);
     }
+
+    private void enrichSuggestionsWithDailyChange(
+            List<ChartFragment.StockSuggestion> items,
+            java.util.function.Consumer<List<ChartFragment.StockSuggestion>> callback
+    ) {
+        if (items == null || items.isEmpty()) {
+            callback.accept(items);
+            return;
+        }
+
+        // נבנה רשימת סימבולים לחיפוש ב־Finnhub (או שירות אחר)
+        StringBuilder sb = new StringBuilder();
+        for (ChartFragment.StockSuggestion s : items) {
+            if (s == null || s.symbol == null || s.symbol.trim().isEmpty()) continue;
+            if (sb.length() > 0) sb.append(",");
+            sb.append(s.symbol.trim().toUpperCase(Locale.US));
+        }
+
+        if (sb.length() == 0) {
+            callback.accept(items);
+            return;
+        }
+
+        String symbolsParam = sb.toString();
+
+        try {
+            String encoded = URLEncoder.encode(symbolsParam, StandardCharsets.UTF_8.name());
+            // דוגמה API: כאן משתמשים ב-Finnhub quote (צריך להתאים ל-plan שלך)
+            String url = "https://finnhub.io/api/v1/quote?symbol=" + encoded + "&token=" + FINNHUB_KEY;
+
+            Request req = new Request.Builder().url(url).build();
+
+            client.newCall(req).enqueue(new Callback() {
+                @Override
+                public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                    // במקרה של כישלון: נחזיר את הרשימה בלי שינוי
+                    callback.accept(items);
+                }
+
+                @Override
+                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                    if (!response.isSuccessful() || response.body() == null) {
+                        callback.accept(items);
+                        return;
+                    }
+
+                    List<ChartFragment.StockSuggestion> enriched = new ArrayList<>();
+
+                    try {
+                        JSONObject root = new JSONObject(response.body().string());
+                        // כאן קוד לדוגמה: אם אתה משתמש ב-API אחר שמחזיר רשימה, צריך להתאים
+                        // לדוגמה: ציפייה לשדות c (current), pc (previous close)
+                        double current = root.optDouble("c", Double.NaN);
+                        double prev    = root.optDouble("pc", Double.NaN);
+                        float pct      = 0f;
+
+                        if (!Double.isNaN(current) && !Double.isNaN(prev) && prev != 0.0) {
+                            pct = (float) (((current - prev) / prev) * 100.0);
+                        }
+
+                        for (ChartFragment.StockSuggestion s : items) {
+                            if (s == null) continue;
+                            enriched.add(new ChartFragment.StockSuggestion(
+                                    s.symbol,
+                                    s.name,
+                                    s.exchange,
+                                    s.isSectionHeader,
+                                    s.sectionTitle,
+                                    s.isSectionHeader ? 0f : pct
+                            ));
+                        }
+                    } catch (Exception e) {
+                        enriched.clear();
+                        enriched.addAll(items);
+                    }
+
+                    callback.accept(enriched);
+                }
+            });
+        } catch (Exception e) {
+            callback.accept(items);
+        }
+    }
 }
