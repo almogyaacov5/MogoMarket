@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginVertical="2dp"
+    android:layout_marginHorizontal="4dp"
+    app:cardCornerRadius="0dp"
+    app:cardElevation="0dp"
+    app:strokeWidth="0dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="8dp">
+
+        <!-- לוגו / ראשי תיבות -->
+        <TextView
+            android:id="@+id/symbolLogo"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:gravity="center"
+            android:text="A"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="#FFE6EDF3"
+            android:background="@drawable/bg_symbol_circle" />
+
+        <!-- טקסטים -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginStart="8dp">
+
+            <TextView
+                android:id="@+id/symbolText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AAPL"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:textColor="#FFE6EDF3" />
+
+            <TextView
+                android:id="@+id/companyNameText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Apple Inc."
+                android:textSize="12sp"
+                android:textColor="#FF8B98A5" />
+        </LinearLayout>
+
+        <!-- שינוי יומי -->
+        <TextView
+            android:id="@+id/dailyChangeText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="+1.84%"
+            android:textStyle="bold"
+            android:textSize="12sp"
+            android:textColor="@color/gain" />
+
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

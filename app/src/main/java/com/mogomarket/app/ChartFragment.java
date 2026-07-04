@@ -1084,15 +1084,22 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 if (tickerText != null) {
                     tickerText.setText(cleanDisplaySymbol(sym));
                 }
+
                 if (tickerLabelTop != null) {
                     tickerLabelTop.setText(cleanDisplaySymbol(sym));
                 }
-                if (getActivity() != null) getActivity().setTitle("Chart: " + cleanDisplaySymbol(sym));
+
+                if (getActivity() != null) {
+                    getActivity().setTitle("Chart: " + cleanDisplaySymbol(sym));
+                }
 
                 hideCrosshairInfo();
 
-                if (isCandleStick) updateCandleChart(entries);
-                else updateLineChart(entries);
+                if (isCandleStick) {
+                    updateCandleChart(entries);
+                } else {
+                    updateLineChart(entries);
+                }
             });
         }
     }
