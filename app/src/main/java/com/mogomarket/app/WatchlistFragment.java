@@ -6,34 +6,32 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Canvas;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.text.Editable;
-import android.text.InputType;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.github.mikephil.charting.charts.CandleStickChart;
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.chip.Chip;
-import com.google.android.material.chip.ChipGroup;
-import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -49,6 +47,7 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -57,42 +56,36 @@ import okhttp3.Callback;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-
+import it.xabaras.android.recyclerview.swipedecorator.RecyclerViewSwipeDecorator;
 
 public class WatchlistFragment extends Fragment {
 
-    private static final String ALERT_CHANNEL_ID      = "stock_price_alerts";
-    private static final String PREFS_NAME            = "app_prefs";
-    public  static final String KEY_WATCHLIST_NAV     = "watchlist_navigate_to_chart";
-    public  static final String KEY_WATCHLIST_HIDE_KB = "watchlist_hide_keyboard_on_add";
+    public static final String PREFS_NAME            = "app_prefs";
+    public static final String KEY_WATCHLIST_SORT    = "watchlist_sort";
+    public static final String KEY_WATCHLIST_NAV     = "watchlist_navigate_to_chart";
+    public static final String KEY_WATCHLIST_HIDE_KB = "watchlist_hide_keyboard_on_add";
 
-    private static final String FINNHUB_KEY        = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
-    private static final long   SEARCH_DEBOUNCE_MS = 300;
+    private static final String FINNHUB_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
 
-    private static final long   AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000L;
-    private long                lastRefreshTime = 0L;
+    private EditText etSearch;
+    private AutoCompleteTextView etAddStock;
+    private ImageButton btnAdd;
+    private MaterialButton btnSort;
+    private RecyclerView recyclerView;
+    private WatchlistAdapter adapter;
 
-    private WatchlistAdapter  adapter;
     private DatabaseReference watchlistRef;
+    private ValueEventListener watchlistListener;
 
-    private final OkHttpClient httpClient    = new OkHttpClient();
-    private final Handler      searchHandler = new Handler(Looper.getMainLooper());
-    private Runnable           pendingSearch;
-    private String             latestQuery       = "";
-    private boolean            isManualSelection = false;
-
-    private int lastCheckedChipId = View.NO_ID;
+    private final OkHttpClient client = new OkHttpClient();
 
     private ArrayAdapter<ChartFragment.StockSuggestion> suggestionAdapter;
 
-    // ─── Helper: בדיקה אם המשתמש הנוכחי הוא אורח אנונימי ───────────────────────
-    private boolean isGuest() {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        return user != null && user.isAnonymous();
-    }
+    private final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private Runnable pendingSearch;
+    private static final long DEBOUNCE_MS = 250L;
 
-    // ─── Lifecycle ───────────────────────────────────────────────────────────────────────────
-
+    @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
@@ -116,7 +109,13 @@ public class WatchlistFragment extends Fragment {
                 SharedViewModel vm = new ViewModelProvider(requireActivity())
                         .get(SharedViewModel.class);
 
-                vm.setSelectedSymbol(symbol);
+                String mappedSymbol = mapSymbolForChart(symbol);
+                vm.setSelectedSymbol(mappedSymbol);
+
+                requireActivity().getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE)
+                        .edit()
+                        .putString(MainActivity.KEY_LAST_SYMBOL, mappedSymbol)
+                        .apply();
 
                 SharedPreferences prefs = requireActivity()
                         .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -127,270 +126,294 @@ public class WatchlistFragment extends Fragment {
                     Navigation.findNavController(requireView()).navigate(R.id.nav_chart);
                 }
             }
-            @Override public void onStockDelete(String symbol)      { deleteStock(symbol); }
-            @Override public void onSetPriceAlert(StockWatchData s) { showPriceAlertDialog(s); }
-            @Override public void onAlertStateChanged(String sym, boolean t) {
-                if (watchlistRef != null)
+
+            @Override
+            public void onStockDelete(String symbol) {
+                deleteStock(symbol);
+            }
+
+            @Override
+            public void onSetPriceAlert(StockWatchData s) {
+                showPriceAlertDialog(s);
+            }
+
+            @Override
+            public void onAlertStateChanged(String sym, boolean t) {
+                if (watchlistRef != null) {
                     watchlistRef.child(sym.replace(":", "_")).child("alertTriggered").setValue(t);
+                }
             }
         });
 
-        RecyclerView recyclerView = v.findViewById(R.id.watchlistRecyclerView);
+        recyclerView = v.findViewById(R.id.watchlistRecyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(adapter);
 
+        etSearch = v.findViewById(R.id.etSearchWatchlist);
+        etAddStock = v.findViewById(R.id.etAddWatchlistStock);
+        btnAdd = v.findViewById(R.id.btnAddWatchlist);
+        btnSort = v.findViewById(R.id.btnWatchlistSort);
+
+        setupSearchBox();
+        setupAddBox();
+        setupSortButton();
+        setupSwipeToDelete();
+        loadWatchlist();
+
+        return v;
+    }
+
+    private void setupSearchBox() {
+        if (etSearch == null) return;
+
+        etSearch.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
+            @Override public void onTextChanged(CharSequence s, int st, int b, int c) {}
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (adapter != null) {
+                    adapter.setSearchQuery(s.toString());
+                }
+            }
+        });
+    }
+
+    private void setupAddBox() {
+        if (etAddStock == null) return;
+
+        suggestionAdapter = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_dropdown_item_1line,
+                new ArrayList<>()
+        );
+
+        etAddStock.setAdapter(suggestionAdapter);
+        etAddStock.setThreshold(1);
+
+        etAddStock.setOnItemClickListener((parent, view, position, id) -> {
+            ChartFragment.StockSuggestion sel = suggestionAdapter.getItem(position);
+            if (sel != null) {
+                etAddStock.setText(sel.symbol);
+                etAddStock.setSelection(sel.symbol.length());
+                boolean hideKb = requireActivity()
+                        .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                        .getBoolean(KEY_WATCHLIST_HIDE_KB, true);
+                if (hideKb) hideKeyboard();
+            }
+        });
+
+        etAddStock.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
+            @Override public void onTextChanged(CharSequence s, int st, int b, int c) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                String q = s.toString().trim();
+                handler.removeCallbacks(pendingSearch);
+
+                if (q.isEmpty()) {
+                    clearSuggestions();
+                    return;
+                }
+
+                pendingSearch = () -> fetchSuggestions(q);
+                handler.postDelayed(pendingSearch, DEBOUNCE_MS);
+            }
+        });
+
+        if (btnAdd != null) {
+            btnAdd.setOnClickListener(v -> {
+                String symbol = etAddStock.getText().toString().trim();
+                if (symbol.isEmpty()) {
+                    Toast.makeText(getContext(), "Enter a symbol", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                addStock(symbol);
+            });
+        }
+
+        etAddStock.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                etAddStock.showDropDown();
+            }
+            return false;
+        });
+    }
+
+    private void setupSortButton() {
+        if (btnSort == null) return;
+
+        SharedPreferences prefs = requireActivity()
+                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+
+        String savedSort = prefs.getString(KEY_WATCHLIST_SORT, "default");
+        if (adapter != null) adapter.setSort(savedSort);
+
+        btnSort.setOnClickListener(v -> {
+            final String[] items = {
+                    "Default",
+                    "Symbol A-Z",
+                    "Symbol Z-A",
+                    "Price Low-High",
+                    "Price High-Low",
+                    "Change Low-High",
+                    "Change High-Low"
+            };
+
+            final String[] values = {
+                    "default",
+                    "symbol_asc",
+                    "symbol_desc",
+                    "price_asc",
+                    "price_desc",
+                    "change_asc",
+                    "change_desc"
+            };
+
+            String current = prefs.getString(KEY_WATCHLIST_SORT, "default");
+            int checked = 0;
+            for (int i = 0; i < values.length; i++) {
+                if (values[i].equals(current)) {
+                    checked = i;
+                    break;
+                }
+            }
+
+            new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                    .setTitle("Sort watchlist")
+                    .setSingleChoiceItems(items, checked, (dialog, which) -> {
+                        String val = values[which];
+                        prefs.edit().putString(KEY_WATCHLIST_SORT, val).apply();
+                        if (adapter != null) adapter.setSort(val);
+                        dialog.dismiss();
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+        });
+    }
+
+    private void setupSwipeToDelete() {
         ItemTouchHelper.SimpleCallback dragCallback = new ItemTouchHelper.SimpleCallback(
-                ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
+                ItemTouchHelper.UP | ItemTouchHelper.DOWN,
+                ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT
+        ) {
             @Override
             public boolean onMove(@NonNull RecyclerView rv,
                                   @NonNull RecyclerView.ViewHolder vh,
                                   @NonNull RecyclerView.ViewHolder target) {
                 int from = vh.getAdapterPosition();
-                int to   = target.getAdapterPosition();
-                adapter.moveItem(from, to);
+                int to = target.getAdapterPosition();
+
+                List<StockWatchData> list = adapter.getCurrentItems();
+                if (from < 0 || to < 0 || from >= list.size() || to >= list.size()) return false;
+
+                Collections.swap(list, from, to);
+                adapter.notifyItemMoved(from, to);
                 return true;
             }
+
             @Override
-            public void onSwiped(@NonNull RecyclerView.ViewHolder vh, int direction) { /* no swipe */ }
+            public void onSwiped(@NonNull RecyclerView.ViewHolder vh, int direction) {
+                int pos = vh.getAdapterPosition();
+                List<StockWatchData> list = adapter.getCurrentItems();
+                if (pos >= 0 && pos < list.size()) {
+                    deleteStock(list.get(pos).symbol);
+                }
+            }
+
+            @Override
+            public void onChildDraw(@NonNull Canvas c,
+                                    @NonNull RecyclerView rv,
+                                    @NonNull RecyclerView.ViewHolder vh,
+                                    float dX,
+                                    float dY,
+                                    int actionState,
+                                    boolean isCurrentlyActive) {
+                new RecyclerViewSwipeDecorator.Builder(c, rv, vh, dX, dY, actionState, isCurrentlyActive)
+                        .addBackgroundColor(ContextCompat.getColor(requireContext(), android.R.color.holo_red_dark))
+                        .addActionIcon(android.R.drawable.ic_menu_delete)
+                        .create()
+                        .decorate();
+
+                super.onChildDraw(c, rv, vh, dX, dY, actionState, isCurrentlyActive);
+            }
         };
+
         new ItemTouchHelper(dragCallback).attachToRecyclerView(recyclerView);
+    }
 
-        AutoCompleteTextView autoInput = v.findViewById(R.id.stockAutoInput);
-        if (autoInput != null) {
-            setupAutoComplete(autoInput);
+    private void loadWatchlist() {
+        if (watchlistRef == null) return;
+
+        if (watchlistListener != null) {
+            watchlistRef.removeEventListener(watchlistListener);
         }
 
-        MaterialButton addStockBtn = v.findViewById(R.id.addStockBtn);
-        MaterialButton btnRefresh  = v.findViewById(R.id.btnRefreshWatchlist);
-
-        if (addStockBtn != null) {
-            addStockBtn.setOnClickListener(view -> {
-                // חסימת אורחים
-                if (isGuest()) {
-                    Toast.makeText(getContext(),
-                            "כניסה כאורח — אין אפשרות לשמור רשימת מעקב. התחבר עם חשבון.",
-                            Toast.LENGTH_LONG).show();
-                    return;
-                }
-
-                String raw = "";
-                if (autoInput != null) {
-                    raw = autoInput.getText().toString().trim();
-                }
-
-                if (raw.isEmpty()) {
-                    Toast.makeText(getContext(), "הזן סימבול", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                String upperRaw     = raw.toUpperCase(Locale.US);
-                String cryptoMapped = CryptoHelper.CRYPTO_MAP.get(upperRaw);
-                String symbol;
-                if (cryptoMapped != null) {
-                    symbol = cryptoMapped;
-                } else if (raw.contains(":")) {
-                    symbol = raw.trim();
-                } else {
-                    symbol = upperRaw;
-                }
-
-                String firebaseKey = symbol.replace(":", "_");
-                StockWatchData stock = new StockWatchData(symbol, 0f, 0f);
-                watchlistRef.child(firebaseKey).setValue(stock);
-
-                if (autoInput != null) autoInput.setText("");
-
-                SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-                boolean hideKb = prefs.getBoolean(KEY_WATCHLIST_HIDE_KB, true);
-                if (hideKb) hideKeyboard();
-
-                Toast.makeText(getContext(), symbol + " נוסף!", Toast.LENGTH_SHORT).show();
-            });
-        }
-
-        if (btnRefresh != null)
-            btnRefresh.setOnClickListener(view -> {
-                lastRefreshTime = 0L;
-                adapter.refresh();
-            });
-
-        com.google.android.material.textfield.TextInputEditText searchInput = v.findViewById(R.id.searchInput);
-        if (searchInput != null) {
-            searchInput.addTextChangedListener(new TextWatcher() {
-                @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
-                @Override public void onTextChanged(CharSequence s, int st, int b, int c) {
-                    adapter.setSearch(s.toString());
-                }
-                @Override public void afterTextChanged(Editable s) {}
-            });
-        }
-
-        ChipGroup sortChipGroup = v.findViewById(R.id.sortChipGroup);
-        Chip chipOrder = v.findViewById(R.id.chipSortOrder);
-
-        if (sortChipGroup != null) {
-            sortChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
-                if (checkedIds.isEmpty()) {
-                    adapter.setFilter("default");
-                    lastCheckedChipId = View.NO_ID;
-                    return;
-                }
-
-                int id = checkedIds.get(0);
-
-                if (id == lastCheckedChipId) {
-                    group.clearCheck();
-                    adapter.setFilter("default");
-                    lastCheckedChipId = View.NO_ID;
-                    return;
-                }
-
-                lastCheckedChipId = id;
-
-                if (id == R.id.chipSortGain) {
-                    adapter.setFilter("gain");
-                } else if (id == R.id.chipSortLoss) {
-                    adapter.setFilter("loss");
-                } else if (id == R.id.chipSortAlpha) {
-                    adapter.setFilter("alpha");
-                } else if (id == R.id.chipSortOrder) {
-                    adapter.toggleSortOrder();
-                    if (chipOrder != null) {
-                        chipOrder.setText(adapter.isSortAscending()
-                                ? "\u25b2 \u05e2\u05d5\u05dc\u05d4"
-                                : "\u25bc \u05d9\u05d5\u05e8\u05d3");
-                    }
-                    adapter.setFilter("order");
-                }
-            });
-        }
-
-        watchlistRef.addValueEventListener(new ValueEventListener() {
+        watchlistListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                List<StockWatchData> fresh = new ArrayList<>();
-                for (DataSnapshot ds : snapshot.getChildren()) {
-                    StockWatchData data = ds.getValue(StockWatchData.class);
+                List<StockWatchData> list = new ArrayList<>();
+
+                for (DataSnapshot child : snapshot.getChildren()) {
+                    StockWatchData data = child.getValue(StockWatchData.class);
+                    String key = child.getKey();
+
                     if (data == null) continue;
-                    if (data.symbol == null || data.symbol.isEmpty()) {
-                        String key = ds.getKey();
-                        data.symbol = (key != null) ? key.replace("_", ":") : "";
-                    }
-                    if (!data.symbol.isEmpty()) fresh.add(data);
+
+                    data.symbol = (key != null) ? key.replace("_", ":") : "";
+                    list.add(data);
                 }
-                adapter.updateData(fresh);
+
+                if (adapter != null) {
+                    adapter.setItems(list);
+                }
             }
+
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                if (getContext() != null)
-                    Toast.makeText(getContext(), "שגיאה בטעינת רשימת המעקב", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        return v;
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        if (adapter == null) return;
-        long now = System.currentTimeMillis();
-        if (now - lastRefreshTime >= AUTO_REFRESH_INTERVAL_MS) {
-            lastRefreshTime = now;
-            adapter.refresh();
-        }
-    }
-
-    // ─── AutoComplete ───────────────────────────────────────────────────────────────────
-
-    private void setupAutoComplete(AutoCompleteTextView input) {
-        suggestionAdapter = new ArrayAdapter<ChartFragment.StockSuggestion>(
-                requireContext(),
-                android.R.layout.simple_dropdown_item_1line,
-                new ArrayList<>()) {
-            @Override
-            public android.widget.Filter getFilter() {
-                return new android.widget.Filter() {
-                    @Override protected FilterResults performFiltering(CharSequence c) {
-                        FilterResults r = new FilterResults();
-                        r.values = new ArrayList<>(); r.count = 0; return r;
-                    }
-                    @Override protected void publishResults(CharSequence c, FilterResults r) {}
-                };
+                Toast.makeText(getContext(),
+                        "Failed to load watchlist: " + error.getMessage(),
+                        Toast.LENGTH_SHORT).show();
             }
         };
 
-        input.setAdapter(suggestionAdapter);
-        input.setThreshold(1);
-
-        input.setOnItemClickListener((parent, view, position, id) -> {
-            ChartFragment.StockSuggestion sel = suggestionAdapter.getItem(position);
-            if (sel == null || sel.symbol == null || sel.symbol.trim().isEmpty()) return;
-            String picked = sel.symbol.contains(":")
-                    ? sel.symbol.trim()
-                    : sel.symbol.trim().toUpperCase(Locale.US);
-            isManualSelection = true;
-            input.setText(picked);
-            input.setSelection(picked.length());
-            input.dismissDropDown();
-            clearSuggestions();
-            isManualSelection = false;
-        });
-
-        input.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
-            @Override public void afterTextChanged(Editable s) {}
-            @Override public void onTextChanged(CharSequence s, int st, int b, int c) {
-                if (isManualSelection) return;
-                scheduleSymbolSearch(s == null ? "" : s.toString().trim(), input);
-            }
-        });
+        watchlistRef.addValueEventListener(watchlistListener);
     }
 
-    private void scheduleSymbolSearch(String q, AutoCompleteTextView input) {
-        if (pendingSearch != null) searchHandler.removeCallbacks(pendingSearch);
-        latestQuery = q;
-        if (q.length() < 1) { clearSuggestions(); return; }
-        pendingSearch = () -> fetchSymbolSuggestions(q, input);
-        searchHandler.postDelayed(pendingSearch, SEARCH_DEBOUNCE_MS);
+    private void addStock(String rawSymbol) {
+        if (watchlistRef == null) return;
+
+        String symbol = rawSymbol.trim().toUpperCase(Locale.US);
+        if (symbol.isEmpty()) return;
+
+        String mappedSymbol = mapSymbolForChart(symbol);
+        String firebaseKey = mappedSymbol.replace(":", "_");
+
+        StockWatchData stock = new StockWatchData();
+        stock.symbol = mappedSymbol;
+        stock.currentPrice = 0f;
+        stock.dayChange = 0f;
+        stock.alertEnabled = false;
+        stock.alertTriggered = false;
+        stock.alertTargetPrice = 0f;
+
+        watchlistRef.child(firebaseKey).setValue(stock)
+                .addOnSuccessListener(unused -> {
+                    etAddStock.setText("");
+                    clearSuggestions();
+                    Toast.makeText(getContext(), "Added to watchlist", Toast.LENGTH_SHORT).show();
+                    hideKeyboard();
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(getContext(),
+                                "Failed to add: " + e.getMessage(),
+                                Toast.LENGTH_SHORT).show());
     }
 
-    private void fetchSymbolSuggestions(final String query, AutoCompleteTextView input) {
-        try {
-            String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name());
-            String url = "https://finnhub.io/api/v1/search?q=" + encoded + "&token=" + FINNHUB_KEY;
-            httpClient.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
-                @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {}
-                @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                    if (!response.isSuccessful() || response.body() == null) return;
-                    ArrayList<ChartFragment.StockSuggestion> list = new ArrayList<>();
-                    try {
-                        JSONObject json   = new JSONObject(response.body().string());
-                        JSONArray  result = json.optJSONArray("result");
-                        if (result == null) return;
-                        for (int i = 0; i < result.length(); i++) {
-                            JSONObject o = result.optJSONObject(i);
-                            if (o == null) continue;
-                            String sym  = o.optString("symbol",      "").trim();
-                            String name = o.optString("description", "");
-                            String type = o.optString("type",        "");
-                            if (sym.isEmpty()) continue;
-                            list.add(new ChartFragment.StockSuggestion(sym, name, type));
-                            if (list.size() >= 8) break;
-                        }
-                    } catch (Exception ignored) {}
-                    final ArrayList<ChartFragment.StockSuggestion> finalList = list;
-                    if (getActivity() == null) return;
-                    if (!query.equals(latestQuery)) return;
-                    getActivity().runOnUiThread(() -> {
-                        suggestionAdapter.clear();
-                        suggestionAdapter.addAll(finalList);
-                        suggestionAdapter.notifyDataSetChanged();
-                        if (!finalList.isEmpty() && input.isAttachedToWindow()) input.showDropDown();
-                    });
-                }
-            });
-        } catch (Exception ignored) {}
+    private void deleteStock(String symbol) {
+        if (watchlistRef == null) return;
+        String key = symbol.replace(":", "_");
+        watchlistRef.child(key).removeValue();
     }
 
     private void clearSuggestions() {
@@ -400,13 +423,30 @@ public class WatchlistFragment extends Fragment {
         }
     }
 
-    // ─── Helpers ─────────────────────────────────────────────────────────────────────────────
+    private String mapSymbolForChart(String raw) {
+        if (raw == null) return "";
+        String upper = raw.trim().toUpperCase(Locale.US);
+
+        String crypto = ChartFragment.CRYPTO_MAP.get(upper);
+        if (crypto != null) return crypto;
+
+        String forex = ChartFragment.FOREX_MAP.get(upper);
+        if (forex != null) return forex;
+
+        return upper;
+    }
 
     private void handleStockClick(String symbol) {
         SharedViewModel vm = new ViewModelProvider(requireActivity())
                 .get(SharedViewModel.class);
 
-        vm.setSelectedSymbol(symbol);
+        String mappedSymbol = mapSymbolForChart(symbol);
+        vm.setSelectedSymbol(mappedSymbol);
+
+        requireActivity().getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(MainActivity.KEY_LAST_SYMBOL, mappedSymbol)
+                .apply();
 
         SharedPreferences prefs = requireActivity()
                 .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -418,87 +458,111 @@ public class WatchlistFragment extends Fragment {
         }
     }
 
-    private void deleteStock(String symbol) {
-        // חסימת אורחים
-        if (isGuest()) {
-            Toast.makeText(getContext(),
-                    "כניסה כאורח — לא ניתן לבצע שינויים. התחבר עם חשבון.",
-                    Toast.LENGTH_SHORT).show();
-            return;
+    private void fetchSuggestions(String query) {
+        try {
+            String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name());
+            String url = "https://finnhub.io/api/v1/search?q=" + encoded + "&token=" + FINNHUB_KEY;
+
+            Request req = new Request.Builder().url(url).build();
+            client.newCall(req).enqueue(new Callback() {
+                @Override
+                public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                }
+
+                @Override
+                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                    if (!response.isSuccessful() || response.body() == null) return;
+
+                    try {
+                        JSONObject root = new JSONObject(response.body().string());
+                        JSONArray arr = root.optJSONArray("result");
+
+                        ArrayList<ChartFragment.StockSuggestion> list = new ArrayList<>();
+
+                        if (arr != null) {
+                            for (int i = 0; i < Math.min(arr.length(), 12); i++) {
+                                JSONObject o = arr.getJSONObject(i);
+                                String sym = o.optString("symbol", "");
+                                String name = o.optString("description", "");
+                                String type = o.optString("type", "");
+                                if (!sym.isEmpty()) {
+                                    list.add(new ChartFragment.StockSuggestion(sym, name, type));
+                                }
+                            }
+                        }
+
+                        requireActivity().runOnUiThread(() -> {
+                            suggestionAdapter.clear();
+                            suggestionAdapter.addAll(list);
+                            suggestionAdapter.notifyDataSetChanged();
+                            if (!list.isEmpty()) etAddStock.showDropDown();
+                        });
+
+                    } catch (Exception ignored) {
+                    }
+                }
+            });
+        } catch (Exception ignored) {
         }
-        if (watchlistRef == null) return;
-        String key = symbol.replace(":", "_");
-        watchlistRef.child(key).removeValue();
-        Toast.makeText(getContext(), symbol + " הוסר", Toast.LENGTH_SHORT).show();
     }
 
     private void showPriceAlertDialog(StockWatchData stock) {
-        // חסימת אורחים
-        if (isGuest()) {
-            Toast.makeText(getContext(),
-                    "כניסה כאורח — לא ניתן להגדיר התראות. התחבר עם חשבון.",
-                    Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (getContext() == null) return;
-        EditText et = new EditText(getContext());
-        et.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        et.setHint("Target price (e.g. 200.00)");
-        if (stock.alertTargetPrice > 0)
-            et.setText(String.format(Locale.US, "%.2f", stock.alertTargetPrice));
+        final EditText input = new EditText(requireContext());
+        input.setHint("Target price");
 
-        new AlertDialog.Builder(getContext())
-                .setTitle("Set Price Alert for " + stock.symbol)
-                .setView(et)
-                .setPositiveButton("Set", (d, w) -> {
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Set price alert")
+                .setView(input)
+                .setPositiveButton("Save", (dialog, which) -> {
+                    String txt = input.getText().toString().trim();
+                    if (txt.isEmpty()) return;
+
                     try {
-                        float target = Float.parseFloat(et.getText().toString().trim());
+                        float target = Float.parseFloat(txt);
                         if (watchlistRef == null) return;
+
                         String key = stock.symbol.replace(":", "_");
                         watchlistRef.child(key).child("alertTargetPrice").setValue(target);
                         watchlistRef.child(key).child("alertEnabled").setValue(true);
                         watchlistRef.child(key).child("alertTriggered").setValue(false);
-                        stock.alertTargetPrice = target;
-                        stock.alertEnabled     = true;
-                        stock.alertTriggered   = false;
-                        Toast.makeText(getContext(),
-                                "Alert set at $" + target + " for " + stock.symbol,
-                                Toast.LENGTH_SHORT).show();
-                    } catch (NumberFormatException e) {
-                        Toast.makeText(getContext(), "Invalid price", Toast.LENGTH_SHORT).show();
+                    } catch (Exception e) {
+                        Toast.makeText(getContext(), "Invalid number", Toast.LENGTH_SHORT).show();
                     }
                 })
-                .setNeutralButton("Remove", (d, w) -> {
+                .setNeutralButton("Disable", (dialog, which) -> {
                     if (watchlistRef == null) return;
+
                     String key = stock.symbol.replace(":", "_");
                     watchlistRef.child(key).child("alertEnabled").setValue(false);
                     watchlistRef.child(key).child("alertTargetPrice").setValue(0);
-                    stock.alertEnabled     = false;
-                    stock.alertTargetPrice = 0;
+                    watchlistRef.child(key).child("alertTriggered").setValue(false);
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
     }
 
     private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && getContext() != null) {
-            NotificationChannel channel = new NotificationChannel(
-                    ALERT_CHANNEL_ID,
-                    "Stock Price Alerts",
-                    NotificationManager.IMPORTANCE_HIGH);
-            channel.setDescription("Alerts when stocks hit target price");
-            NotificationManager nm = getContext().getSystemService(NotificationManager.class);
-            if (nm != null) nm.createNotificationChannel(channel);
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+
+        NotificationChannel channel = new NotificationChannel(
+                "price_alerts",
+                "Price Alerts",
+                NotificationManager.IMPORTANCE_HIGH
+        );
+        channel.setDescription("Notifications for watchlist target prices");
+
+        NotificationManager manager =
+                requireContext().getSystemService(NotificationManager.class);
+        if (manager != null) {
+            manager.createNotificationChannel(channel);
         }
     }
 
     private void hideKeyboard() {
-        if (getActivity() == null) return;
-        View view = getActivity().getCurrentFocus();
-        if (view == null) view = getView();
+        View view = requireActivity().getCurrentFocus();
         if (view != null) {
             InputMethodManager imm = (InputMethodManager)
-                    getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
+                    requireActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm != null) imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
         }
     }

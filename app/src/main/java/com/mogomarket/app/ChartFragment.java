@@ -255,6 +255,19 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
     }
 
+
+
+
+
+    private String formatPrice(float price, String sym) {
+        if (isForexSymbol(sym)) {
+            return String.format(Locale.US, "%.4f", price);
+        }
+        return String.format(Locale.US, "%.2f", price);
+    }
+
+
+
     private boolean isCryptoSymbol(String sym) {
         return sym != null && sym.contains(":");
     }
@@ -365,12 +378,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
         String cleanSymbol = newSymbol.trim().toUpperCase(Locale.US);
 
-        // בדוק קריפטו קודם
         String cryptoMapped = CRYPTO_MAP.get(cleanSymbol);
         if (cryptoMapped != null) {
             cleanSymbol = cryptoMapped;
         } else {
-            // בדוק פורקס
             String forexMapped = FOREX_MAP.get(cleanSymbol);
             if (forexMapped != null) {
                 cleanSymbol = forexMapped;
@@ -396,7 +407,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             getActivity().setTitle("Chart: " + cleanDisplaySymbol(cleanSymbol));
         }
 
-        fetchStockData(cleanSymbol, interval);
+        fetchStockData(symbol, interval);
     }
 
     @Override
@@ -406,9 +417,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         SharedViewModel vm = new ViewModelProvider(requireActivity())
                 .get(SharedViewModel.class);
 
-        vm.getSelectedSymbol().observe(getViewLifecycleOwner(), symbol -> {
-            if (symbol != null && !symbol.trim().isEmpty()) {
-                loadChartForSymbol(symbol.trim());
+        vm.getSelectedSymbol().observe(getViewLifecycleOwner(), selected -> {
+            if (selected != null && !selected.trim().isEmpty()) {
+                loadChartForSymbol(selected.trim());
             }
         });
 
@@ -431,7 +442,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     private void updateTickerLabelTop() {
         if (tickerLabelTop == null) return;
-        tickerLabelTop.setText(cleanDisplaySymbol(symbol));
+        tickerLabelTop.setText("");
     }
 
     private void updateTimeframePickerLabel() {
@@ -587,12 +598,15 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private void showCrosshairInfo(float price, String date) {
         if (crosshairInfoBar == null) return;
         isCrosshairActive = true;
+
         if (crosshairPrice != null) {
-            crosshairPrice.setText("$" + String.format(Locale.US, "%.2f", price));
+            crosshairPrice.setText("$" + formatPrice(price, symbol));
         }
+
         if (crosshairDate != null) {
             crosshairDate.setText(date);
         }
+
         crosshairInfoBar.setVisibility(View.VISIBLE);
     }
 
@@ -1039,28 +1053,44 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         currentEntries.clear();
         currentEntries.addAll(entries);
         lastPrice = lastClose;
-        float change  = lastClose - prevClose;
-        float changePct = prevClose != 0 ? (change / prevClose) * 100f : 0f;
-        boolean gain  = change >= 0;
-        String changeStr = String.format(Locale.US, "%s$%.2f (%.2f%%)",
-                gain ? "+" : "-", Math.abs(change), Math.abs(changePct));
 
-        if (getActivity() != null) getActivity().runOnUiThread(() -> {
-            if (priceText  != null) {
-                priceText.setText("$" + String.format(Locale.US, "%.2f", lastClose));
-                priceText.setTextColor(gain ? COLOR_GAIN : COLOR_LOSS);
-            }
-            if (changeText != null) {
-                changeText.setText(changeStr);
-                changeText.setTextColor(gain ? COLOR_GAIN : COLOR_LOSS);
-            }
-            if (tickerText     != null) tickerText.setText(cleanDisplaySymbol(sym));
-            if (tickerLabelTop != null) tickerLabelTop.setText(cleanDisplaySymbol(sym));
-            if (getActivity() != null) getActivity().setTitle("Chart: " + cleanDisplaySymbol(sym));
-            hideCrosshairInfo();
-            if (isCandleStick) updateCandleChart(entries);
-            else               updateLineChart(entries);
-        });
+        float change = lastClose - prevClose;
+        float changePct = prevClose != 0 ? (change / prevClose) * 100f : 0f;
+        boolean gain = change >= 0;
+
+        String priceFormatted = formatPrice(lastClose, sym);
+        String changeFormatted = formatPrice(Math.abs(change), sym);
+
+        String changeStr = String.format(
+                Locale.US,
+                "%s$%s (%.2f%%)",
+                gain ? "+" : "-",
+                changeFormatted,
+                Math.abs(changePct)
+        );
+
+        if (getActivity() != null) {
+            getActivity().runOnUiThread(() -> {
+                if (priceText != null) {
+                    priceText.setText("$" + priceFormatted);
+                    priceText.setTextColor(gain ? COLOR_GAIN : COLOR_LOSS);
+                }
+
+                if (changeText != null) {
+                    changeText.setText(changeStr);
+                    changeText.setTextColor(gain ? COLOR_GAIN : COLOR_LOSS);
+                }
+
+                if (tickerText != null) tickerText.setText(cleanDisplaySymbol(sym));
+                if (tickerLabelTop != null) tickerLabelTop.setText("");
+                if (getActivity() != null) getActivity().setTitle("Chart: " + cleanDisplaySymbol(sym));
+
+                hideCrosshairInfo();
+
+                if (isCandleStick) updateCandleChart(entries);
+                else updateLineChart(entries);
+            });
+        }
     }
 
     private void openChartFromInput(String raw) {
