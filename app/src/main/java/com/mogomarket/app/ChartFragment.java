@@ -238,19 +238,59 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private static final long SEARCH_DEBOUNCE_MS = 300;
 
     public static class StockSuggestion {
-        public final String symbol, name, exchange;
+        public final String symbol;
+        public final String name;
+        public final String exchange;
+
+        // שדות חדשים
+        public final boolean isSectionHeader;
+        public final String sectionTitle;
+        public final float dailyChangePercent;
+
         public StockSuggestion(String symbol, String name, String exchange) {
-            this.symbol = symbol;
-            this.name = name;
-            this.exchange = exchange;
+            this(symbol, name, exchange, false, null, 0f);
         }
+
+        public StockSuggestion(String symbol,
+                               String name,
+                               String exchange,
+                               boolean isSectionHeader,
+                               String sectionTitle,
+                               float dailyChangePercent) {
+            this.symbol            = symbol;
+            this.name              = name;
+            this.exchange          = exchange;
+            this.isSectionHeader   = isSectionHeader;
+            this.sectionTitle      = sectionTitle;
+            this.dailyChangePercent = dailyChangePercent;
+        }
+
+        // יצירת אובייקט section header
+        public static StockSuggestion section(String title) {
+            return new StockSuggestion(
+                    null,
+                    null,
+                    null,
+                    true,
+                    title,
+                    0f
+            );
+        }
+
         @NonNull
         @Override
         public String toString() {
+            // משמש רק במקומות ישנים שמשתמשים ב-simple_list_item_1
+            if (isSectionHeader) {
+                return sectionTitle != null ? sectionTitle : "";
+            }
+
             String s = symbol == null ? "" : symbol;
             String n = name   == null ? "" : name;
+
             if (n.isEmpty()) return s;
             if (n.length() > 30) n = n.substring(0, 28) + "...";
+
             return s + "  \u00b7  " + n;
         }
     }
