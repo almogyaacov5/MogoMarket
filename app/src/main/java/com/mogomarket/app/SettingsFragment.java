@@ -22,10 +22,10 @@ import com.google.firebase.auth.FirebaseUser;
 
 public class SettingsFragment extends Fragment {
 
-    private static final String PREFS_NAME             = "app_prefs";
-    private static final String KEY_THEME              = "dark_mode";
-    private static final String KEY_PRICE_ALERTS       = "price_alerts_enabled";
-    private static final String KEY_DAILY_EMAIL        = "daily_email_enabled";
+    private static final String PREFS_NAME       = "app_prefs";
+    private static final String KEY_THEME        = "dark_mode";
+    private static final String KEY_PRICE_ALERTS = "price_alerts_enabled";
+    private static final String KEY_DAILY_EMAIL  = "daily_email_enabled";
 
     private LinearLayout btnLightMode, btnDarkMode;
     private TextView tvThemeStatus;
@@ -51,7 +51,7 @@ public class SettingsFragment extends Fragment {
 
         prefs = requireActivity().getSharedPreferences(PREFS_NAME, 0);
 
-        // ── Theme ──────────────────────────────────────────────────────────────
+        // Theme
         btnLightMode  = v.findViewById(R.id.btnLightMode);
         btnDarkMode   = v.findViewById(R.id.btnDarkMode);
         tvThemeStatus = v.findViewById(R.id.tvThemeStatus);
@@ -73,7 +73,7 @@ public class SettingsFragment extends Fragment {
             updateThemeUI(true);
         });
 
-        // ── Toggle: Watchlist nav ──────────────────────────────────────────────
+        // Watchlist navigation
         SwitchMaterial switchWatchlistNav = v.findViewById(R.id.switchWatchlistNav);
         if (switchWatchlistNav != null) {
             switchWatchlistNav.setChecked(prefs.getBoolean(WatchlistFragment.KEY_WATCHLIST_NAV, true));
@@ -81,6 +81,7 @@ public class SettingsFragment extends Fragment {
                     prefs.edit().putBoolean(WatchlistFragment.KEY_WATCHLIST_NAV, isChecked).apply());
         }
 
+        // Hide keyboard on add
         SwitchMaterial switchHideKeyboard = v.findViewById(R.id.switchHideKeyboardOnAdd);
         if (switchHideKeyboard != null) {
             switchHideKeyboard.setChecked(prefs.getBoolean(WatchlistFragment.KEY_WATCHLIST_HIDE_KB, true));
@@ -88,84 +89,80 @@ public class SettingsFragment extends Fragment {
                     prefs.edit().putBoolean(WatchlistFragment.KEY_WATCHLIST_HIDE_KB, isChecked).apply());
         }
 
-        // ── Switch: התראות מחיר יעד ────────────────────────────────────────────
+        // Price target alerts
         SwitchMaterial switchPriceAlerts = v.findViewById(R.id.switchPriceAlerts);
         if (switchPriceAlerts != null) {
             boolean alertsEnabled = prefs.getBoolean(KEY_PRICE_ALERTS, false);
             switchPriceAlerts.setChecked(alertsEnabled);
-            // הפעל או בטל את ה-scheduler בהתאם למצב השמור
+
             if (alertsEnabled) {
                 PriceAlertScheduler.schedule(requireContext());
             }
+
             switchPriceAlerts.setOnCheckedChangeListener((btn, isChecked) -> {
                 prefs.edit().putBoolean(KEY_PRICE_ALERTS, isChecked).apply();
                 if (isChecked) {
                     PriceAlertScheduler.schedule(requireContext());
                     Toast.makeText(requireContext(),
-                            "✅ התראות מחיר יעד הופעלו", Toast.LENGTH_SHORT).show();
+                            "Price target alerts enabled",
+                            Toast.LENGTH_SHORT).show();
                 } else {
                     PriceAlertScheduler.cancel(requireContext());
                     Toast.makeText(requireContext(),
-                            "🔕 התראות מחיר יעד בוטלו", Toast.LENGTH_SHORT).show();
+                            "Price target alerts disabled",
+                            Toast.LENGTH_SHORT).show();
                 }
             });
         }
 
-        // ── Switch: סיכום יומי אוטומטי במייל ──────────────────────────────────
+        // Daily summary email (automatic at 08:00)
         SwitchMaterial switchDailyEmail = v.findViewById(R.id.switchDailyEmail);
         if (switchDailyEmail != null) {
             boolean dailyEnabled = prefs.getBoolean(KEY_DAILY_EMAIL, false);
             switchDailyEmail.setChecked(dailyEnabled);
+
             if (dailyEnabled) {
                 DailySummaryEmailService.scheduleDailySummary(requireContext());
             }
+
             switchDailyEmail.setOnCheckedChangeListener((btn, isChecked) -> {
                 prefs.edit().putBoolean(KEY_DAILY_EMAIL, isChecked).apply();
                 if (isChecked) {
                     DailySummaryEmailService.scheduleDailySummary(requireContext());
                     Toast.makeText(requireContext(),
-                            "✅ סיכום יומי במייל הופעל (כל יום ב-08:00)", Toast.LENGTH_LONG).show();
+                            "Daily summary email enabled (every day at 08:00)",
+                            Toast.LENGTH_LONG).show();
                 } else {
-                    // ביטול ה-AlarmManager
                     android.app.AlarmManager alarmManager = (android.app.AlarmManager)
                             requireContext().getSystemService(android.content.Context.ALARM_SERVICE);
                     Intent cancelIntent = new Intent(requireContext(), DailySummaryEmailService.class);
                     android.app.PendingIntent pi = android.app.PendingIntent.getBroadcast(
                             requireContext(), 0, cancelIntent,
                             android.app.PendingIntent.FLAG_UPDATE_CURRENT |
-                            android.app.PendingIntent.FLAG_IMMUTABLE);
-                    if (alarmManager != null) alarmManager.cancel(pi);
+                                    android.app.PendingIntent.FLAG_IMMUTABLE);
+                    if (alarmManager != null) {
+                        alarmManager.cancel(pi);
+                    }
                     Toast.makeText(requireContext(),
-                            "🔕 סיכום יומי במייל בוטל", Toast.LENGTH_SHORT).show();
+                            "Daily summary email disabled",
+                            Toast.LENGTH_SHORT).show();
                 }
             });
         }
 
-        // ── כפתור: שלח סיכום יומי עכשיו ──────────────────────────────────────
+        // Button: send daily summary manually now (opens email app)
         MaterialButton btnSendEmailNow = v.findViewById(R.id.btnSendDailyEmailNow);
         if (btnSendEmailNow != null) {
-            btnSendEmailNow.setOnClickListener(view -> {
-                FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-                if (user == null || user.isAnonymous()) {
-                    Toast.makeText(requireContext(),
-                            "⚠️ יש להתחבר עם חשבון כדי לשלוח מייל", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                // שליחה ידנית מיידית
-                Intent emailIntent = new Intent(requireContext(), DailySummaryEmailService.class);
-                requireContext().sendBroadcast(emailIntent);
-                Toast.makeText(requireContext(),
-                        "📧 הסיכום נשלח לכתובת " + user.getEmail(), Toast.LENGTH_LONG).show();
-            });
+            btnSendEmailNow.setOnClickListener(view -> sendDailySummaryEmailIntent());
         }
 
-        // ── Default symbol + mode toggle ───────────────────────────────────────
+        // Default symbol section
         setupDefaultSymbolSection(v);
 
-        // ── Start page selector ────────────────────────────────────────────────
+        // Start page selector
         setupStartPageSelector(v);
 
-        // ── Email + Version ────────────────────────────────────────────────────
+        // Account email
         TextView tvEmail = v.findViewById(R.id.tvUserEmail);
         if (tvEmail != null) {
             tvEmail.setTextColor(requireContext().getColor(R.color.primary));
@@ -174,10 +171,12 @@ public class SettingsFragment extends Fragment {
                 tvEmail.setText("Guest");
             } else {
                 tvEmail.setText(user != null && user.getEmail() != null
-                        ? user.getEmail() : "Guest");
+                        ? user.getEmail()
+                        : "Guest");
             }
         }
 
+        // App version
         TextView tvVersion = v.findViewById(R.id.tvAppVersion);
         if (tvVersion != null) {
             tvVersion.setTextColor(requireContext().getColor(R.color.text_secondary));
@@ -190,7 +189,7 @@ public class SettingsFragment extends Fragment {
             }
         }
 
-        // ── Logout ─────────────────────────────────────────────────────────────
+        // Logout
         MaterialButton btnLogout = v.findViewById(R.id.btnSettingsLogout);
         if (btnLogout != null) {
             btnLogout.setBackgroundTintList(
@@ -271,18 +270,18 @@ public class SettingsFragment extends Fragment {
     /** Start page selector — 5 buttons */
     private void setupStartPageSelector(View v) {
         int[] btnIds = {
-            R.id.btnStartChart,
-            R.id.btnStartWatchlist,
-            R.id.btnStartPortfolio,
-            R.id.btnStartTrades,
-            R.id.btnStartSettings
+                R.id.btnStartChart,
+                R.id.btnStartWatchlist,
+                R.id.btnStartPortfolio,
+                R.id.btnStartTrades,
+                R.id.btnStartSettings
         };
         int[] navIds = {
-            R.id.nav_chart,
-            R.id.nav_stocks,
-            R.id.nav_portfolio,
-            R.id.nav_closed_trades,
-            R.id.nav_settings
+                R.id.nav_chart,
+                R.id.nav_stocks,
+                R.id.nav_portfolio,
+                R.id.nav_closed_trades,
+                R.id.nav_settings
         };
 
         int savedNavId = prefs.getInt(MainActivity.KEY_START_PAGE, R.id.nav_chart);
@@ -314,13 +313,17 @@ public class SettingsFragment extends Fragment {
     @Override
     public void onStart() {
         super.onStart();
-        if (prefs != null) prefs.registerOnSharedPreferenceChangeListener(prefListener);
+        if (prefs != null) {
+            prefs.registerOnSharedPreferenceChangeListener(prefListener);
+        }
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        if (prefs != null) prefs.unregisterOnSharedPreferenceChangeListener(prefListener);
+        if (prefs != null) {
+            prefs.unregisterOnSharedPreferenceChangeListener(prefListener);
+        }
     }
 
     @Override
@@ -357,8 +360,60 @@ public class SettingsFragment extends Fragment {
     private void setChildTextColors(LinearLayout layout, int color) {
         for (int i = 0; i < layout.getChildCount(); i++) {
             View child = layout.getChildAt(i);
-            if (child instanceof TextView)
+            if (child instanceof TextView) {
                 ((TextView) child).setTextColor(color);
+            }
+        }
+    }
+
+    /** Opens email app with daily summary prefilled */
+    private void sendDailySummaryEmailIntent() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null || user.isAnonymous()) {
+            Toast.makeText(requireContext(),
+                    "You must be signed in to send a daily summary email",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String toEmail = user.getEmail();
+        if (toEmail == null || toEmail.trim().isEmpty()) {
+            Toast.makeText(requireContext(),
+                    "No email address found for this account",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String dateStr = new java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+                .format(new java.util.Date());
+
+        String body = "Daily Summary - MogoMarket | " + dateStr + "\n\n"
+                + "Today's market summary:\n"
+                + "- Major indices and general market direction\n"
+                + "- Watchlist performance overview\n"
+                + "- Major gainers\n"
+                + "- Major losers\n\n"
+                + "Portfolio and trades:\n"
+                + "- Open watchlist and portfolio review\n"
+                + "- Closed trades performance summary\n\n"
+                + "Generated by MogoMarket.";
+
+        String subject = "MogoMarket Daily Summary - " + dateStr;
+
+        android.net.Uri mailUri = android.net.Uri.parse("mailto:" + android.net.Uri.encode(toEmail));
+
+        Intent emailIntent = new Intent(Intent.ACTION_SENDTO);
+        emailIntent.setData(mailUri);
+        emailIntent.putExtra(Intent.EXTRA_EMAIL, new String[]{toEmail});
+        emailIntent.putExtra(Intent.EXTRA_SUBJECT, subject);
+        emailIntent.putExtra(Intent.EXTRA_TEXT, body);
+
+        if (emailIntent.resolveActivity(requireContext().getPackageManager()) != null) {
+            startActivity(emailIntent);
+        } else {
+            Toast.makeText(requireContext(),
+                    "No email app found on this device",
+                    Toast.LENGTH_SHORT).show();
         }
     }
 }

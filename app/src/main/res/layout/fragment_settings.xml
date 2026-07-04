@@ -348,9 +348,7 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- ════════════════════════════════════════════════════════════ -->
-        <!-- Notifications Card (NEW)                                    -->
-        <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- Notifications & Summary Card (English only) -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -370,13 +368,11 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="&#128276;  &#1492;&#1514;&#1512;&#1488;&#1493;&#1514; &#1493;&#1505;&#1497;&#1499;&#1493;&#1502;&#1497;&#1501;"
+                    android:text="&#128276;  Notifications and summaries"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="16sp"
                     android:textStyle="bold"
-                    android:layout_marginBottom="14dp"
-                    android:gravity="end"
-                    android:textDirection="rtl" />
+                    android:layout_marginBottom="14dp" />
 
                 <!-- Row 1: Price target alerts -->
                 <LinearLayout
@@ -401,22 +397,18 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="&#1492;&#1514;&#1512;&#1488;&#1493;&#1514; &#1502;&#1495;&#1497;&#1512; &#1497;&#1506;&#1491;"
+                            android:text="Price target alerts"
                             android:textColor="?attr/colorOnSurface"
                             android:textSize="15sp"
-                            android:textStyle="bold"
-                            android:gravity="end"
-                            android:textDirection="rtl" />
+                            android:textStyle="bold" />
 
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="&#1492;&#1514;&#1512;&#1488;&#1492; &#1499;&#1513;&#1502;&#1495;&#1497;&#1512; &#1502;&#1504;&#1497;&#1492; &#1489;&#1508;&#1493;&#1512;&#1496;&#1508;&#1493;&#1500;&#1497;&#1493; &#1502;&#1490;&#1497;&#1506; &#1500;&#1502;&#1495;&#1497;&#1512; &#1492;&#1497;&#1506;&#1491; &#8211; &#1499;&#1500; 15 &#1491;&#1511;"
+                            android:text="Alert when a stock in your portfolio reaches its target price – every 15 minutes"
                             android:textColor="?attr/colorOnSurfaceVariant"
                             android:textSize="12sp"
-                            android:layout_marginTop="2dp"
-                            android:gravity="end"
-                            android:textDirection="rtl" />
+                            android:layout_marginTop="2dp" />
 
                     </LinearLayout>
 
@@ -451,22 +443,18 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="&#1505;&#1497;&#1499;&#1493;&#1501; &#1497;&#1493;&#1502;&#1497; &#1489;&#1502;&#1497;&#1497;&#1500;"
+                            android:text="Daily summary email"
                             android:textColor="?attr/colorOnSurface"
                             android:textSize="15sp"
-                            android:textStyle="bold"
-                            android:gravity="end"
-                            android:textDirection="rtl" />
+                            android:textStyle="bold" />
 
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="&#1502;&#1497;&#1497;&#1500; &#1488;&#1493;&#1496;&#1493;&#1502;&#1496;&#1497; &#1499;&#1500; &#1497;&#1493;&#1501; &#1489;-08:00 &#1506;&#1501; &#1505;&#1497;&#1499;&#1493;&#1501; &#1492;&#1508;&#1493;&#1512;&#1496;&#1508;&#1493;&#1500;&#1497;&#1493; &#1493;&#1492;&#1496;&#1512;&#1497;&#1497;&#1491;&#1497;&#1501; &#1492;&#1505;&#1490;&#1493;&#1512;&#1497;&#1501;"
+                            android:text="Receive a daily email at 08:00 with portfolio and trades performance"
                             android:textColor="?attr/colorOnSurfaceVariant"
                             android:textSize="12sp"
-                            android:layout_marginTop="2dp"
-                            android:gravity="end"
-                            android:textDirection="rtl" />
+                            android:layout_marginTop="2dp" />
 
                     </LinearLayout>
 
@@ -477,7 +465,7 @@
                     android:id="@+id/btnSendDailyEmailNow"
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
-                    android:text="&#128231; &#1513;&#1500;&#1495; &#1505;&#1497;&#1499;&#1493;&#1501; &#1506;&#1499;&#1513;&#1497;&#1493;"
+                    android:text="&#128231; Send daily summary now"
                     android:textAllCaps="false"
                     android:textSize="14sp"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
@@ -486,7 +474,6 @@
 
             </LinearLayout>
         </androidx.cardview.widget.CardView>
-        <!-- ════════════════════════════════════════════════════════════ -->
 
         <!-- Default Symbol Card -->
         <androidx.cardview.widget.CardView
