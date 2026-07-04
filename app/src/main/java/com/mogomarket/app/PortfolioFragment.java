@@ -1,5 +1,6 @@
 package com.mogomarket.app;
 
+import androidx.navigation.Navigation;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -186,12 +187,8 @@ public class PortfolioFragment extends Fragment {
                         Toast.LENGTH_SHORT).show();
                 return;
             }
-            requireActivity().getSupportFragmentManager()
-                    .beginTransaction()
-                    .replace(R.id.fragment_container,   // ✅ תוקן: fragment_container
-                            new PortfolioAddStockFragment())
-                    .addToBackStack(null)
-                    .commit();
+
+            Navigation.findNavController(view).navigate(R.id.portfolioAddStockFragment);
         });
 
         return v;

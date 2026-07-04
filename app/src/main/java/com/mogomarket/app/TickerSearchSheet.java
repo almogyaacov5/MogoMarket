@@ -56,42 +56,70 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
     private Runnable pendingSearch;
     private String currentSymbol = "SPY";
 
-    // Popular — כולל קריפטו
+    // ── Popular ─────────────────────────────────────────────────────────────
     private static final List<ChartFragment.StockSuggestion> POPULAR = Arrays.asList(
-        new ChartFragment.StockSuggestion("SPY",  "S&P 500 ETF",        "ETF"),
-        new ChartFragment.StockSuggestion("AAPL", "Apple Inc.",          "NASDAQ"),
-        new ChartFragment.StockSuggestion("TSLA", "Tesla Inc.",          "NASDAQ"),
-        new ChartFragment.StockSuggestion("NVDA", "NVIDIA Corporation",  "NASDAQ"),
-        new ChartFragment.StockSuggestion("AMZN", "Amazon.com Inc.",     "NASDAQ"),
-        new ChartFragment.StockSuggestion("MSFT", "Microsoft Corp.",     "NASDAQ"),
-        new ChartFragment.StockSuggestion("BTC",  "Bitcoin",             "CRYPTO"),
-        new ChartFragment.StockSuggestion("ETH",  "Ethereum",            "CRYPTO"),
-        new ChartFragment.StockSuggestion("SOL",  "Solana",              "CRYPTO"),
-        new ChartFragment.StockSuggestion("XRP",  "Ripple",              "CRYPTO")
+            new ChartFragment.StockSuggestion("SPY",     "S&P 500 ETF",        "ETF"),
+            new ChartFragment.StockSuggestion("AAPL",    "Apple Inc.",          "NASDAQ"),
+            new ChartFragment.StockSuggestion("TSLA",    "Tesla Inc.",          "NASDAQ"),
+            new ChartFragment.StockSuggestion("NVDA",    "NVIDIA Corporation",  "NASDAQ"),
+            new ChartFragment.StockSuggestion("AMZN",    "Amazon.com Inc.",     "NASDAQ"),
+            new ChartFragment.StockSuggestion("MSFT",    "Microsoft Corp.",     "NASDAQ"),
+            new ChartFragment.StockSuggestion("BTC",     "Bitcoin",             "CRYPTO"),
+            new ChartFragment.StockSuggestion("ETH",     "Ethereum",            "CRYPTO"),
+            new ChartFragment.StockSuggestion("SOL",     "Solana",              "CRYPTO"),
+            new ChartFragment.StockSuggestion("XRP",     "Ripple",              "CRYPTO"),
+            new ChartFragment.StockSuggestion("EURUSD",  "Euro / US Dollar",    "FOREX"),
+            new ChartFragment.StockSuggestion("USDILS",  "US Dollar / Israeli Shekel", "FOREX"),
+            new ChartFragment.StockSuggestion("GBPUSD",  "British Pound / USD", "FOREX"),
+            new ChartFragment.StockSuggestion("USDJPY",  "US Dollar / Japanese Yen", "FOREX")
     );
 
-    // רשימת קריפטו מקומית לסינון
+    // ── רשימת קריפטו מקומית ─────────────────────────────────────────────────
     private static final List<ChartFragment.StockSuggestion> CRYPTO_LIST = Arrays.asList(
-        new ChartFragment.StockSuggestion("BTC",   "Bitcoin",          "CRYPTO"),
-        new ChartFragment.StockSuggestion("ETH",   "Ethereum",         "CRYPTO"),
-        new ChartFragment.StockSuggestion("SOL",   "Solana",           "CRYPTO"),
-        new ChartFragment.StockSuggestion("XRP",   "Ripple",           "CRYPTO"),
-        new ChartFragment.StockSuggestion("BNB",   "Binance Coin",     "CRYPTO"),
-        new ChartFragment.StockSuggestion("ADA",   "Cardano",          "CRYPTO"),
-        new ChartFragment.StockSuggestion("DOGE",  "Dogecoin",         "CRYPTO"),
-        new ChartFragment.StockSuggestion("AVAX",  "Avalanche",        "CRYPTO"),
-        new ChartFragment.StockSuggestion("DOT",   "Polkadot",         "CRYPTO"),
-        new ChartFragment.StockSuggestion("LINK",  "Chainlink",        "CRYPTO"),
-        new ChartFragment.StockSuggestion("MATIC", "Polygon",          "CRYPTO"),
-        new ChartFragment.StockSuggestion("LTC",   "Litecoin",         "CRYPTO"),
-        new ChartFragment.StockSuggestion("UNI",   "Uniswap",          "CRYPTO"),
-        new ChartFragment.StockSuggestion("SHIB",  "Shiba Inu",        "CRYPTO"),
-        new ChartFragment.StockSuggestion("TRX",   "TRON",             "CRYPTO"),
-        new ChartFragment.StockSuggestion("ATOM",  "Cosmos",           "CRYPTO"),
-        new ChartFragment.StockSuggestion("XLM",   "Stellar",          "CRYPTO"),
-        new ChartFragment.StockSuggestion("NEAR",  "NEAR Protocol",    "CRYPTO"),
-        new ChartFragment.StockSuggestion("APT",   "Aptos",            "CRYPTO"),
-        new ChartFragment.StockSuggestion("OP",    "Optimism",         "CRYPTO")
+            new ChartFragment.StockSuggestion("BTC",   "Bitcoin",          "CRYPTO"),
+            new ChartFragment.StockSuggestion("ETH",   "Ethereum",         "CRYPTO"),
+            new ChartFragment.StockSuggestion("SOL",   "Solana",           "CRYPTO"),
+            new ChartFragment.StockSuggestion("XRP",   "Ripple",           "CRYPTO"),
+            new ChartFragment.StockSuggestion("BNB",   "Binance Coin",     "CRYPTO"),
+            new ChartFragment.StockSuggestion("ADA",   "Cardano",          "CRYPTO"),
+            new ChartFragment.StockSuggestion("DOGE",  "Dogecoin",         "CRYPTO"),
+            new ChartFragment.StockSuggestion("AVAX",  "Avalanche",        "CRYPTO"),
+            new ChartFragment.StockSuggestion("DOT",   "Polkadot",         "CRYPTO"),
+            new ChartFragment.StockSuggestion("LINK",  "Chainlink",        "CRYPTO"),
+            new ChartFragment.StockSuggestion("MATIC", "Polygon",          "CRYPTO"),
+            new ChartFragment.StockSuggestion("LTC",   "Litecoin",         "CRYPTO"),
+            new ChartFragment.StockSuggestion("UNI",   "Uniswap",          "CRYPTO"),
+            new ChartFragment.StockSuggestion("SHIB",  "Shiba Inu",        "CRYPTO"),
+            new ChartFragment.StockSuggestion("TRX",   "TRON",             "CRYPTO"),
+            new ChartFragment.StockSuggestion("ATOM",  "Cosmos",           "CRYPTO"),
+            new ChartFragment.StockSuggestion("XLM",   "Stellar",          "CRYPTO"),
+            new ChartFragment.StockSuggestion("NEAR",  "NEAR Protocol",    "CRYPTO"),
+            new ChartFragment.StockSuggestion("APT",   "Aptos",            "CRYPTO"),
+            new ChartFragment.StockSuggestion("OP",    "Optimism",         "CRYPTO")
+    );
+
+    // ── רשימת פורקס מקומית ──────────────────────────────────────────────────
+    private static final List<ChartFragment.StockSuggestion> FOREX_LIST = Arrays.asList(
+            new ChartFragment.StockSuggestion("EURUSD",  "Euro / US Dollar",             "FOREX"),
+            new ChartFragment.StockSuggestion("USDILS",  "US Dollar / Israeli Shekel",   "FOREX"),
+            new ChartFragment.StockSuggestion("GBPUSD",  "British Pound / US Dollar",    "FOREX"),
+            new ChartFragment.StockSuggestion("USDJPY",  "US Dollar / Japanese Yen",     "FOREX"),
+            new ChartFragment.StockSuggestion("AUDUSD",  "Australian Dollar / USD",      "FOREX"),
+            new ChartFragment.StockSuggestion("USDCAD",  "US Dollar / Canadian Dollar",  "FOREX"),
+            new ChartFragment.StockSuggestion("USDCHF",  "US Dollar / Swiss Franc",      "FOREX"),
+            new ChartFragment.StockSuggestion("NZDUSD",  "New Zealand Dollar / USD",     "FOREX"),
+            new ChartFragment.StockSuggestion("EURGBP",  "Euro / British Pound",         "FOREX"),
+            new ChartFragment.StockSuggestion("EURJPY",  "Euro / Japanese Yen",          "FOREX"),
+            new ChartFragment.StockSuggestion("GBPJPY",  "British Pound / Japanese Yen", "FOREX"),
+            new ChartFragment.StockSuggestion("USDINR",  "US Dollar / Indian Rupee",     "FOREX"),
+            new ChartFragment.StockSuggestion("USDCNY",  "US Dollar / Chinese Yuan",     "FOREX"),
+            new ChartFragment.StockSuggestion("USDBRL",  "US Dollar / Brazilian Real",   "FOREX"),
+            new ChartFragment.StockSuggestion("USDMXN",  "US Dollar / Mexican Peso",     "FOREX"),
+            new ChartFragment.StockSuggestion("EURILS",  "Euro / Israeli Shekel",        "FOREX"),
+            new ChartFragment.StockSuggestion("GBPILS",  "British Pound / Israeli Shekel","FOREX"),
+            new ChartFragment.StockSuggestion("XAUUSD",  "Gold / US Dollar",             "FOREX"),
+            new ChartFragment.StockSuggestion("XAGUSD",  "Silver / US Dollar",           "FOREX"),
+            new ChartFragment.StockSuggestion("XBRUSD",  "Brent Crude / US Dollar",      "FOREX")
     );
 
     public void setOnTickerSelectedListener(OnTickerSelectedListener l) { this.listener = l; }
@@ -132,39 +160,44 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
         updateCurrentTickerBar();
 
         ArrayAdapter<ChartFragment.StockSuggestion> adapter =
-            new ArrayAdapter<ChartFragment.StockSuggestion>(
-                requireContext(),
-                android.R.layout.simple_list_item_2,
-                android.R.id.text1,
-                new ArrayList<>(POPULAR)) {
+                new ArrayAdapter<ChartFragment.StockSuggestion>(
+                        requireContext(),
+                        android.R.layout.simple_list_item_2,
+                        android.R.id.text1,
+                        new ArrayList<>(POPULAR)) {
 
-            @NonNull
-            @Override
-            public View getView(int position, View convertView, @NonNull ViewGroup parent) {
-                if (convertView == null)
-                    convertView = LayoutInflater.from(getContext())
-                        .inflate(android.R.layout.simple_list_item_2, parent, false);
+                    @NonNull
+                    @Override
+                    public View getView(int position, View convertView, @NonNull ViewGroup parent) {
+                        if (convertView == null)
+                            convertView = LayoutInflater.from(getContext())
+                                    .inflate(android.R.layout.simple_list_item_2, parent, false);
 
-                ChartFragment.StockSuggestion item = getItem(position);
-                TextView t1 = convertView.findViewById(android.R.id.text1);
-                TextView t2 = convertView.findViewById(android.R.id.text2);
-                if (item != null) {
-                    String label = "CRYPTO".equals(item.exchange)
-                            ? "\uD83E\uDE99 " + item.symbol
-                            : item.symbol;
-                    t1.setText(label);
-                    t1.setTextColor(0xFFE6EDF3);
-                    t1.setTextSize(15f);
-                    t1.setTypeface(null, android.graphics.Typeface.BOLD);
-                    t2.setText(item.name + (item.exchange.isEmpty() ? "" : "  \u00b7  " + item.exchange));
-                    t2.setTextColor(0xFF8B98A5);
-                    t2.setTextSize(12f);
-                }
-                convertView.setBackgroundColor(0xFF151C2E);
-                convertView.setPadding(56, 20, 56, 20);
-                return convertView;
-            }
-        };
+                        ChartFragment.StockSuggestion item = getItem(position);
+                        TextView t1 = convertView.findViewById(android.R.id.text1);
+                        TextView t2 = convertView.findViewById(android.R.id.text2);
+                        if (item != null) {
+                            String label;
+                            if ("CRYPTO".equals(item.exchange)) {
+                                label = "\uD83E\uDE99 " + item.symbol;
+                            } else if ("FOREX".equals(item.exchange)) {
+                                label = "\uD83D\uDCB1 " + item.symbol;
+                            } else {
+                                label = item.symbol;
+                            }
+                            t1.setText(label);
+                            t1.setTextColor(0xFFE6EDF3);
+                            t1.setTextSize(15f);
+                            t1.setTypeface(null, android.graphics.Typeface.BOLD);
+                            t2.setText(item.name + (item.exchange.isEmpty() ? "" : "  \u00b7  " + item.exchange));
+                            t2.setTextColor(0xFF8B98A5);
+                            t2.setTextSize(12f);
+                        }
+                        convertView.setBackgroundColor(0xFF151C2E);
+                        convertView.setPadding(56, 20, 56, 20);
+                        return convertView;
+                    }
+                };
 
         resultsList.setAdapter(adapter);
 
@@ -201,7 +234,7 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
         searchInput.requestFocus();
         searchInput.postDelayed(() -> {
             InputMethodManager imm = (InputMethodManager)
-                requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+                    requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm != null) imm.showSoftInput(searchInput, InputMethodManager.SHOW_IMPLICIT);
         }, 150);
     }
@@ -214,7 +247,7 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
         if (txtChart  != null) txtChart.setText("Viewing chart");
     }
 
-    // ── חיפוש משולב: קריפטו (סינון מקומי) + אקציות (Finnhub) ────────────────
+    // ── חיפוש משולב: פורקס + קריפטו (סינון מקומי) + אקציות (Finnhub) ───────
     private void fetchAll(String query, ArrayAdapter<ChartFragment.StockSuggestion> adapter) {
         String q = query.toUpperCase(Locale.US);
 
@@ -226,23 +259,32 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
             }
         }
 
-        // 2. חיפוש אקציות מהרשת
-        fetchStocks(query, cryptoMatches, adapter);
+        // 2. סינון פורקס מקומי (מיידי)
+        List<ChartFragment.StockSuggestion> forexMatches = new ArrayList<>();
+        for (ChartFragment.StockSuggestion f : FOREX_LIST) {
+            if (f.symbol.contains(q) || f.name.toUpperCase(Locale.US).contains(q)) {
+                forexMatches.add(f);
+            }
+        }
+
+        // 3. חיפוש אקציות מהרשת
+        fetchStocks(query, cryptoMatches, forexMatches, adapter);
     }
 
     private void fetchStocks(String query,
-                              List<ChartFragment.StockSuggestion> cryptoMatches,
-                              ArrayAdapter<ChartFragment.StockSuggestion> adapter) {
+                             List<ChartFragment.StockSuggestion> cryptoMatches,
+                             List<ChartFragment.StockSuggestion> forexMatches,
+                             ArrayAdapter<ChartFragment.StockSuggestion> adapter) {
         try {
             String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name());
             String url = "https://finnhub.io/api/v1/search?q=" + encoded + "&token=" + FINNHUB_KEY;
             Request req = new Request.Builder().url(url).build();
             client.newCall(req).enqueue(new Callback() {
                 @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    postResults(cryptoMatches, new ArrayList<>(), adapter);
+                    postResults(cryptoMatches, forexMatches, new ArrayList<>(), adapter);
                 }
                 @Override public void onResponse(@NonNull Call call,
-                                                  @NonNull Response response) throws IOException {
+                                                 @NonNull Response response) throws IOException {
                     List<ChartFragment.StockSuggestion> stocks = new ArrayList<>();
                     if (response.isSuccessful() && response.body() != null) {
                         try {
@@ -260,19 +302,21 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
                             }
                         } catch (Exception ignored) {}
                     }
-                    postResults(cryptoMatches, stocks, adapter);
+                    postResults(cryptoMatches, forexMatches, stocks, adapter);
                 }
             });
         } catch (Exception ignored) {
-            postResults(cryptoMatches, new ArrayList<>(), adapter);
+            postResults(cryptoMatches, forexMatches, new ArrayList<>(), adapter);
         }
     }
 
-    // קריפטו קודם, אחר כך אקציות
+    // פורקס וקריפטו קודם, אחר כך אקציות
     private void postResults(List<ChartFragment.StockSuggestion> crypto,
-                              List<ChartFragment.StockSuggestion> stocks,
-                              ArrayAdapter<ChartFragment.StockSuggestion> adapter) {
+                             List<ChartFragment.StockSuggestion> forex,
+                             List<ChartFragment.StockSuggestion> stocks,
+                             ArrayAdapter<ChartFragment.StockSuggestion> adapter) {
         List<ChartFragment.StockSuggestion> merged = new ArrayList<>();
+        merged.addAll(forex);
         merged.addAll(crypto);
         merged.addAll(stocks);
         if (getActivity() != null) getActivity().runOnUiThread(() -> {

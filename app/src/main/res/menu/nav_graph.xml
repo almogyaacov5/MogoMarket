@@ -40,5 +40,9 @@
         android:id="@+id/pnlCalculatorFragment"
         android:name="com.mogomarket.app.PnlCalculatorFragment"
         android:label="PnL Calculator" />
+    <fragment
+        android:id="@+id/portfolioAddStockFragment"
+        android:name="com.mogomarket.app.PortfolioAddStockFragment"
+        android:label="Add Trade" />
 
 </navigation>

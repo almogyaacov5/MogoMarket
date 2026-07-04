@@ -323,7 +323,37 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         updateChartThemeToggleLabel();
         return v;
     }
+    private void loadChartForSymbol(String newSymbol) {
+        if (newSymbol == null || newSymbol.trim().isEmpty()) return;
 
+        String cleanSymbol = newSymbol.trim().toUpperCase(Locale.US);
+
+        String cryptoMapped = CRYPTO_MAP.get(cleanSymbol);
+        if (cryptoMapped != null) {
+            cleanSymbol = cryptoMapped;
+        }
+
+        symbol = cleanSymbol;
+
+        if (getActivity() != null) {
+            getActivity()
+                    .getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE)
+                    .edit()
+                    .putString(MainActivity.KEY_LAST_SYMBOL, cleanSymbol)
+                    .apply();
+        }
+
+        updateTickerButtonLabel();
+        updateTickerLabelTop();
+        hideCrosshairInfo();
+        updateTimeframePickerLabel();
+
+        if (getActivity() != null) {
+            getActivity().setTitle("Chart: " + cleanSymbol);
+        }
+
+        fetchStockData(cleanSymbol, interval);
+    }
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
@@ -344,6 +374,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 vm.setSelectedSymbol(symbolFromArgs.trim());
             }
         }
+
 
         SharedPreferences prefs = requireActivity()
                 .getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE);
