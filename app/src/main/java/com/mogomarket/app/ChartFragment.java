@@ -87,7 +87,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private static final String KEY_THEME       = "dark_mode";
     private static final String KEY_LAST_SYMBOL = "last_chart_symbol";
 
-    // ערך מחרוזת לבחירת מצב טעינה: "last" = מניה אחרונה, "fixed" = ברירת מחדל קבועה
     public static final String KEY_SYMBOL_MODE  = "chart_symbol_mode";
 
     private static final int DARK_BG        = 0xFF0B0F14;
@@ -149,6 +148,35 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         CRYPTO_MAP.put("MATICUSD", "BINANCE:MATICUSDT");
         CRYPTO_MAP.put("UNI",      "BINANCE:UNIUSDT");
         CRYPTO_MAP.put("UNIUSD",   "BINANCE:UNIUSDT");
+    }
+
+    // ── מפת פורקס: סימבול → Yahoo Finance ticker ────────────────────────────
+    static final Map<String, String> FOREX_MAP = new HashMap<>();
+    static {
+        FOREX_MAP.put("EURUSD",  "EURUSD=X");
+        FOREX_MAP.put("USDILS",  "USDILS=X");
+        FOREX_MAP.put("GBPUSD",  "GBPUSD=X");
+        FOREX_MAP.put("USDJPY",  "USDJPY=X");
+        FOREX_MAP.put("AUDUSD",  "AUDUSD=X");
+        FOREX_MAP.put("USDCAD",  "USDCAD=X");
+        FOREX_MAP.put("USDCHF",  "USDCHF=X");
+        FOREX_MAP.put("NZDUSD",  "NZDUSD=X");
+        FOREX_MAP.put("EURGBP",  "EURGBP=X");
+        FOREX_MAP.put("EURJPY",  "EURJPY=X");
+        FOREX_MAP.put("GBPJPY",  "GBPJPY=X");
+        FOREX_MAP.put("USDINR",  "USDINR=X");
+        FOREX_MAP.put("USDCNY",  "USDCNY=X");
+        FOREX_MAP.put("USDBRL",  "USDBRL=X");
+        FOREX_MAP.put("USDMXN",  "USDMXN=X");
+        FOREX_MAP.put("EURILS",  "EURILS=X");
+        FOREX_MAP.put("GBPILS",  "GBPILS=X");
+        FOREX_MAP.put("XAUUSD",  "GC=F");
+        FOREX_MAP.put("GOLD",    "GC=F");
+        FOREX_MAP.put("XAGUSD",  "SI=F");
+        FOREX_MAP.put("SILVER",  "SI=F");
+        FOREX_MAP.put("XBRUSD",  "BZ=F");
+        FOREX_MAP.put("OIL",     "CL=F");
+        FOREX_MAP.put("CRUDE",   "CL=F");
     }
 
     private boolean isDarkTheme;
@@ -231,6 +259,17 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         return sym != null && sym.contains(":");
     }
 
+    private boolean isForexSymbol(String sym) {
+        return sym != null && (sym.endsWith("=X") || sym.equals("GC=F")
+                || sym.equals("SI=F") || sym.equals("BZ=F") || sym.equals("CL=F"));
+    }
+
+    private String cleanDisplaySymbol(String sym) {
+        if (sym == null) return "";
+        if (isCryptoSymbol(sym)) return sym.substring(sym.indexOf(':') + 1);
+        return sym.replace("=X", "").replace("=F", "");
+    }
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -240,18 +279,15 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         isDarkTheme = prefs.getBoolean(KEY_THEME, true);
         isChartDark = isDarkTheme;
 
-        // ── בחר מניה לפתיחה לפי הגדרת המשתמש ─────────────────────────────
         String mode = prefs.getString(KEY_SYMBOL_MODE, "last");
         if ("fixed".equals(mode)) {
             symbol = prefs.getString(MainActivity.KEY_DEFAULT_SYMBOL, "SPY");
             if (symbol.isEmpty()) symbol = "SPY";
         } else {
-            // "last" = מניה אחרונה שנצפתה
             symbol = prefs.getString(KEY_LAST_SYMBOL, "SPY");
             if (symbol.isEmpty()) symbol = "SPY";
         }
 
-        // אם Fragment הופעל עם argument ספציפי (למשל מ-Watchlist) — override
         if (getArguments() != null && getArguments().containsKey("symbol")) {
             symbol = getArguments().getString("symbol", symbol);
         }
@@ -309,7 +345,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         updateTickerButtonLabel();
         updateTickerLabelTop();
         updateTimeframePickerLabel();
-        if (getActivity() != null) getActivity().setTitle("Chart: " + symbol);
+        if (getActivity() != null) getActivity().setTitle("Chart: " + cleanDisplaySymbol(symbol));
 
         applyTheme();
         setupCandleChartStyle();
@@ -323,14 +359,22 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         updateChartThemeToggleLabel();
         return v;
     }
+
     private void loadChartForSymbol(String newSymbol) {
         if (newSymbol == null || newSymbol.trim().isEmpty()) return;
 
         String cleanSymbol = newSymbol.trim().toUpperCase(Locale.US);
 
+        // בדוק קריפטו קודם
         String cryptoMapped = CRYPTO_MAP.get(cleanSymbol);
         if (cryptoMapped != null) {
             cleanSymbol = cryptoMapped;
+        } else {
+            // בדוק פורקס
+            String forexMapped = FOREX_MAP.get(cleanSymbol);
+            if (forexMapped != null) {
+                cleanSymbol = forexMapped;
+            }
         }
 
         symbol = cleanSymbol;
@@ -349,11 +393,12 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         updateTimeframePickerLabel();
 
         if (getActivity() != null) {
-            getActivity().setTitle("Chart: " + cleanSymbol);
+            getActivity().setTitle("Chart: " + cleanDisplaySymbol(cleanSymbol));
         }
 
         fetchStockData(cleanSymbol, interval);
     }
+
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
@@ -375,7 +420,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             }
         }
 
-
         SharedPreferences prefs = requireActivity()
                 .getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE);
 
@@ -387,10 +431,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     private void updateTickerLabelTop() {
         if (tickerLabelTop == null) return;
-        String display = isCryptoSymbol(symbol)
-                ? symbol.substring(symbol.indexOf(':') + 1)
-                : symbol;
-        tickerLabelTop.setText(display);
+        tickerLabelTop.setText(cleanDisplaySymbol(symbol));
     }
 
     private void updateTimeframePickerLabel() {
@@ -594,10 +635,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     private void updateTickerButtonLabel() {
         if (btnTickerSelect == null) return;
-        String display = isCryptoSymbol(symbol)
-                ? symbol.substring(symbol.indexOf(':') + 1)
-                : symbol;
-        btnTickerSelect.setText(display);
+        btnTickerSelect.setText(cleanDisplaySymbol(symbol));
     }
 
     private void showTickerInputDialog() {
@@ -1016,14 +1054,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 changeText.setText(changeStr);
                 changeText.setTextColor(gain ? COLOR_GAIN : COLOR_LOSS);
             }
-            if (tickerText     != null) tickerText.setText(sym);
-            if (tickerLabelTop != null) {
-                String display = isCryptoSymbol(sym)
-                        ? sym.substring(sym.indexOf(':') + 1)
-                        : sym;
-                tickerLabelTop.setText(display);
-            }
-            if (getActivity() != null) getActivity().setTitle("Chart: " + sym);
+            if (tickerText     != null) tickerText.setText(cleanDisplaySymbol(sym));
+            if (tickerLabelTop != null) tickerLabelTop.setText(cleanDisplaySymbol(sym));
+            if (getActivity() != null) getActivity().setTitle("Chart: " + cleanDisplaySymbol(sym));
             hideCrosshairInfo();
             if (isCandleStick) updateCandleChart(entries);
             else               updateLineChart(entries);
@@ -1032,8 +1065,16 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     private void openChartFromInput(String raw) {
         String upper = raw.toUpperCase(Locale.US).trim();
+
+        // בדוק קריפטו קודם
         String cryptoSym = CRYPTO_MAP.get(upper);
-        symbol = (cryptoSym != null) ? cryptoSym : upper;
+        if (cryptoSym != null) {
+            symbol = cryptoSym;
+        } else {
+            // בדוק פורקס
+            String forexSym = FOREX_MAP.get(upper);
+            symbol = (forexSym != null) ? forexSym : upper;
+        }
 
         requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .edit()
