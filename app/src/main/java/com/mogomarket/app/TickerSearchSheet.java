@@ -488,10 +488,10 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
         for (int i = 0; i < Math.min(4, CRYPTO_LIST.size()); i++) {
             merged.add(copySuggestionWithQuote(CRYPTO_LIST.get(i), 0f));
         }
-        merged.add(copySuggestionWithQuote(new ChartFragment.StockSuggestion("EUR/USD", "Euro / US Dollar", "Forex", false, null, 0f), 0f));
-        merged.add(copySuggestionWithQuote(new ChartFragment.StockSuggestion("USD/ILS", "US Dollar / Israeli Shekel", "Forex", false, null, 0f), 0f));
-        merged.add(copySuggestionWithQuote(new ChartFragment.StockSuggestion("GBP/USD", "British Pound / US Dollar", "Forex", false, null, 0f), 0f));
-        merged.add(copySuggestionWithQuote(new ChartFragment.StockSuggestion("USD/JPY", "US Dollar / Japanese Yen", "Forex", false, null, 0f), 0f));
+        merged.add(copySuggestionWithQuote(new ChartFragment.StockSuggestion("EURUSD", "Euro / US Dollar", "Forex", false, null, 0f), 0f));
+        merged.add(copySuggestionWithQuote(new ChartFragment.StockSuggestion("USDILS", "US Dollar / Israeli Shekel", "Forex", false, null, 0f), 0f));
+        merged.add(copySuggestionWithQuote(new ChartFragment.StockSuggestion("GBPUSD", "British Pound / US Dollar", "Forex", false, null, 0f), 0f));
+        merged.add(copySuggestionWithQuote(new ChartFragment.StockSuggestion("USDJPY", "US Dollar / Japanese Yen", "Forex", false, null, 0f), 0f));
 
         adapter.clear();
         adapter.addAll(merged);
