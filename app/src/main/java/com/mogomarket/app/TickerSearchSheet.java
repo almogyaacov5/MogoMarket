@@ -178,34 +178,39 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
                             header.setText(item.sectionTitle);
                             header.setTextSize(13f);
                             header.setTypeface(null, android.graphics.Typeface.BOLD);
-                            header.setPadding(32, 24, 32, 8);
+                            header.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(6));
                             header.setTextColor(0xFF8B98A5);
                             return header;
                         }
 
-                        LinearLayoutCompat row = new LinearLayoutCompat(requireContext());
-                        row.setOrientation(LinearLayoutCompat.HORIZONTAL);
+                        android.widget.LinearLayout row = new android.widget.LinearLayout(requireContext());
+                        row.setOrientation(android.widget.LinearLayout.HORIZONTAL);
                         row.setLayoutParams(new AbsListView.LayoutParams(
                                 ViewGroup.LayoutParams.MATCH_PARENT,
                                 ViewGroup.LayoutParams.WRAP_CONTENT
                         ));
-                        row.setPadding(28, 22, 28, 22);
+                        row.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12));
                         row.setGravity(android.view.Gravity.CENTER_VERTICAL);
 
                         TextView logo = new TextView(requireContext());
-                        LinearLayoutCompat.LayoutParams logoLp =
-                                new LinearLayoutCompat.LayoutParams(dpToPx(42), dpToPx(42));
+                        android.widget.LinearLayout.LayoutParams logoLp =
+                                new android.widget.LinearLayout.LayoutParams(dpToPx(42), dpToPx(42));
                         logo.setLayoutParams(logoLp);
                         logo.setGravity(android.view.Gravity.CENTER);
-                        logo.setTextSize(15f);
+                        logo.setTextSize(14f);
                         logo.setTypeface(null, android.graphics.Typeface.BOLD);
                         logo.setTextColor(0xFFFFFFFF);
-                        logo.setBackgroundResource(R.drawable.bg_symbol_circle);
 
-                        LinearLayoutCompat textBox = new LinearLayoutCompat(requireContext());
-                        textBox.setOrientation(LinearLayoutCompat.VERTICAL);
-                        LinearLayoutCompat.LayoutParams textLp =
-                                new LinearLayoutCompat.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                        android.graphics.drawable.GradientDrawable logoBg =
+                                new android.graphics.drawable.GradientDrawable();
+                        logoBg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+                        logoBg.setColor(0xFF4DA3FF);
+                        logo.setBackground(logoBg);
+
+                        android.widget.LinearLayout textBox = new android.widget.LinearLayout(requireContext());
+                        textBox.setOrientation(android.widget.LinearLayout.VERTICAL);
+                        android.widget.LinearLayout.LayoutParams textLp =
+                                new android.widget.LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
                         textLp.setMargins(dpToPx(12), 0, dpToPx(12), 0);
                         textBox.setLayoutParams(textLp);
 
@@ -213,10 +218,14 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
                         companyName.setTextSize(14f);
                         companyName.setTypeface(null, android.graphics.Typeface.BOLD);
                         companyName.setTextColor(0xFFE6EDF3);
+                        companyName.setSingleLine(true);
+                        companyName.setEllipsize(android.text.TextUtils.TruncateAt.END);
 
                         TextView symbolText = new TextView(requireContext());
                         symbolText.setTextSize(12f);
                         symbolText.setTextColor(0xFF8B98A5);
+                        symbolText.setSingleLine(true);
+                        symbolText.setEllipsize(android.text.TextUtils.TruncateAt.END);
 
                         textBox.addView(companyName);
                         textBox.addView(symbolText);
