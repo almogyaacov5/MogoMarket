@@ -72,17 +72,21 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
         if (btnRefreshAll != null)
             btnRefreshAll.setOnClickListener(v -> reloadAllStocks());
 
-        if (addStockBtn != null)
+        if (addStockBtn != null) {
             addStockBtn.setOnClickListener(v -> {
                 if (stockInput == null) return;
+
                 String symbol = stockInput.getText().toString().trim().toUpperCase();
-                if (!symbol.isEmpty()) {
-                    stocksRef.child(symbol).setValue(true);
-                    stockInput.setText("");
-                    stockInput.clearFocus();
-                    hideKeyboard();
-                }
+                if (symbol.isEmpty()) return;
+
+                stocksRef.child(symbol).setValue(true);
+                fetchStockInfo(symbol);
+
+                stockInput.setText("");
+                stockInput.clearFocus();
+                hideKeyboard();
             });
+        }
 
         if (stockInput != null)
             stockInput.setOnEditorActionListener((v, actionId, event) -> {
@@ -139,39 +143,88 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
     }
 
     private void fetchStockInfo(String symbol) {
-        long toTime   = System.currentTimeMillis() / 1000L;
-        long fromTime = toTime - (3L * 24 * 60 * 60);
+        if (symbol == null || symbol.trim().isEmpty()) return;
 
-        String url = "https://finnhub.io/api/v1/stock/candle?symbol=" + symbol
-                + "&resolution=D&from=" + fromTime
-                + "&to=" + toTime
-                + "&token=" + API_KEY;
+        String cleanSymbol = symbol.trim().toUpperCase();
+
+        boolean isCrypto = CryptoHelper.isCryptoSymbol(cleanSymbol);
+        boolean isForex = cleanSymbol.contains("/") && !isCrypto;
+
+        String url;
+
+        if (isCrypto) {
+            String pair = CryptoHelper.getPair(cleanSymbol);
+            url = "https://api.binance.com/api/v3/ticker/24hr?symbol=" + pair;
+        } else if (isForex) {
+            String forexSymbol = "OANDA:" + cleanSymbol.replace("/", "_");
+            url = "https://finnhub.io/api/v1/quote?symbol=" + forexSymbol + "&token=" + API_KEY;
+        } else {
+            url = "https://finnhub.io/api/v1/quote?symbol=" + cleanSymbol + "&token=" + API_KEY;
+        }
 
         Request request = new Request.Builder().url(url).build();
         client.newCall(request).enqueue(new Callback() {
             @Override
-            public void onFailure(Call call, IOException e) { }
+            public void onFailure(Call call, IOException e) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() ->
+                            Toast.makeText(getContext(),
+                                    "Failed to load " + cleanSymbol,
+                                    Toast.LENGTH_SHORT).show());
+                }
+            }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 try {
-                    JSONObject json   = new JSONObject(response.body().string());
-                    String     status = json.optString("s", "");
-                    if (!"ok".equals(status)) return;
+                    if (response.body() == null) return;
 
-                    JSONArray closes = json.getJSONArray("c");
-                    if (closes.length() < 2) return;
+                    String responseBody = response.body().string();
+                    JSONObject json = new JSONObject(responseBody);
 
-                    float lastPrice     = (float) closes.getDouble(closes.length() - 1);
-                    float prevPrice     = (float) closes.getDouble(closes.length() - 2);
-                    float changePercent = (lastPrice - prevPrice) / prevPrice * 100;
+                    float lastPrice;
+                    float changePercent;
 
-                    StockData data = new StockData(symbol, lastPrice, changePercent);
-                    if (getActivity() != null) getActivity().runOnUiThread(() -> {
-                        stocksList.add(data);
-                        adapter.notifyDataSetChanged();
-                    });
-                } catch (Exception e) { }
+                    if (isCrypto) {
+                        lastPrice = (float) json.optDouble("lastPrice", 0.0);
+                        changePercent = (float) json.optDouble("priceChangePercent", 0.0);
+                    } else {
+                        lastPrice = (float) json.optDouble("c", 0.0);
+                        changePercent = (float) json.optDouble("dp", 0.0);
+                    }
+
+                    if (lastPrice <= 0f) return;
+
+                    StockData data = new StockData(cleanSymbol, lastPrice, changePercent);
+
+                    if (getActivity() != null) {
+                        getActivity().runOnUiThread(() -> {
+                            boolean replaced = false;
+
+                            for (int i = 0; i < stocksList.size(); i++) {
+                                if (stocksList.get(i).symbol.equalsIgnoreCase(cleanSymbol)) {
+                                    stocksList.set(i, data);
+                                    replaced = true;
+                                    break;
+                                }
+                            }
+
+                            if (!replaced) {
+                                stocksList.add(data);
+                            }
+
+                            adapter.notifyDataSetChanged();
+                        });
+                    }
+
+                } catch (Exception e) {
+                    if (getActivity() != null) {
+                        getActivity().runOnUiThread(() ->
+                                Toast.makeText(getContext(),
+                                        "Failed to parse " + cleanSymbol,
+                                        Toast.LENGTH_SHORT).show());
+                    }
+                }
             }
         });
     }
@@ -186,7 +239,7 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
     @Override
     public void onStockDelete(String symbol, double sellPrice) {
         stocksRef.child(symbol).removeValue();
-        Toast.makeText(getContext(), "המניה הוסרה מהרשימה", Toast.LENGTH_SHORT).show();
+        Toast.makeText(getContext(), "Removed from watchlist", Toast.LENGTH_SHORT).show();
     }
 
     @Override

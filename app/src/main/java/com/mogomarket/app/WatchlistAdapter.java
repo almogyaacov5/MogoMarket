@@ -2,7 +2,6 @@ package com.mogomarket.app;
 
 import android.content.Context;
 import android.os.Build;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -39,7 +38,6 @@ import okhttp3.Response;
 
 public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.ViewHolder> {
 
-    private static final String TAG = "WatchlistAdapter";
     private static final String FINNHUB_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
 
     public interface OnWatchStockClickListener {
@@ -116,12 +114,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
 
         switch (currentFilter) {
             case "gain":
-                Collections.sort(displayList, (a, b) ->
-                        ascending
-                                ? Float.compare(a.dayChange, b.dayChange)
-                                : Float.compare(b.dayChange, a.dayChange));
-                break;
-
             case "loss":
                 Collections.sort(displayList, (a, b) ->
                         ascending
@@ -148,22 +140,40 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
     }
 
     private boolean isForex(String symbol) {
-        return symbol != null && (symbol.endsWith("=X") || symbol.equals("GC=F")
-                || symbol.equals("SI=F") || symbol.equals("BZ=F") || symbol.equals("CL=F")
-                || ChartFragment.FOREX_MAP.containsKey(symbol.toUpperCase(Locale.US)));
+        if (symbol == null) return false;
+
+        String upper = symbol.trim().toUpperCase(Locale.US);
+
+        return upper.endsWith("=X")
+                || upper.equals("GC=F")
+                || upper.equals("SI=F")
+                || upper.equals("BZ=F")
+                || upper.equals("CL=F")
+                || ChartFragment.FOREX_MAP.containsKey(upper)
+                || ChartFragment.FOREX_MAP.containsValue(upper);
+    }
+
+    private String normalizeUserSymbol(String raw) {
+        if (raw == null) return "";
+        return raw.trim()
+                .toUpperCase(Locale.US)
+                .replace(" ", "")
+                .replace("/", "")
+                .replace("-", "")
+                .replace("_", "");
     }
 
     private String mapSymbolForQuote(String raw) {
-        if (raw == null) return "";
-        String upper = raw.trim().toUpperCase(Locale.US);
+        String normalized = normalizeUserSymbol(raw);
+        if (normalized.isEmpty()) return "";
 
-        String crypto = ChartFragment.CRYPTO_MAP.get(upper);
+        String crypto = ChartFragment.CRYPTO_MAP.get(normalized);
         if (crypto != null) return crypto;
 
-        String forex = ChartFragment.FOREX_MAP.get(upper);
+        String forex = ChartFragment.FOREX_MAP.get(normalized);
         if (forex != null) return forex;
 
-        return upper;
+        return normalized;
     }
 
     private String formatPrice(String symbol, float price) {
@@ -262,21 +272,98 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                             int colorLoss,
                             Context ctx) {
 
-        String requestSymbol = mapSymbolForQuote(stock.symbol);
-        String url;
+        final String requestSymbol = mapSymbolForQuote(stock.symbol);
 
         if (isCrypto(requestSymbol)) {
-            long to = System.currentTimeMillis() / 1000L;
-            long from = to - (3L * 24 * 60 * 60);
-            url = "https://finnhub.io/api/v1/crypto/candle?symbol=" + requestSymbol
-                    + "&resolution=D&from=" + from + "&to=" + to
-                    + "&token=" + FINNHUB_KEY;
-        } else {
-            url = "https://finnhub.io/api/v1/quote?symbol=" + requestSymbol
-                    + "&token=" + FINNHUB_KEY;
+            final String pair = requestSymbol.contains(":")
+                    ? requestSymbol.substring(requestSymbol.indexOf(':') + 1)
+                    : requestSymbol;
+
+            String url = "https://api.binance.com/api/v3/ticker/24hr?symbol=" + pair;
+
+            Request request = new Request.Builder()
+                    .url(url)
+                    .header("User-Agent", "Mozilla/5.0")
+                    .build();
+
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                    loading.remove(stock.symbol);
+                    if (!targetSymbol.equals(holder.itemView.getTag())) return;
+                    showDash(holder, textSecondary);
+                }
+
+                @Override
+                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                    loading.remove(stock.symbol);
+
+                    if (response.body() == null) {
+                        if (!targetSymbol.equals(holder.itemView.getTag())) return;
+                        showDash(holder, textSecondary);
+                        return;
+                    }
+
+                    String body = response.body().string();
+
+                    if (!response.isSuccessful()) {
+                        if (!targetSymbol.equals(holder.itemView.getTag())) return;
+                        showDash(holder, textSecondary);
+                        return;
+                    }
+
+                    try {
+                        JSONObject json = new JSONObject(body);
+
+                        float parsedPrice = (float) json.optDouble("lastPrice", 0.0);
+                        float parsedDayChange = (float) json.optDouble("priceChangePercent", 0.0);
+
+                        if (parsedPrice <= 0f) {
+                            if (targetSymbol.equals(holder.itemView.getTag())) {
+                                showDash(holder, textSecondary);
+                            }
+                            return;
+                        }
+
+                        final float finalPrice = parsedPrice;
+                        final float finalDayChange = parsedDayChange;
+
+                        quoteCache.put(stock.symbol, new float[]{finalPrice, finalDayChange});
+                        stock.currentPrice = finalPrice;
+                        stock.dayChange = finalDayChange;
+
+                        holder.priceText.post(() -> {
+                            if (!targetSymbol.equals(holder.itemView.getTag())) return;
+                            holder.priceText.setText(formatPrice(stock.symbol, finalPrice));
+                            holder.priceText.setTextColor(colorPrimary);
+                        });
+
+                        holder.dayChangeText.post(() -> {
+                            if (!targetSymbol.equals(holder.itemView.getTag())) return;
+                            bindChange(holder.dayChangeText, finalDayChange, colorGain, colorLoss);
+                        });
+
+                        processAlert(stock, finalPrice, ctx);
+
+                    } catch (Exception e) {
+                        if (targetSymbol.equals(holder.itemView.getTag())) {
+                            showDash(holder, textSecondary);
+                        }
+                    }
+                }
+            });
+
+            return;
         }
 
-        Request request = new Request.Builder().url(url).build();
+        String url = "https://query1.finance.yahoo.com/v8/finance/chart/" + requestSymbol
+                + "?interval=1d&range=5d&includePrePost=false";
+
+        Request request = new Request.Builder()
+                .url(url)
+                .header("User-Agent", "Mozilla/5.0")
+                .build();
+
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
@@ -304,60 +391,77 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                 }
 
                 try {
-                    JSONObject json = new JSONObject(body);
-                    float price;
-                    float dayChange;
+                    JSONObject root = new JSONObject(body);
+                    JSONArray result = root.getJSONObject("chart").optJSONArray("result");
 
-                    if (isCrypto(requestSymbol)) {
-                        if (!"ok".equals(json.optString("s"))) {
-                            if (targetSymbol.equals(holder.itemView.getTag())) showDash(holder, textSecondary);
-                            return;
+                    if (result == null || result.length() == 0) {
+                        if (targetSymbol.equals(holder.itemView.getTag())) {
+                            showDash(holder, textSecondary);
                         }
+                        return;
+                    }
 
-                        JSONArray closes = json.getJSONArray("c");
-                        int len = closes.length();
-                        if (len == 0) {
-                            if (targetSymbol.equals(holder.itemView.getTag())) showDash(holder, textSecondary);
-                            return;
+                    JSONObject item = result.getJSONObject(0);
+                    JSONObject indicators = item.getJSONObject("indicators");
+                    JSONArray quoteArray = indicators.getJSONArray("quote");
+
+                    if (quoteArray.length() == 0) {
+                        if (targetSymbol.equals(holder.itemView.getTag())) {
+                            showDash(holder, textSecondary);
                         }
+                        return;
+                    }
 
-                        price = (float) closes.getDouble(len - 1);
-                        float prev = len > 1 ? (float) closes.getDouble(len - 2) : price;
-                        dayChange = prev > 0 ? ((price - prev) / prev) * 100f : 0f;
+                    JSONObject quote = quoteArray.getJSONObject(0);
+                    JSONArray closes = quote.getJSONArray("close");
 
-                    } else {
-                        float c = (float) json.optDouble("c", 0);
-                        float pc = (float) json.optDouble("pc", 0);
-                        float dp = (float) json.optDouble("dp", 0);
+                    float tempLastClose = 0f;
+                    float tempPrevClose = 0f;
 
-                        price = (c > 0) ? c : pc;
-                        dayChange = (c > 0) ? dp : 0f;
+                    for (int i = closes.length() - 1; i >= 0; i--) {
+                        if (!closes.isNull(i)) {
+                            tempLastClose = (float) closes.getDouble(i);
 
-                        if (price <= 0) {
-                            if (targetSymbol.equals(holder.itemView.getTag())) showDash(holder, textSecondary);
-                            return;
+                            for (int j = i - 1; j >= 0; j--) {
+                                if (!closes.isNull(j)) {
+                                    tempPrevClose = (float) closes.getDouble(j);
+                                    break;
+                                }
+                            }
+                            break;
                         }
                     }
 
-                    quoteCache.put(stock.symbol, new float[]{price, dayChange});
-                    stock.currentPrice = price;
-                    stock.dayChange = dayChange;
+                    if (tempLastClose <= 0f) {
+                        if (targetSymbol.equals(holder.itemView.getTag())) {
+                            showDash(holder, textSecondary);
+                        }
+                        return;
+                    }
 
-                    final float fPrice = price;
-                    final float fChange = dayChange;
+                    float computedDayChange = tempPrevClose > 0f
+                            ? ((tempLastClose - tempPrevClose) / tempPrevClose) * 100f
+                            : 0f;
+
+                    final float finalLastClose = tempLastClose;
+                    final float finalDayChange = computedDayChange;
+
+                    quoteCache.put(stock.symbol, new float[]{finalLastClose, finalDayChange});
+                    stock.currentPrice = finalLastClose;
+                    stock.dayChange = finalDayChange;
 
                     holder.priceText.post(() -> {
                         if (!targetSymbol.equals(holder.itemView.getTag())) return;
-                        holder.priceText.setText(formatPrice(stock.symbol, fPrice));
+                        holder.priceText.setText(formatPrice(stock.symbol, finalLastClose));
                         holder.priceText.setTextColor(colorPrimary);
                     });
 
                     holder.dayChangeText.post(() -> {
                         if (!targetSymbol.equals(holder.itemView.getTag())) return;
-                        bindChange(holder.dayChangeText, fChange, colorGain, colorLoss);
+                        bindChange(holder.dayChangeText, finalDayChange, colorGain, colorLoss);
                     });
 
-                    processAlert(stock, price, ctx);
+                    processAlert(stock, finalLastClose, ctx);
 
                 } catch (Exception e) {
                     if (targetSymbol.equals(holder.itemView.getTag())) {

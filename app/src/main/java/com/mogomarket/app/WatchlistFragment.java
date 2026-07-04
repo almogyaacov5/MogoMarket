@@ -279,17 +279,27 @@ public class WatchlistFragment extends Fragment {
         chipSortOrder.setText(adapter.isAscending() ? "↑ Asc" : "↓ Desc");
     }
 
-    private String mapSymbolForChart(String raw) {
+    private String normalizeUserSymbol(String raw) {
         if (raw == null) return "";
-        String upper = raw.trim().toUpperCase(Locale.US);
+        return raw.trim()
+                .toUpperCase(Locale.US)
+                .replace(" ", "")
+                .replace("/", "")
+                .replace("-", "")
+                .replace("_", "");
+    }
 
-        String crypto = ChartFragment.CRYPTO_MAP.get(upper);
+    private String mapSymbolForChart(String raw) {
+        String normalized = normalizeUserSymbol(raw);
+        if (normalized.isEmpty()) return "";
+
+        String crypto = ChartFragment.CRYPTO_MAP.get(normalized);
         if (crypto != null) return crypto;
 
-        String forex = ChartFragment.FOREX_MAP.get(upper);
+        String forex = ChartFragment.FOREX_MAP.get(normalized);
         if (forex != null) return forex;
 
-        return upper;
+        return normalized;
     }
 
     private void addStock(String raw) {
@@ -338,11 +348,13 @@ public class WatchlistFragment extends Fragment {
 
                 for (DataSnapshot child : snapshot.getChildren()) {
                     StockWatchData data = child.getValue(StockWatchData.class);
-                    String key = child.getKey();
-
                     if (data == null) continue;
 
-                    data.symbol = key != null ? key.replace("_", ":") : "";
+                    if (data.symbol == null || data.symbol.trim().isEmpty()) {
+                        String key = child.getKey();
+                        data.symbol = key != null ? key.replace("_", ":") : "";
+                    }
+
                     list.add(data);
                 }
 
