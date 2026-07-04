@@ -442,7 +442,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     private void updateTickerLabelTop() {
         if (tickerLabelTop == null) return;
-        tickerLabelTop.setText("");
+        tickerLabelTop.setText(cleanDisplaySymbol(symbol));
     }
 
     private void updateTimeframePickerLabel() {
@@ -1081,8 +1081,12 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     changeText.setTextColor(gain ? COLOR_GAIN : COLOR_LOSS);
                 }
 
-                if (tickerText != null) tickerText.setText(cleanDisplaySymbol(sym));
-                if (tickerLabelTop != null) tickerLabelTop.setText("");
+                if (tickerText != null) {
+                    tickerText.setText(cleanDisplaySymbol(sym));
+                }
+                if (tickerLabelTop != null) {
+                    tickerLabelTop.setText(cleanDisplaySymbol(sym));
+                }
                 if (getActivity() != null) getActivity().setTitle("Chart: " + cleanDisplaySymbol(sym));
 
                 hideCrosshairInfo();
