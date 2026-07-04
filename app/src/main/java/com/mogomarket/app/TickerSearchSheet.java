@@ -156,7 +156,7 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
         TextView labelResults = view.findViewById(R.id.labelResults);
         ListView resultsList = view.findViewById(R.id.searchResultsList);
 
-        updateCurrentTickerBar();
+//        updateCurrentTickerBar();
 
         ArrayAdapter<ChartFragment.StockSuggestion> adapter =
                 new ArrayAdapter<ChartFragment.StockSuggestion>(
@@ -266,14 +266,14 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
         if (view != null) view.clearFocus();
     }
 
-    private void updateCurrentTickerBar() {
-        if (getView() == null) return;
-        TextView txtSymbol = getView().findViewById(R.id.txtCurrentTicker);
-        TextView txtChart = getView().findViewById(R.id.txtCurrentChart);
-
-        if (txtSymbol != null) txtSymbol.setText(currentSymbol);
-        if (txtChart != null) txtChart.setText("Viewing chart");
-    }
+//    private void updateCurrentTickerBar() {
+//        if (getView() == null) return;
+//        TextView txtSymbol = getView().findViewById(R.id.txtCurrentTicker);
+//        TextView txtChart = getView().findViewById(R.id.txtCurrentChart);
+//
+//        if (txtSymbol != null) txtSymbol.setText(currentSymbol);
+//        if (txtChart != null) txtChart.setText("Viewing chart");
+//    }
 
     private void fetchAll(String query, ArrayAdapter<ChartFragment.StockSuggestion> adapter) {
         String q = query.toUpperCase(Locale.US);
