@@ -58,7 +58,8 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
     private final Set<String> loading = new HashSet<>();
 
     private String currentSearch = "";
-    private String currentSort = "default";
+    private String currentFilter = "default";
+    private boolean ascending = true;
 
     public WatchlistAdapter(OnWatchStockClickListener listener) {
         this.listener = listener;
@@ -70,14 +71,35 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         applyFilters();
     }
 
-    public void setSearchQuery(String query) {
+    public void setSearch(String query) {
         currentSearch = query == null ? "" : query.trim().toLowerCase(Locale.US);
         applyFilters();
     }
 
-    public void setSort(String sort) {
-        currentSort = sort == null ? "default" : sort;
+    public void setFilter(String filter) {
+        currentFilter = filter == null ? "default" : filter;
         applyFilters();
+    }
+
+    public void toggleSortOrder() {
+        ascending = !ascending;
+        applyFilters();
+    }
+
+    public boolean isAscending() {
+        return ascending;
+    }
+
+    public void refresh() {
+        quoteCache.clear();
+        loading.clear();
+        notifyDataSetChanged();
+    }
+
+    public void moveItem(int from, int to) {
+        if (from < 0 || to < 0 || from >= displayList.size() || to >= displayList.size()) return;
+        Collections.swap(displayList, from, to);
+        notifyItemMoved(from, to);
     }
 
     private void applyFilters() {
@@ -85,36 +107,40 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
 
         for (StockWatchData s : fullList) {
             if (s == null || s.symbol == null) continue;
-            if (!currentSearch.isEmpty() && !s.symbol.toLowerCase(Locale.US).contains(currentSearch)) continue;
+
+            String symbolLower = s.symbol.toLowerCase(Locale.US);
+            if (!currentSearch.isEmpty() && !symbolLower.contains(currentSearch)) continue;
+
             displayList.add(s);
         }
 
-        switch (currentSort) {
-            case "symbol_asc":
-                Collections.sort(displayList, (a, b) -> a.symbol.compareToIgnoreCase(b.symbol));
+        switch (currentFilter) {
+            case "gain":
+                Collections.sort(displayList, (a, b) ->
+                        ascending
+                                ? Float.compare(a.dayChange, b.dayChange)
+                                : Float.compare(b.dayChange, a.dayChange));
                 break;
-            case "symbol_desc":
-                Collections.sort(displayList, (a, b) -> b.symbol.compareToIgnoreCase(a.symbol));
+
+            case "loss":
+                Collections.sort(displayList, (a, b) ->
+                        ascending
+                                ? Float.compare(a.dayChange, b.dayChange)
+                                : Float.compare(b.dayChange, a.dayChange));
                 break;
-            case "price_asc":
-                Collections.sort(displayList, (a, b) -> Float.compare(a.currentPrice, b.currentPrice));
+
+            case "alpha":
+                Collections.sort(displayList, (a, b) ->
+                        ascending
+                                ? a.symbol.compareToIgnoreCase(b.symbol)
+                                : b.symbol.compareToIgnoreCase(a.symbol));
                 break;
-            case "price_desc":
-                Collections.sort(displayList, (a, b) -> Float.compare(b.currentPrice, a.currentPrice));
-                break;
-            case "change_asc":
-                Collections.sort(displayList, (a, b) -> Float.compare(a.dayChange, b.dayChange));
-                break;
-            case "change_desc":
-                Collections.sort(displayList, (a, b) -> Float.compare(b.dayChange, a.dayChange));
+
+            default:
                 break;
         }
 
         notifyDataSetChanged();
-    }
-
-    public List<StockWatchData> getCurrentItems() {
-        return displayList;
     }
 
     private boolean isCrypto(String symbol) {
@@ -165,11 +191,11 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
 
         holder.itemView.setTag(stock.symbol);
 
-        int textPrimary   = ctx.getColor(R.color.text_primary);
+        int textPrimary = ctx.getColor(R.color.text_primary);
         int textSecondary = ctx.getColor(R.color.text_secondary);
-        int colorGain     = ctx.getColor(R.color.gain);
-        int colorLoss     = ctx.getColor(R.color.loss);
-        int colorPrimary  = ctx.getColor(R.color.primary);
+        int colorGain = ctx.getColor(R.color.gain);
+        int colorLoss = ctx.getColor(R.color.loss);
+        int colorPrimary = ctx.getColor(R.color.primary);
 
         holder.symbolText.setText(displaySymbol(stock.symbol));
         holder.symbolText.setTextColor(textPrimary);
@@ -177,7 +203,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         float[] cached = quoteCache.get(stock.symbol);
         if (cached != null) {
             stock.currentPrice = cached[0];
-            stock.dayChange    = cached[1];
+            stock.dayChange = cached[1];
             holder.priceText.setText(formatPrice(stock.symbol, cached[0]));
             holder.priceText.setTextColor(colorPrimary);
             bindChange(holder.dayChangeText, cached[1], colorGain, colorLoss);
@@ -240,7 +266,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         String url;
 
         if (isCrypto(requestSymbol)) {
-            long to   = System.currentTimeMillis() / 1000L;
+            long to = System.currentTimeMillis() / 1000L;
             long from = to - (3L * 24 * 60 * 60);
             url = "https://finnhub.io/api/v1/crypto/candle?symbol=" + requestSymbol
                     + "&resolution=D&from=" + from + "&to=" + to
@@ -250,14 +276,11 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                     + "&token=" + FINNHUB_KEY;
         }
 
-        Log.d(TAG, "[בקשה] " + stock.symbol + " -> " + url);
-
         Request request = new Request.Builder().url(url).build();
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 loading.remove(stock.symbol);
-                Log.e(TAG, "[כשלון-רשת] " + stock.symbol + " -> " + e.getMessage());
                 if (!targetSymbol.equals(holder.itemView.getTag())) return;
                 showDash(holder, textSecondary);
             }
@@ -265,20 +288,16 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 loading.remove(stock.symbol);
-                Log.d(TAG, "[קוד] " + stock.symbol + " -> HTTP " + response.code());
 
                 if (response.body() == null) {
-                    Log.w(TAG, "[גוף ריק] " + stock.symbol);
                     if (!targetSymbol.equals(holder.itemView.getTag())) return;
                     showDash(holder, textSecondary);
                     return;
                 }
 
                 String body = response.body().string();
-                Log.d(TAG, "[תשובה] " + stock.symbol + " -> " + body);
 
                 if (!response.isSuccessful()) {
-                    Log.w(TAG, "[לא מוצלח] " + stock.symbol + " HTTP " + response.code() + " body=" + body);
                     if (!targetSymbol.equals(holder.itemView.getTag())) return;
                     showDash(holder, textSecondary);
                     return;
@@ -286,24 +305,19 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
 
                 try {
                     JSONObject json = new JSONObject(body);
-                    float price, dayChange;
+                    float price;
+                    float dayChange;
 
                     if (isCrypto(requestSymbol)) {
                         if (!"ok".equals(json.optString("s"))) {
-                            Log.w(TAG, "[קריפטו-סטאטוס לא ok] " + stock.symbol + " s=" + json.optString("s"));
-                            if (targetSymbol.equals(holder.itemView.getTag())) {
-                                showDash(holder, textSecondary);
-                            }
+                            if (targetSymbol.equals(holder.itemView.getTag())) showDash(holder, textSecondary);
                             return;
                         }
 
                         JSONArray closes = json.getJSONArray("c");
                         int len = closes.length();
                         if (len == 0) {
-                            Log.w(TAG, "[קריפטו-ריק] " + stock.symbol);
-                            if (targetSymbol.equals(holder.itemView.getTag())) {
-                                showDash(holder, textSecondary);
-                            }
+                            if (targetSymbol.equals(holder.itemView.getTag())) showDash(holder, textSecondary);
                             return;
                         }
 
@@ -312,27 +326,18 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                         dayChange = prev > 0 ? ((price - prev) / prev) * 100f : 0f;
 
                     } else {
-                        float c  = (float) json.optDouble("c", 0);
+                        float c = (float) json.optDouble("c", 0);
                         float pc = (float) json.optDouble("pc", 0);
                         float dp = (float) json.optDouble("dp", 0);
-
-                        Log.d(TAG, "[quote-fields] " + stock.symbol
-                                + " c=" + c + " pc=" + pc + " dp=" + dp);
 
                         price = (c > 0) ? c : pc;
                         dayChange = (c > 0) ? dp : 0f;
 
                         if (price <= 0) {
-                            Log.w(TAG, "[מחיר אפס] " + stock.symbol + " c=" + c + " pc=" + pc);
-                            if (targetSymbol.equals(holder.itemView.getTag())) {
-                                showDash(holder, textSecondary);
-                            }
+                            if (targetSymbol.equals(holder.itemView.getTag())) showDash(holder, textSecondary);
                             return;
                         }
                     }
-
-                    Log.d(TAG, "[עדכון UI] " + stock.symbol
-                            + " price=" + price + " change=" + dayChange + "%");
 
                     quoteCache.put(stock.symbol, new float[]{price, dayChange});
                     stock.currentPrice = price;
@@ -355,7 +360,6 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                     processAlert(stock, price, ctx);
 
                 } catch (Exception e) {
-                    Log.e(TAG, "[שגיאת JSON] " + stock.symbol + " -> " + e.getMessage());
                     if (targetSymbol.equals(holder.itemView.getTag())) {
                         showDash(holder, textSecondary);
                     }
@@ -411,8 +415,8 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                 .setContentText(String.format(
                         Locale.US,
                         isForex(symbol)
-                                ? "%s הגיע ליעד $%.4f! מחיר: $%.4f"
-                                : "%s הגיע ליעד $%.2f! מחיר: $%.2f",
+                                ? "%s reached $%.4f, current: $%.4f"
+                                : "%s reached $%.2f, current: $%.2f",
                         displaySym,
                         stock.alertTargetPrice,
                         price
@@ -453,7 +457,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             priceText = itemView.findViewById(R.id.stockPriceText);
             dayChangeText = itemView.findViewById(R.id.stockDayChangeText);
             alertText = itemView.findViewById(R.id.stockAlertText);
-            btnDelete = itemView.findViewById(R.id.btnDeleteWatchStock);
+            btnDelete = itemView.findViewById(R.id.btnDeleteStock);
             btnAlert = itemView.findViewById(R.id.btnSetAlert);
         }
     }

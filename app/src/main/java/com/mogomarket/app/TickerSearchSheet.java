@@ -151,9 +151,9 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         AutoCompleteTextView searchInput = view.findViewById(R.id.searchTickerInput);
-        ImageButton btnBack = view.findViewById(R.id.btnBackSearch);
+        ImageButton btnBack = view.findViewById(R.id.btnSearchBack);
         ImageButton btnClear = view.findViewById(R.id.btnClearSearch);
-        TextView labelResults = view.findViewById(R.id.labelSearchResults);
+        TextView labelResults = view.findViewById(R.id.labelResults);
         ListView resultsList = view.findViewById(R.id.searchResultsList);
 
         updateCurrentTickerBar();
@@ -182,17 +182,17 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
 
         resultsList.setAdapter(adapter);
 
-        resultsList.setOnItemClickListener((parent, v1, position, id) -> {
+        resultsList.setOnItemClickListener((parent, itemView, position, id) -> {
             ChartFragment.StockSuggestion s = adapter.getItem(position);
             hideKeyboard(searchInput);
             if (s != null && listener != null) listener.onTickerSelected(s.symbol);
             dismiss();
         });
 
-        btnBack.setOnClickListener(v12 -> dismiss());
-        btnClear.setOnClickListener(v13 -> searchInput.setText(""));
+        btnBack.setOnClickListener(v -> dismiss());
+        btnClear.setOnClickListener(v -> searchInput.setText(""));
 
-        searchInput.setOnKeyListener((v14, keyCode, event) -> {
+        searchInput.setOnKeyListener((v, keyCode, event) -> {
             if (event != null && event.getAction() == KeyEvent.ACTION_DOWN) {
                 if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_UP) {
                     hideKeyboard(searchInput);
@@ -203,7 +203,7 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
             return false;
         });
 
-        resultsList.setOnFocusChangeListener((v15, hasFocus) -> {
+        resultsList.setOnFocusChangeListener((v, hasFocus) -> {
             if (hasFocus) hideKeyboard(searchInput);
         });
 
@@ -220,7 +220,8 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
         });
 
         searchInput.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {
+            @Override
+            public void beforeTextChanged(CharSequence s, int st, int c, int a) {
             }
 
             @Override
