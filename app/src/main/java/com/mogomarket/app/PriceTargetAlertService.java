@@ -4,6 +4,7 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -32,10 +33,15 @@ import java.util.Set;
 
 public class PriceTargetAlertService extends Service {
 
-    private static final String TAG          = "PriceTargetAlert";
-    private static final String CHANNEL_ID   = "price_alert_channel";
-    private static final long   CHECK_INTERVAL = 15 * 60 * 1000L;
-    private static final int    NOTIF_FOREGROUND = 9001;
+    private static final String TAG              = "PriceTargetAlert";
+    private static final String CHANNEL_ID       = "price_alert_channel";
+    private static final String FG_CHANNEL_ID    = "price_fg_channel";
+    private static final long   CHECK_INTERVAL   = 15 * 60 * 1000L;
+    private static final int    NOTIF_FOREGROUND  = 9001;
+
+    // SharedPreferences key — true אחרי שההתראה הוצגה פעם ראשונה
+    private static final String PREFS_NAME        = "app_prefs";
+    private static final String KEY_FG_SHOWN_ONCE = "price_monitor_shown_once";
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Set<String> alreadyNotified = new HashSet<>();
@@ -53,6 +59,19 @@ public class PriceTargetAlertService extends Service {
         super.onCreate();
         createNotificationChannel();
         startForeground(NOTIF_FOREGROUND, buildForegroundNotification());
+
+        // אחרי שההתראה הוצגה פעם אחת — מסתירים אותה
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        boolean shownOnce = prefs.getBoolean(KEY_FG_SHOWN_ONCE, false);
+        if (!shownOnce) {
+            prefs.edit().putBoolean(KEY_FG_SHOWN_ONCE, true).apply();
+        } else {
+            // עדכן את ההתראה לגרסה השקטה/מוסתרת
+            NotificationManager nm = getSystemService(NotificationManager.class);
+            if (nm != null) {
+                nm.notify(NOTIF_FOREGROUND, buildSilentNotification());
+            }
+        }
     }
 
     @Override
@@ -136,11 +155,10 @@ public class PriceTargetAlertService extends Service {
     }
 
     private void sendPriceAlert(String symbol, double currentPrice, float targetPrice) {
-        NotificationManager nm = (NotificationManager)
-                getSystemService(NOTIFICATION_SERVICE);
+        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
 
-        String title = "\uD83C\uDFAF יעד מחיר הושג! " + symbol;
-        String text  = String.format("המחיר הנוכחי %.2f$ הגיע ליעד %.2f$",
+        String title = "\uD83C\uDFAF Price target reached! " + symbol;
+        String text  = String.format("Current price $%.2f has reached your target of $%.2f",
                 currentPrice, targetPrice);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
@@ -151,21 +169,19 @@ public class PriceTargetAlertService extends Service {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true);
 
-        int notifId = symbol.hashCode();
-        nm.notify(notifId, builder.build());
+        nm.notify(symbol.hashCode(), builder.build());
     }
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel alertChannel = new NotificationChannel(
-                    CHANNEL_ID, "התראות מחיר יעד",
+                    CHANNEL_ID, "Price Target Alerts",
                     NotificationManager.IMPORTANCE_HIGH);
-            alertChannel.setDescription("התראה כאשר מניה מגיעה למחיר היעד");
+            alertChannel.setDescription("Alerts when a stock reaches your target price");
 
-            // ערוץ עם IMPORTANCE_NONE — ההתראה הקבועה לא תוצג כלל למשתמש
             NotificationChannel fgChannel = new NotificationChannel(
-                    "price_fg_channel", "Price Monitor",
-                    NotificationManager.IMPORTANCE_NONE);
+                    FG_CHANNEL_ID, "Price Monitor",
+                    NotificationManager.IMPORTANCE_LOW);
             fgChannel.setShowBadge(false);
 
             NotificationManager nm = getSystemService(NotificationManager.class);
@@ -174,8 +190,20 @@ public class PriceTargetAlertService extends Service {
         }
     }
 
+    /** התראה גלויה — מוצגת רק בפעם הראשונה */
     private android.app.Notification buildForegroundNotification() {
-        return new NotificationCompat.Builder(this, "price_fg_channel")
+        return new NotificationCompat.Builder(this, FG_CHANNEL_ID)
+                .setContentTitle("MogoMarket")
+                .setContentText("Monitoring stock prices...")
+                .setSmallIcon(R.drawable._21)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setSilent(true)
+                .build();
+    }
+
+    /** התראה שקטה/מוסתרת — מחליפה אחרי הפעם הראשונה */
+    private android.app.Notification buildSilentNotification() {
+        return new NotificationCompat.Builder(this, FG_CHANNEL_ID)
                 .setContentTitle("")
                 .setContentText("")
                 .setSmallIcon(R.drawable._21)
