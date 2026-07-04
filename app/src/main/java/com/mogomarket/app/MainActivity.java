@@ -65,8 +65,20 @@ public class MainActivity extends AppCompatActivity {
         // עמוד התחלתי לפי ההגדרה השמורה
         if (savedInstanceState == null) {
             int startPageId = prefs.getInt(KEY_START_PAGE, R.id.nav_chart);
-            if (startPageId != R.id.nav_chart) {
+
+            // וידוא שה-ID הוא destination חוקי ב-NavGraph לפני ניווט
+            boolean isValidDestination = false;
+            try {
+                isValidDestination = (navController.getGraph().findNode(startPageId) != null);
+            } catch (Exception e) {
+                isValidDestination = false;
+            }
+
+            if (isValidDestination && startPageId != R.id.nav_chart) {
                 navController.navigate(startPageId);
+            } else if (!isValidDestination) {
+                // נקה ערך פגום מה-SharedPreferences
+                prefs.edit().remove(KEY_START_PAGE).apply();
             }
         }
 
