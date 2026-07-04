@@ -30,33 +30,15 @@ import java.net.URL;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * שירות רקע שבודק כל 15 דקות האם מחיר מניה בפורטפוליו הגיע למחיר היעד.
- * כאשר המחיר מגיע ליעד — נשלחת התראה מקומית למשתמש.
- *
- * ═══════════════════════════════════════════════════════════════════
- *  הגדרות נדרשות:
- *  1. הוסף ל-AndroidManifest.xml בתוך <application>:
- *       <service android:name=".PriceTargetAlertService" android:exported="false" />
- *  2. הוסף הרשאות:
- *       <uses-permission android:name="android.permission.INTERNET" />
- *       <uses-permission android:name="android.permission.POST_NOTIFICATIONS" /> (Android 13+)
- *       <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
- *  3. API: משתמש ב-Yahoo Finance API (חינמי, ללא מפתח)
- *     אם API זה מפסיק לעבוד — ניתן להחליף ב-Alpha Vantage / Twelve Data
- *  4. הפעלה מ-MainActivity:
- *       PriceTargetAlertService.startService(this);
- * ═══════════════════════════════════════════════════════════════════
- */
 public class PriceTargetAlertService extends Service {
 
     private static final String TAG          = "PriceTargetAlert";
     private static final String CHANNEL_ID   = "price_alert_channel";
-    private static final long   CHECK_INTERVAL = 15 * 60 * 1000L; // 15 דקות
+    private static final long   CHECK_INTERVAL = 15 * 60 * 1000L;
     private static final int    NOTIF_FOREGROUND = 9001;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private final Set<String> alreadyNotified = new HashSet<>(); // למניעת כפילויות
+    private final Set<String> alreadyNotified = new HashSet<>();
 
     private final Runnable checkTask = new Runnable() {
         @Override
@@ -66,7 +48,6 @@ public class PriceTargetAlertService extends Service {
         }
     };
 
-    // ── Lifecycle ────────────────────────────────────────────────────────────
     @Override
     public void onCreate() {
         super.onCreate();
@@ -90,7 +71,6 @@ public class PriceTargetAlertService extends Service {
     @Override
     public IBinder onBind(Intent intent) { return null; }
 
-    // ── בדיקת מחירים ─────────────────────────────────────────────────────────
     private void checkPriceTargets() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) return;
@@ -114,7 +94,6 @@ public class PriceTargetAlertService extends Service {
         });
     }
 
-    // ── שליפת מחיר עדכני מ-Yahoo Finance ────────────────────────────────────
     private void fetchCurrentPrice(StockData stock, String firebaseKey) {
         new Thread(() -> {
             try {
@@ -142,10 +121,6 @@ public class PriceTargetAlertService extends Service {
                         .getJSONObject("meta")
                         .getDouble("regularMarketPrice");
 
-                Log.d(TAG, stock.symbol + " current: " + currentPrice
-                        + " | target: " + stock.targetPrice);
-
-                // האם הגענו ליעד?
                 if (currentPrice >= stock.targetPrice) {
                     String alertKey = firebaseKey + "_" + (int) stock.targetPrice;
                     if (!alreadyNotified.contains(alertKey)) {
@@ -160,12 +135,11 @@ public class PriceTargetAlertService extends Service {
         }).start();
     }
 
-    // ── שליחת התראה ──────────────────────────────────────────────────────────
     private void sendPriceAlert(String symbol, double currentPrice, float targetPrice) {
         NotificationManager nm = (NotificationManager)
                 getSystemService(NOTIFICATION_SERVICE);
 
-        String title = "🎯 יעד מחיר הושג! " + symbol;
+        String title = "\uD83C\uDFAF יעד מחיר הושג! " + symbol;
         String text  = String.format("המחיר הנוכחי %.2f$ הגיע ליעד %.2f$",
                 currentPrice, targetPrice);
 
@@ -179,10 +153,8 @@ public class PriceTargetAlertService extends Service {
 
         int notifId = symbol.hashCode();
         nm.notify(notifId, builder.build());
-        Log.d(TAG, "Alert sent: " + title);
     }
 
-    // ── Notification Channel ──────────────────────────────────────────────────
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel alertChannel = new NotificationChannel(
@@ -190,9 +162,11 @@ public class PriceTargetAlertService extends Service {
                     NotificationManager.IMPORTANCE_HIGH);
             alertChannel.setDescription("התראה כאשר מניה מגיעה למחיר היעד");
 
+            // ערוץ עם IMPORTANCE_NONE — ההתראה הקבועה לא תוצג כלל למשתמש
             NotificationChannel fgChannel = new NotificationChannel(
-                    "price_fg_channel", "Price Monitor Running",
-                    NotificationManager.IMPORTANCE_LOW);
+                    "price_fg_channel", "Price Monitor",
+                    NotificationManager.IMPORTANCE_NONE);
+            fgChannel.setShowBadge(false);
 
             NotificationManager nm = getSystemService(NotificationManager.class);
             nm.createNotificationChannel(alertChannel);
@@ -202,18 +176,15 @@ public class PriceTargetAlertService extends Service {
 
     private android.app.Notification buildForegroundNotification() {
         return new NotificationCompat.Builder(this, "price_fg_channel")
-                .setContentTitle("MogoMarket")
-                .setContentText("מנטר מחירי מניות...")
+                .setContentTitle("")
+                .setContentText("")
                 .setSmallIcon(R.drawable._21)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setPriority(NotificationCompat.PRIORITY_MIN)
+                .setVisibility(NotificationCompat.VISIBILITY_SECRET)
+                .setSilent(true)
                 .build();
     }
 
-    // ── Static helper להפעלה מ-Activity ─────────────────────────────────────
-    /**
-     * usage (ב-MainActivity.onCreate):
-     *   PriceTargetAlertService.startService(this);
-     */
     public static void startService(android.content.Context context) {
         Intent intent = new Intent(context, PriceTargetAlertService.class);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -221,6 +192,5 @@ public class PriceTargetAlertService extends Service {
         } else {
             context.startService(intent);
         }
-        Log.d(TAG, "PriceTargetAlertService started.");
     }
 }
