@@ -310,7 +310,7 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                     ? requestSymbol.substring(requestSymbol.indexOf(':') + 1)
                     : requestSymbol;
 
-            String url = "https://api.binance.com/api/v3/ticker/24hr?symbol=" + pair;
+            String url = "https://api.binance.com/api/v3/klines?symbol=" + pair + "&interval=1d&limit=2";
 
             Request request = new Request.Builder()
                     .url(url)
@@ -344,20 +344,34 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                     }
 
                     try {
-                        JSONObject json = new JSONObject(body);
+                        JSONArray arr = new JSONArray(body);
 
-                        float parsedPrice = (float) json.optDouble("lastPrice", 0.0);
-                        float parsedDayChange = (float) json.optDouble("priceChangePercent", 0.0);
-
-                        if (parsedPrice <= 0f) {
+                        if (arr.length() < 2) {
                             if (targetSymbol.equals(holder.itemView.getTag())) {
                                 showDash(holder, textSecondary);
                             }
                             return;
                         }
 
-                        final float finalPrice = parsedPrice;
-                        final float finalDayChange = parsedDayChange;
+                        JSONArray prevBar = arr.getJSONArray(arr.length() - 2);
+                        JSONArray lastBar = arr.getJSONArray(arr.length() - 1);
+
+                        float prevClose = Float.parseFloat(prevBar.getString(4));
+                        float lastClose = Float.parseFloat(lastBar.getString(4));
+
+                        if (lastClose <= 0f) {
+                            if (targetSymbol.equals(holder.itemView.getTag())) {
+                                showDash(holder, textSecondary);
+                            }
+                            return;
+                        }
+
+                        float computedDayChange = prevClose > 0f
+                                ? ((lastClose - prevClose) / prevClose) * 100f
+                                : 0f;
+
+                        final float finalPrice = lastClose;
+                        final float finalDayChange = computedDayChange;
 
                         quoteCache.put(stock.symbol, new float[]{finalPrice, finalDayChange});
                         stock.currentPrice = finalPrice;
