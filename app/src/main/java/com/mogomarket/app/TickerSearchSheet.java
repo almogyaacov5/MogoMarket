@@ -131,6 +131,7 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
                 BottomSheetBehavior<View> behavior = BottomSheetBehavior.from(sheet);
                 behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
                 behavior.setSkipCollapsed(true);
+                behavior.setDraggable(false);
 
                 ViewGroup.LayoutParams params = sheet.getLayoutParams();
                 params.height = WindowManager.LayoutParams.MATCH_PARENT;
