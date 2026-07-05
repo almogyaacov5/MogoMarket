@@ -217,50 +217,87 @@ public class PortfolioFragment extends Fragment {
         }
 
         AtomicInteger pending = new AtomicInteger(stocksList.size());
-        double[] totalPnlArr  = {0};
-        double[] totalInvArr  = {0};
-        double[] dailyPnlArr  = {0};
-        double[] dailyInvArr  = {0};
+        double[] totalPnlArr = {0};
+        double[] totalInvArr = {0};
+        double[] dailyPnlArr = {0};
+        double[] dailyInvArr = {0};
 
         for (StockData stock : stocksList) {
-            if (stock.tradeAmount <= 0) {
-                if (pending.decrementAndGet() == 0) updatePnlUI(totalPnlArr[0], totalInvArr[0], dailyPnlArr[0], dailyInvArr[0]);
+            if (stock == null || stock.tradeAmount <= 0 || stock.buyPrice <= 0) {
+                if (pending.decrementAndGet() == 0) {
+                    updatePnlUI(totalPnlArr[0], totalInvArr[0], dailyPnlArr[0], dailyInvArr[0]);
+                }
                 continue;
             }
+
             String sym = stock.symbol != null ? stock.symbol.trim() : "";
+            if (sym.isEmpty()) {
+                if (pending.decrementAndGet() == 0) {
+                    updatePnlUI(totalPnlArr[0], totalInvArr[0], dailyPnlArr[0], dailyInvArr[0]);
+                }
+                continue;
+            }
+
             boolean isCrypto = CryptoHelper.isCryptoSymbol(sym);
             String url = isCrypto
                     ? "https://api.binance.com/api/v3/ticker/24hr?symbol=" + CryptoHelper.getPair(sym)
                     : "https://finnhub.io/api/v1/quote?symbol=" + sym + "&token=" + FINNHUB_KEY;
 
             httpClient.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
-                @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    if (pending.decrementAndGet() == 0) updatePnlUI(totalPnlArr[0], totalInvArr[0], dailyPnlArr[0], dailyInvArr[0]);
+                @Override
+                public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                    if (pending.decrementAndGet() == 0) {
+                        updatePnlUI(totalPnlArr[0], totalInvArr[0], dailyPnlArr[0], dailyInvArr[0]);
+                    }
                 }
-                @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+
+                @Override
+                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                     try {
-                        JSONObject obj = new JSONObject(response.body().string());
-                        float currentPrice, dailyChangePct;
+                        String body = response.body() != null ? response.body().string() : "";
+                        JSONObject obj = new JSONObject(body);
+
+                        float currentPrice;
+                        float dailyChangePct;
+
                         if (isCrypto) {
-                            currentPrice   = (float) obj.getDouble("lastPrice");
-                            dailyChangePct = (float) obj.getDouble("priceChangePercent");
+                            currentPrice = (float) obj.optDouble("lastPrice", 0.0);
+                            dailyChangePct = (float) obj.optDouble("priceChangePercent", 0.0);
                         } else {
-                            currentPrice   = (float) obj.getDouble("c");
-                            dailyChangePct = (float) obj.getDouble("dp");
+                            currentPrice = (float) obj.optDouble("c", 0.0);
+                            dailyChangePct = (float) obj.optDouble("dp", 0.0);
                         }
-                        if (currentPrice > 0) {
-                            float totalChangePct = (stock.buyPrice != 0)
-                                    ? (currentPrice - stock.buyPrice) / stock.buyPrice * 100f : 0f;
-                            double currentValue = stock.tradeAmount * (1 + totalChangePct / 100.0);
+
+                        if (currentPrice > 0 && stock.buyPrice > 0) {
+                            float totalChangePct = ((currentPrice - stock.buyPrice) / stock.buyPrice) * 100f;
+                            double invested = stock.tradeAmount;
+                            double quantity = invested / stock.buyPrice;
+                            double currentValue = quantity * currentPrice;
+                            double totalPnl = currentValue - invested;
+                            double dailyPnl = currentValue * (dailyChangePct / 100.0);
+
                             synchronized (totalPnlArr) {
-                                totalPnlArr[0] += stock.tradeAmount * (totalChangePct / 100.0);
-                                totalInvArr[0] += stock.tradeAmount;
-                                dailyPnlArr[0] += currentValue * (dailyChangePct / 100.0);
+                                totalPnlArr[0] += totalPnl;
+                                totalInvArr[0] += invested;
+                                dailyPnlArr[0] += dailyPnl;
                                 dailyInvArr[0] += currentValue;
                             }
+
+                            // Save latest live values back to Firebase for email/report usage
+                            stock.currentPrice = currentPrice;
+                            stock.changePercent = totalChangePct;
+
+                            String key = stock.symbol.replace(":", "_");
+                            portfolioRef.child(key).child("currentPrice").setValue(currentPrice);
+                            portfolioRef.child(key).child("changePercent").setValue(totalChangePct);
                         }
-                    } catch (Exception ignored) {}
-                    if (pending.decrementAndGet() == 0) updatePnlUI(totalPnlArr[0], totalInvArr[0], dailyPnlArr[0], dailyInvArr[0]);
+
+                    } catch (Exception ignored) {
+                    }
+
+                    if (pending.decrementAndGet() == 0) {
+                        updatePnlUI(totalPnlArr[0], totalInvArr[0], dailyPnlArr[0], dailyInvArr[0]);
+                    }
                 }
             });
         }

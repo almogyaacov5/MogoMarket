@@ -94,13 +94,13 @@ public class DailySummaryEmailService extends BroadcastReceiver {
             }
         };
 
-        userRef.child("portfolio").get()
+        userRef.child("portfolio-stocks").get()
                 .addOnSuccessListener(snapshot -> {
                     portfolioRef.set(parseStockDataList(snapshot));
                     tryFinish.run();
                 })
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Failed to load portfolio: " + e.getMessage(), e);
+                    Log.e(TAG, "Failed to load portfolio-stocks: " + e.getMessage(), e);
                     tryFinish.run();
                 });
 
@@ -177,20 +177,16 @@ public class DailySummaryEmailService extends BroadcastReceiver {
 
         for (StockData stock : portfolio) {
             if (stock == null) continue;
+            if (stock.tradeAmount <= 0 || stock.buyPrice <= 0) continue;
 
-            double invested = stock.tradeAmount > 0 ? stock.tradeAmount : 0.0;
-            double currentValue;
-
-            if (stock.buyPrice > 0 && stock.tradeAmount > 0) {
-                double quantity = stock.tradeAmount / stock.buyPrice;
-                currentValue = quantity * stock.currentPrice;
-            } else {
-                currentValue = stock.tradeAmount > 0 ? stock.tradeAmount : 0.0;
-            }
+            double invested = stock.tradeAmount;
+            double quantity = invested / stock.buyPrice;
+            double currentValue = quantity * stock.currentPrice;
+            double pnl = currentValue - invested;
 
             totalInvested += invested;
             totalCurrentValue += currentValue;
-            openProfitLoss += (currentValue - invested);
+            openProfitLoss += pnl;
             openPositions++;
         }
 
@@ -243,27 +239,33 @@ public class DailySummaryEmailService extends BroadcastReceiver {
 
         if (!portfolio.isEmpty()) {
             sb.append("Portfolio holdings:").append("\n");
+
             for (StockData stock : portfolio) {
                 if (stock == null) continue;
 
-                double invested = stock.tradeAmount > 0 ? stock.tradeAmount : 0.0;
+                double invested = 0.0;
+                double quantity = 0.0;
                 double currentValue = 0.0;
                 double pnl = 0.0;
+                double pctFromBuy = 0.0;
 
-                if (stock.buyPrice > 0 && stock.tradeAmount > 0) {
-                    double quantity = stock.tradeAmount / stock.buyPrice;
+                if (stock.tradeAmount > 0 && stock.buyPrice > 0) {
+                    invested = stock.tradeAmount;
+                    quantity = invested / stock.buyPrice;
                     currentValue = quantity * stock.currentPrice;
                     pnl = currentValue - invested;
+                    pctFromBuy = (invested > 0) ? ((currentValue - invested) / invested) * 100.0 : 0.0;
                 }
 
                 sb.append("- ")
                         .append(safe(stock.symbol))
                         .append(" | Buy: ").append(formatMoney(stock.buyPrice))
                         .append(" | Current: ").append(formatMoney(stock.currentPrice))
-                        .append(" | Change: ").append(formatPercent(stock.changePercent))
+                        .append(" | Change from buy: ").append(formatPercent((float) pctFromBuy))
                         .append(" | P&L: ").append(formatSignedMoney(pnl))
                         .append("\n");
             }
+
             sb.append("\n");
         } else {
             sb.append("No open positions in portfolio.").append("\n\n");
