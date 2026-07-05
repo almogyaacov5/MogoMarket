@@ -179,6 +179,7 @@ public class DailySummaryEmailService extends BroadcastReceiver {
             if (stock == null) continue;
             if (stock.tradeAmount <= 0) continue;
 
+            // משתמש בשדות שנשמרו מהפורטפוליו
             totalInvested += stock.tradeAmount;
             totalCurrentValue += stock.currentValue;
             openProfitLoss += stock.profitLoss;
@@ -242,9 +243,9 @@ public class DailySummaryEmailService extends BroadcastReceiver {
                         .append(safe(stock.symbol))
                         .append(" | Buy: ").append(formatMoney(stock.buyPrice))
                         .append(" | Current: ").append(formatMoney(stock.currentPrice))
-                        .append(" | Change from buy: ").append(formatPercent((float) stock.profitLossPercent))
+                        .append("\n"+"Change from buy: ").append(formatPercent((float) stock.profitLossPercent))
                         .append(" | P&L: ").append(formatSignedMoney(stock.profitLoss))
-                        .append("\n");
+                        .append("\n\n");
             }
 
             sb.append("\n");
@@ -290,35 +291,7 @@ public class DailySummaryEmailService extends BroadcastReceiver {
         }
 
         sb.append("\n");
-        sb.append("CLOSED TRADES").append("\n");
-        sb.append("Closed trades: ").append(closedCount).append("\n");
-        sb.append("Closed P&L: ").append(formatSignedMoney(closedProfitLoss)).append("\n");
-        sb.append("Winning trades: ").append(winningTrades).append("\n");
-        sb.append("Losing trades: ").append(losingTrades).append("\n");
 
-        if (!closedTrades.isEmpty()) {
-            sb.append("\nClosed trades details:").append("\n");
-            for (int i = 0; i < Math.min(closedTrades.size(), 10); i++) {
-                StockData trade = closedTrades.get(i);
-                if (trade == null) continue;
-
-                double invested = trade.tradeAmount > 0 ? trade.tradeAmount : 0.0;
-                double pnl = 0.0;
-                if (trade.buyPrice > 0 && invested > 0) {
-                    double quantity = invested / trade.buyPrice;
-                    pnl = (trade.sellPrice - trade.buyPrice) * quantity;
-                }
-
-                sb.append("- ")
-                        .append(safe(trade.symbol))
-                        .append(" | Buy: ").append(formatMoney(trade.buyPrice))
-                        .append(" | Sell: ").append(formatMoney(trade.sellPrice))
-                        .append(" | P&L: ").append(formatSignedMoney(pnl))
-                        .append("\n");
-            }
-        } else {
-            sb.append("No closed trades yet.").append("\n");
-        }
 
         sb.append("\n");
         sb.append("Generated automatically by MogoMarket.");
