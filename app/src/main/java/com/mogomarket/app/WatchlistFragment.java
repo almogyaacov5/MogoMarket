@@ -233,24 +233,34 @@ public class WatchlistFragment extends Fragment {
         }
 
         ChipGroup sortChipGroup = v.findViewById(R.id.sortChipGroup);
+        Chip chipSortGain  = v.findViewById(R.id.chipSortGain);
+        Chip chipSortLoss  = v.findViewById(R.id.chipSortLoss);
+        Chip chipSortAlpha = v.findViewById(R.id.chipSortAlpha);
         Chip chipSortOrder = v.findViewById(R.id.chipSortOrder);
+
+        if (chipSortOrder != null) {
+            updateOrderChipText(chipSortOrder);
+            chipSortOrder.setOnClickListener(chipView -> {
+                adapter.toggleSortOrder();
+                updateOrderChipText(chipSortOrder);
+            });
+        }
 
         if (sortChipGroup != null) {
             sortChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
                 if (checkedIds.isEmpty()) {
                     adapter.setFilter("default");
                     lastCheckedChipId = View.NO_ID;
-                    updateOrderChipText(chipSortOrder);
                     return;
                 }
 
                 int id = checkedIds.get(0);
 
+                // לחיצה כפולה — בטל את הסינון
                 if (id == lastCheckedChipId) {
                     group.clearCheck();
                     adapter.setFilter("default");
                     lastCheckedChipId = View.NO_ID;
-                    updateOrderChipText(chipSortOrder);
                     return;
                 }
 
@@ -262,9 +272,6 @@ public class WatchlistFragment extends Fragment {
                     adapter.setFilter("loss");
                 } else if (id == R.id.chipSortAlpha) {
                     adapter.setFilter("alpha");
-                } else if (id == R.id.chipSortOrder) {
-                    adapter.toggleSortOrder();
-                    updateOrderChipText(chipSortOrder);
                 }
             });
         }

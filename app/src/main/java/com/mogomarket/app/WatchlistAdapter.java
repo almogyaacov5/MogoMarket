@@ -109,12 +109,26 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             String symbolLower = s.symbol.toLowerCase(Locale.US);
             if (!currentSearch.isEmpty() && !symbolLower.contains(currentSearch)) continue;
 
+            // chipSortGain — מציג רק מניות עם שינוי חיובי
+            if ("gain".equals(currentFilter) && s.dayChange < 0) continue;
+
+            // chipSortLoss — מציג רק מניות עם שינוי שלילי
+            if ("loss".equals(currentFilter) && s.dayChange >= 0) continue;
+
             displayList.add(s);
         }
 
         switch (currentFilter) {
             case "gain":
+                // מיין מהגבוה לנמוך (הרווח הגדול ביותר קודם) כברירת מחדל
+                Collections.sort(displayList, (a, b) ->
+                        ascending
+                                ? Float.compare(a.dayChange, b.dayChange)
+                                : Float.compare(b.dayChange, a.dayChange));
+                break;
+
             case "loss":
+                // מיין מהנמוך לגבוה (ההפסד הגדול ביותר קודם) כברירת מחדל
                 Collections.sort(displayList, (a, b) ->
                         ascending
                                 ? Float.compare(a.dayChange, b.dayChange)

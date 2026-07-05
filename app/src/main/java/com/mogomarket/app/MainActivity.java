@@ -83,7 +83,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // שירותי רקע קיימים
-        PriceTargetAlertService.startService(this);
         DailySummaryEmailService.scheduleDailySummary(this);
     }
 
