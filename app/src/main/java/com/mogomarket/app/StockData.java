@@ -9,12 +9,15 @@ public class StockData {
     public float changePercent;
     public double sellPrice;
     public double tradeAmount;
-    public String notes;  // הערות / סיבת קנייה
+    public String notes;
 
-    // קונסטרוקטור ריק בשביל Firebase
+    // New calculated fields for portfolio/email summary
+    public double currentValue;
+    public double profitLoss;
+    public double profitLossPercent;
+
     public StockData() {}
 
-    // קונסטרוקטור מלא - 5 פרמטרים (עם סכום השקעה)
     public StockData(String symbol, float buyPrice, float currentPrice, float changePercent, double tradeAmount) {
         this.symbol = symbol;
         this.buyPrice = buyPrice;
@@ -24,9 +27,12 @@ public class StockData {
         this.targetPrice = 0;
         this.name = "";
         this.notes = "";
+        this.sellPrice = 0;
+        this.currentValue = 0;
+        this.profitLoss = 0;
+        this.profitLossPercent = 0;
     }
 
-    // קונסטרוקטור 4 פרמטרים
     public StockData(String symbol, float buyPrice, float currentPrice, float changePercent) {
         this.symbol = symbol;
         this.buyPrice = buyPrice;
@@ -36,9 +42,12 @@ public class StockData {
         this.targetPrice = 0;
         this.name = "";
         this.notes = "";
+        this.sellPrice = 0;
+        this.currentValue = 0;
+        this.profitLoss = 0;
+        this.profitLossPercent = 0;
     }
 
-    // קונסטרוקטור חלקי - 3 פרמטרים
     public StockData(String symbol, float buyPrice, float currentPrice) {
         this.symbol = symbol;
         this.buyPrice = buyPrice;
@@ -48,5 +57,9 @@ public class StockData {
         this.targetPrice = 0;
         this.name = "";
         this.notes = "";
+        this.sellPrice = 0;
+        this.currentValue = 0;
+        this.profitLoss = 0;
+        this.profitLossPercent = 0;
     }
 }

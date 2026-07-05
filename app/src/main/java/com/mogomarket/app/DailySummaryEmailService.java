@@ -177,16 +177,11 @@ public class DailySummaryEmailService extends BroadcastReceiver {
 
         for (StockData stock : portfolio) {
             if (stock == null) continue;
-            if (stock.tradeAmount <= 0 || stock.buyPrice <= 0) continue;
+            if (stock.tradeAmount <= 0) continue;
 
-            double invested = stock.tradeAmount;
-            double quantity = invested / stock.buyPrice;
-            double currentValue = quantity * stock.currentPrice;
-            double pnl = currentValue - invested;
-
-            totalInvested += invested;
-            totalCurrentValue += currentValue;
-            openProfitLoss += pnl;
+            totalInvested += stock.tradeAmount;
+            totalCurrentValue += stock.currentValue;
+            openProfitLoss += stock.profitLoss;
             openPositions++;
         }
 
@@ -243,26 +238,12 @@ public class DailySummaryEmailService extends BroadcastReceiver {
             for (StockData stock : portfolio) {
                 if (stock == null) continue;
 
-                double invested = 0.0;
-                double quantity = 0.0;
-                double currentValue = 0.0;
-                double pnl = 0.0;
-                double pctFromBuy = 0.0;
-
-                if (stock.tradeAmount > 0 && stock.buyPrice > 0) {
-                    invested = stock.tradeAmount;
-                    quantity = invested / stock.buyPrice;
-                    currentValue = quantity * stock.currentPrice;
-                    pnl = currentValue - invested;
-                    pctFromBuy = (invested > 0) ? ((currentValue - invested) / invested) * 100.0 : 0.0;
-                }
-
                 sb.append("- ")
                         .append(safe(stock.symbol))
                         .append(" | Buy: ").append(formatMoney(stock.buyPrice))
                         .append(" | Current: ").append(formatMoney(stock.currentPrice))
-                        .append(" | Change from buy: ").append(formatPercent((float) pctFromBuy))
-                        .append(" | P&L: ").append(formatSignedMoney(pnl))
+                        .append(" | Change from buy: ").append(formatPercent((float) stock.profitLossPercent))
+                        .append(" | P&L: ").append(formatSignedMoney(stock.profitLoss))
                         .append("\n");
             }
 

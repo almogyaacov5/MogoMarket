@@ -254,8 +254,8 @@ public class PortfolioFragment extends Fragment {
                 @Override
                 public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                     try {
-                        String body = response.body() != null ? response.body().string() : "";
-                        JSONObject obj = new JSONObject(body);
+                        String responseBody = response.body() != null ? response.body().string() : "";
+                        JSONObject obj = new JSONObject(responseBody);
 
                         float currentPrice;
                         float dailyChangePct;
@@ -268,12 +268,12 @@ public class PortfolioFragment extends Fragment {
                             dailyChangePct = (float) obj.optDouble("dp", 0.0);
                         }
 
-                        if (currentPrice > 0 && stock.buyPrice > 0) {
-                            float totalChangePct = ((currentPrice - stock.buyPrice) / stock.buyPrice) * 100f;
+                        if (currentPrice > 0 && stock.buyPrice > 0 && stock.tradeAmount > 0) {
                             double invested = stock.tradeAmount;
                             double quantity = invested / stock.buyPrice;
                             double currentValue = quantity * currentPrice;
                             double totalPnl = currentValue - invested;
+                            double totalPnlPct = (invested > 0) ? (totalPnl / invested) * 100.0 : 0.0;
                             double dailyPnl = currentValue * (dailyChangePct / 100.0);
 
                             synchronized (totalPnlArr) {
@@ -283,15 +283,19 @@ public class PortfolioFragment extends Fragment {
                                 dailyInvArr[0] += currentValue;
                             }
 
-                            // Save latest live values back to Firebase for email/report usage
                             stock.currentPrice = currentPrice;
-                            stock.changePercent = totalChangePct;
+                            stock.changePercent = (float) totalPnlPct;
+                            stock.currentValue = currentValue;
+                            stock.profitLoss = totalPnl;
+                            stock.profitLossPercent = totalPnlPct;
 
                             String key = stock.symbol.replace(":", "_");
-                            portfolioRef.child(key).child("currentPrice").setValue(currentPrice);
-                            portfolioRef.child(key).child("changePercent").setValue(totalChangePct);
+                            portfolioRef.child(key).child("currentPrice").setValue(stock.currentPrice);
+                            portfolioRef.child(key).child("changePercent").setValue(stock.changePercent);
+                            portfolioRef.child(key).child("currentValue").setValue(stock.currentValue);
+                            portfolioRef.child(key).child("profitLoss").setValue(stock.profitLoss);
+                            portfolioRef.child(key).child("profitLossPercent").setValue(stock.profitLossPercent);
                         }
-
                     } catch (Exception ignored) {
                     }
 
