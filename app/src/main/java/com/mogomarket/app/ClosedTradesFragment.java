@@ -57,9 +57,8 @@ public class ClosedTradesFragment extends Fragment {
         progressBar             = v.findViewById(R.id.aiProgressBar);
         totalPnlText            = v.findViewById(R.id.totalPnlText);
         winRateText             = v.findViewById(R.id.winRateText);
-        tvClosedTotalPnl        = v.findViewById(R.id.tvClosedTotalPnl);
         tvClosedTradeCount      = v.findViewById(R.id.tvClosedTradeCount);
-        tvClosedTotalInvested   = v.findViewById(R.id.tvClosedTotalInvested);
+
 
         llmService = new LLMService();
 
