@@ -233,9 +233,6 @@ public class WatchlistFragment extends Fragment {
         }
 
         ChipGroup sortChipGroup = v.findViewById(R.id.sortChipGroup);
-        Chip chipSortGain  = v.findViewById(R.id.chipSortGain);
-        Chip chipSortLoss  = v.findViewById(R.id.chipSortLoss);
-        Chip chipSortAlpha = v.findViewById(R.id.chipSortAlpha);
         Chip chipSortOrder = v.findViewById(R.id.chipSortOrder);
 
         if (chipSortOrder != null) {
@@ -256,7 +253,6 @@ public class WatchlistFragment extends Fragment {
 
                 int id = checkedIds.get(0);
 
-                // לחיצה כפולה — בטל את הסינון
                 if (id == lastCheckedChipId) {
                     group.clearCheck();
                     adapter.setFilter("default");
@@ -461,7 +457,7 @@ public class WatchlistFragment extends Fragment {
         }
 
         try {
-            String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name());
+            String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8);
             String url = "https://finnhub.io/api/v1/search?q=" + encoded + "&token=" + FINNHUB_KEY;
 
             Request req = new Request.Builder().url(url).build();
