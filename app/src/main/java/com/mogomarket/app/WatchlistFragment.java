@@ -238,7 +238,7 @@ public class WatchlistFragment extends Fragment {
         if (chipSortOrder != null) {
             updateOrderChipText(chipSortOrder);
             chipSortOrder.setOnClickListener(chipView -> {
-                adapter.toggleSortOrder();
+                adapter.cyclePercentSortOrder();
                 updateOrderChipText(chipSortOrder);
             });
         }
@@ -279,7 +279,16 @@ public class WatchlistFragment extends Fragment {
 
     private void updateOrderChipText(@Nullable Chip chipSortOrder) {
         if (chipSortOrder == null || adapter == null) return;
-        chipSortOrder.setText(adapter.isAscending() ? "↑ Asc" : "↓ Desc");
+
+        int mode = adapter.getPercentSortMode();
+
+        if (mode == 1) {
+            chipSortOrder.setText("↑ Top Gainers");
+        } else if (mode == 2) {
+            chipSortOrder.setText("↓ Top Losers");
+        } else {
+            chipSortOrder.setText("↺ Default");
+        }
     }
 
     private String normalizeUserSymbol(String raw) {

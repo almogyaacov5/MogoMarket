@@ -57,7 +57,12 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
 
     private String currentSearch = "";
     private String currentFilter = "default";
+    private static final int PERCENT_SORT_DEFAULT = 0;
+    private static final int PERCENT_SORT_GAIN_FIRST = 1;
+    private static final int PERCENT_SORT_LOSS_FIRST = 2;
+
     private boolean ascending = true;
+    private int percentSortMode = PERCENT_SORT_DEFAULT;
 
     public WatchlistAdapter(OnWatchStockClickListener listener) {
         this.listener = listener;
@@ -79,9 +84,18 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
         applyFilters();
     }
 
-    public void toggleSortOrder() {
-        ascending = !ascending;
+    public void cyclePercentSortOrder() {
+        percentSortMode++;
+
+        if (percentSortMode > PERCENT_SORT_LOSS_FIRST) {
+            percentSortMode = PERCENT_SORT_DEFAULT;
+        }
+
         applyFilters();
+    }
+
+    public int getPercentSortMode() {
+        return percentSortMode;
     }
 
     public boolean isAscending() {
@@ -109,30 +123,22 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
             String symbolLower = s.symbol.toLowerCase(Locale.US);
             if (!currentSearch.isEmpty() && !symbolLower.contains(currentSearch)) continue;
 
-            // chipSortGain — מציג רק מניות עם שינוי חיובי
-            if ("gain".equals(currentFilter) && s.dayChange < 0) continue;
-
-            // chipSortLoss — מציג רק מניות עם שינוי שלילי
-            if ("loss".equals(currentFilter) && s.dayChange >= 0) continue;
+            if ("gain".equals(currentFilter) && s.dayChange < 0f) continue;
+            if ("loss".equals(currentFilter) && s.dayChange >= 0f) continue;
 
             displayList.add(s);
         }
 
         switch (currentFilter) {
             case "gain":
-                // מיין מהגבוה לנמוך (הרווח הגדול ביותר קודם) כברירת מחדל
-                Collections.sort(displayList, (a, b) ->
-                        ascending
-                                ? Float.compare(a.dayChange, b.dayChange)
-                                : Float.compare(b.dayChange, a.dayChange));
-                break;
-
             case "loss":
-                // מיין מהנמוך לגבוה (ההפסד הגדול ביותר קודם) כברירת מחדל
-                Collections.sort(displayList, (a, b) ->
-                        ascending
-                                ? Float.compare(a.dayChange, b.dayChange)
-                                : Float.compare(b.dayChange, a.dayChange));
+                if (percentSortMode == PERCENT_SORT_GAIN_FIRST) {
+                    Collections.sort(displayList, (a, b) ->
+                            Float.compare(b.dayChange, a.dayChange));
+                } else if (percentSortMode == PERCENT_SORT_LOSS_FIRST) {
+                    Collections.sort(displayList, (a, b) ->
+                            Float.compare(a.dayChange, b.dayChange));
+                }
                 break;
 
             case "alpha":
@@ -143,10 +149,21 @@ public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.View
                 break;
 
             default:
+                if (percentSortMode == PERCENT_SORT_GAIN_FIRST) {
+                    Collections.sort(displayList, (a, b) ->
+                            Float.compare(b.dayChange, a.dayChange));
+                } else if (percentSortMode == PERCENT_SORT_LOSS_FIRST) {
+                    Collections.sort(displayList, (a, b) ->
+                            Float.compare(a.dayChange, b.dayChange));
+                }
                 break;
         }
 
         notifyDataSetChanged();
+    }
+
+    public String getCurrentFilter() {
+        return currentFilter;
     }
 
     private boolean isCrypto(String symbol) {
