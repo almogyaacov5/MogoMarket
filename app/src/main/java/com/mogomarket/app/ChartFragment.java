@@ -744,7 +744,11 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         if (headerSection   != null) headerSection.setBackgroundColor(cardColor);
         if (controlsSection != null) controlsSection.setBackgroundColor(cardColor);
         if (bottomBar       != null) bottomBar.setBackgroundColor(cardColor);
+
+        if (tickerLabelTop  != null) tickerLabelTop.setTextColor(textPri);
+        if (tickerText      != null) tickerText.setTextColor(textPri);
         if (timeFrameText   != null) timeFrameText.setTextColor(textSec);
+
         applyChartColors();
     }
 
