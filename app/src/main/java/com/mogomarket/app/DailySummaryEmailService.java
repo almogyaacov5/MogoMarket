@@ -243,8 +243,13 @@ public class DailySummaryEmailService extends BroadcastReceiver {
                         .append(safe(stock.symbol))
                         .append(" | Buy: ").append(formatMoney(stock.buyPrice))
                         .append(" | Current: ").append(formatMoney(stock.currentPrice))
-                        .append("\n"+"Change from buy: ").append(formatPercent((float) stock.profitLossPercent))
-                        .append(" | P&L: ").append(formatSignedMoney(stock.profitLoss))
+                        .append("\n  ")
+                        .append("Day: ")
+                        .append(formatPercent((float) stock.dailyProfitLossPercent))
+                        .append(" (").append(formatSignedMoney(stock.dailyProfitLoss)).append(")")
+                        .append("Total: ")
+                        .append(formatPercent((float) stock.profitLossPercent))
+                        .append(" (").append(formatSignedMoney(stock.profitLoss)).append(")")
                         .append("\n\n");
             }
 

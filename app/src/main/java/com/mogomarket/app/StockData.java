@@ -3,6 +3,8 @@ package com.mogomarket.app;
 public class StockData {
     public String symbol;
     public String name;
+    public double dailyProfitLoss;
+    public double dailyProfitLossPercent;
     public float buyPrice;
     public float targetPrice;
     public float currentPrice;

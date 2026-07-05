@@ -216,38 +216,57 @@ public class PortfolioFragment extends Fragment {
             return;
         }
 
-        AtomicInteger pending = new AtomicInteger(stocksList.size());
-        double[] totalPnlArr = {0};
-        double[] totalInvArr = {0};
-        double[] dailyPnlArr = {0};
-        double[] dailyInvArr = {0};
+        AtomicInteger pendingCount = new AtomicInteger(stocksList.size());
+        double[] totalPnlSum = {0};
+        double[] totalInvestedSum = {0};
+        double[] dailyPnlSum = {0};
+        double[] dailyValueSum = {0};
 
         for (StockData stock : stocksList) {
             if (stock == null || stock.tradeAmount <= 0 || stock.buyPrice <= 0) {
-                if (pending.decrementAndGet() == 0) {
-                    updatePnlUI(totalPnlArr[0], totalInvArr[0], dailyPnlArr[0], dailyInvArr[0]);
+                if (pendingCount.decrementAndGet() == 0) {
+                    updatePnlUI(
+                            totalPnlSum[0],
+                            totalInvestedSum[0],
+                            dailyPnlSum[0],
+                            dailyValueSum[0]
+                    );
                 }
                 continue;
             }
 
-            String sym = stock.symbol != null ? stock.symbol.trim() : "";
-            if (sym.isEmpty()) {
-                if (pending.decrementAndGet() == 0) {
-                    updatePnlUI(totalPnlArr[0], totalInvArr[0], dailyPnlArr[0], dailyInvArr[0]);
+            String symbol = stock.symbol != null ? stock.symbol.trim() : "";
+            if (symbol.isEmpty()) {
+                if (pendingCount.decrementAndGet() == 0) {
+                    updatePnlUI(
+                            totalPnlSum[0],
+                            totalInvestedSum[0],
+                            dailyPnlSum[0],
+                            dailyValueSum[0]
+                    );
                 }
                 continue;
             }
 
-            boolean isCrypto = CryptoHelper.isCryptoSymbol(sym);
-            String url = isCrypto
-                    ? "https://api.binance.com/api/v3/ticker/24hr?symbol=" + CryptoHelper.getPair(sym)
-                    : "https://finnhub.io/api/v1/quote?symbol=" + sym + "&token=" + FINNHUB_KEY;
+            boolean isCrypto = CryptoHelper.isCryptoSymbol(symbol);
+            String requestUrl = isCrypto
+                    ? "https://api.binance.com/api/v3/ticker/24hr?symbol=" + CryptoHelper.getPair(symbol)
+                    : "https://finnhub.io/api/v1/quote?symbol=" + symbol + "&token=" + FINNHUB_KEY;
 
-            httpClient.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
+            Request request = new Request.Builder()
+                    .url(requestUrl)
+                    .build();
+
+            httpClient.newCall(request).enqueue(new Callback() {
                 @Override
                 public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    if (pending.decrementAndGet() == 0) {
-                        updatePnlUI(totalPnlArr[0], totalInvArr[0], dailyPnlArr[0], dailyInvArr[0]);
+                    if (pendingCount.decrementAndGet() == 0) {
+                        updatePnlUI(
+                                totalPnlSum[0],
+                                totalInvestedSum[0],
+                                dailyPnlSum[0],
+                                dailyValueSum[0]
+                        );
                     }
                 }
 
@@ -255,52 +274,66 @@ public class PortfolioFragment extends Fragment {
                 public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                     try {
                         String responseBody = response.body() != null ? response.body().string() : "";
-                        JSONObject obj = new JSONObject(responseBody);
+                        JSONObject json = new JSONObject(responseBody);
 
-                        float currentPrice;
-                        float dailyChangePct;
+                        float liveCurrentPrice;
+                        float liveDailyChangePercent;
 
                         if (isCrypto) {
-                            currentPrice = (float) obj.optDouble("lastPrice", 0.0);
-                            dailyChangePct = (float) obj.optDouble("priceChangePercent", 0.0);
+                            liveCurrentPrice = (float) json.optDouble("lastPrice", 0.0);
+                            liveDailyChangePercent = (float) json.optDouble("priceChangePercent", 0.0);
                         } else {
-                            currentPrice = (float) obj.optDouble("c", 0.0);
-                            dailyChangePct = (float) obj.optDouble("dp", 0.0);
+                            liveCurrentPrice = (float) json.optDouble("c", 0.0);
+                            liveDailyChangePercent = (float) json.optDouble("dp", 0.0);
                         }
 
-                        if (currentPrice > 0 && stock.buyPrice > 0 && stock.tradeAmount > 0) {
-                            double invested = stock.tradeAmount;
-                            double quantity = invested / stock.buyPrice;
-                            double currentValue = quantity * currentPrice;
-                            double totalPnl = currentValue - invested;
-                            double totalPnlPct = (invested > 0) ? (totalPnl / invested) * 100.0 : 0.0;
-                            double dailyPnl = currentValue * (dailyChangePct / 100.0);
+                        if (liveCurrentPrice > 0) {
+                            double investedAmount = stock.tradeAmount;
+                            double quantity = investedAmount / stock.buyPrice;
+                            double currentValue = quantity * liveCurrentPrice;
 
-                            synchronized (totalPnlArr) {
-                                totalPnlArr[0] += totalPnl;
-                                totalInvArr[0] += invested;
-                                dailyPnlArr[0] += dailyPnl;
-                                dailyInvArr[0] += currentValue;
+                            double totalProfitLoss = currentValue - investedAmount;
+                            double totalProfitLossPercent =
+                                    investedAmount > 0 ? (totalProfitLoss / investedAmount) * 100.0 : 0.0;
+
+                            double dailyProfitLoss = currentValue * (liveDailyChangePercent / 100.0);
+                            double dailyProfitLossPercent = liveDailyChangePercent;
+
+                            synchronized (totalPnlSum) {
+                                totalPnlSum[0] += totalProfitLoss;
+                                totalInvestedSum[0] += investedAmount;
+                                dailyPnlSum[0] += dailyProfitLoss;
+                                dailyValueSum[0] += currentValue;
                             }
 
-                            stock.currentPrice = currentPrice;
-                            stock.changePercent = (float) totalPnlPct;
+                            stock.currentPrice = liveCurrentPrice;
+                            stock.changePercent = (float) totalProfitLossPercent;
                             stock.currentValue = currentValue;
-                            stock.profitLoss = totalPnl;
-                            stock.profitLossPercent = totalPnlPct;
+                            stock.profitLoss = totalProfitLoss;
+                            stock.profitLossPercent = totalProfitLossPercent;
+                            stock.dailyProfitLoss = dailyProfitLoss;
+                            stock.dailyProfitLossPercent = dailyProfitLossPercent;
 
-                            String key = stock.symbol.replace(":", "_");
-                            portfolioRef.child(key).child("currentPrice").setValue(stock.currentPrice);
-                            portfolioRef.child(key).child("changePercent").setValue(stock.changePercent);
-                            portfolioRef.child(key).child("currentValue").setValue(stock.currentValue);
-                            portfolioRef.child(key).child("profitLoss").setValue(stock.profitLoss);
-                            portfolioRef.child(key).child("profitLossPercent").setValue(stock.profitLossPercent);
+                            String firebaseKey = symbol.replace(":", "_");
+                            portfolioRef.child(firebaseKey).child("currentPrice").setValue(stock.currentPrice);
+                            portfolioRef.child(firebaseKey).child("changePercent").setValue(stock.changePercent);
+                            portfolioRef.child(firebaseKey).child("currentValue").setValue(stock.currentValue);
+                            portfolioRef.child(firebaseKey).child("profitLoss").setValue(stock.profitLoss);
+                            portfolioRef.child(firebaseKey).child("profitLossPercent").setValue(stock.profitLossPercent);
+                            portfolioRef.child(firebaseKey).child("dailyProfitLoss").setValue(stock.dailyProfitLoss);
+                            portfolioRef.child(firebaseKey).child("dailyProfitLossPercent").setValue(stock.dailyProfitLossPercent);
                         }
+
                     } catch (Exception ignored) {
                     }
 
-                    if (pending.decrementAndGet() == 0) {
-                        updatePnlUI(totalPnlArr[0], totalInvArr[0], dailyPnlArr[0], dailyInvArr[0]);
+                    if (pendingCount.decrementAndGet() == 0) {
+                        updatePnlUI(
+                                totalPnlSum[0],
+                                totalInvestedSum[0],
+                                dailyPnlSum[0],
+                                dailyValueSum[0]
+                        );
                     }
                 }
             });
