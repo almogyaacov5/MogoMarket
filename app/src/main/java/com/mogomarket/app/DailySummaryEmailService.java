@@ -1,7 +1,9 @@
 package com.mogomarket.app;
 
+import android.app.AlarmManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -13,139 +15,347 @@ import androidx.core.app.NotificationCompat;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.mail.Message;
-import javax.mail.MessagingException;
 import javax.mail.PasswordAuthentication;
 import javax.mail.Session;
 import javax.mail.Transport;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 
-/**
- * BroadcastReceiver שמופעל כל יום בשעה קבועה (מוגדר ב-AlarmManager).
- * קורא את הפורטפוליו והטריידים מ-Firebase ושולח סיכום יומי לאימייל של המשתמש.
- *
- * ═══════════════════════════════════════════════════════════════════
- *  הגדרות נדרשות:
- *  1. הוסף ל-build.gradle (app):
- *       implementation 'com.sun.mail:android-mail:1.6.7'
- *       implementation 'com.sun.mail:android-activation:1.6.7'
- *  2. הוסף את הרשאת INTERNET ל-AndroidManifest.xml (כבר קיימת ברוב האפליקציות)
- *  3. הוסף ל-AndroidManifest.xml בתוך <application>:
- *       <receiver android:name=".DailySummaryEmailService" android:exported="false" />
- *  4. החלף את SENDER_EMAIL ו-SENDER_PASSWORD בפרטי חשבון Gmail שייעודי לשליחה.
- *     בחשבון Gmail: הפעל 2-Factor Auth, ואז צור "App Password" ב:
- *     myaccount.google.com/apppasswords
- * ═══════════════════════════════════════════════════════════════════
- */
 public class DailySummaryEmailService extends BroadcastReceiver {
 
     private static final String TAG = "DailySummaryEmail";
 
-    // ── החלף כאן בפרטי חשבון Gmail שייעודי לשליחה ──────────────────────────
-    private static final String SENDER_EMAIL    = "shoomdavar123@gmail.com";
-    private static final String SENDER_PASSWORD = "oexf zibc nsjw ynfz"; // App Password
-    // ─────────────────────────────────────────────────────────────────────────
+    // TEST ONLY - move to backend / Cloud Function for production
+    private static final String SENDER_EMAIL = "shoomdavar123@gmail.com";
+    private static final String SENDER_PASSWORD = "lpry hxic pgvc gwxl";
+
+    private static final String CHANNEL_ID = "daily_summary_channel";
+    private static final int NOTIFICATION_ID = 1001;
 
     @Override
     public void onReceive(Context context, Intent intent) {
+        sendNow(context, false);
+    }
+
+    public static void sendNow(Context context, boolean showSuccessNotification) {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) {
-            Log.d(TAG, "No logged-in user, skipping daily summary.");
+            Log.d(TAG, "No logged-in user. Skipping daily summary email.");
             return;
         }
 
-        String uid       = user.getUid();
+        String uid = user.getUid();
         String userEmail = user.getEmail();
-        if (userEmail == null || userEmail.isEmpty()) {
-            Log.d(TAG, "User has no email (anonymous/Google without email).");
+
+        if (userEmail == null || userEmail.trim().isEmpty()) {
+            Log.d(TAG, "User email is empty. Skipping daily summary email.");
             return;
         }
 
-        DatabaseReference ref = FirebaseDatabase.getInstance().getReference("users").child(uid);
-        ref.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot snapshot) {
-                StringBuilder sb = buildSummary(snapshot);
-                sendEmail(context, userEmail, sb.toString());
-            }
+        DatabaseReference userRef = FirebaseDatabase.getInstance()
+                .getReference("users")
+                .child(uid);
 
-            @Override
-            public void onCancelled(DatabaseError error) {
-                Log.e(TAG, "Firebase read failed: " + error.getMessage());
-            }
-        });
+        fetchAndSendSummary(context, userRef, userEmail, showSuccessNotification);
     }
 
-    // ── בניית תוכן המייל ─────────────────────────────────────────────────────
-    private StringBuilder buildSummary(DataSnapshot snapshot) {
+    private static void fetchAndSendSummary(Context context,
+                                            DatabaseReference userRef,
+                                            String toEmail,
+                                            boolean showSuccessNotification) {
+
+        AtomicReference<List<StockData>> portfolioRef = new AtomicReference<>(new ArrayList<>());
+        AtomicReference<List<StockData>> watchlistRef = new AtomicReference<>(new ArrayList<>());
+        AtomicReference<List<StockData>> closedTradesRef = new AtomicReference<>(new ArrayList<>());
+        AtomicInteger completed = new AtomicInteger(0);
+
+        Runnable tryFinish = () -> {
+            if (completed.incrementAndGet() == 3) {
+                String subject = buildSubject();
+                String body = buildSummaryBody(
+                        portfolioRef.get(),
+                        watchlistRef.get(),
+                        closedTradesRef.get()
+                );
+                sendEmail(context, toEmail, subject, body, showSuccessNotification);
+            }
+        };
+
+        userRef.child("portfolio").get()
+                .addOnSuccessListener(snapshot -> {
+                    portfolioRef.set(parseStockDataList(snapshot));
+                    tryFinish.run();
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Failed to load portfolio: " + e.getMessage(), e);
+                    tryFinish.run();
+                });
+
+        userRef.child("watchlist").get()
+                .addOnSuccessListener(snapshot -> {
+                    watchlistRef.set(parseStockDataList(snapshot));
+                    tryFinish.run();
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Failed to load watchlist: " + e.getMessage(), e);
+                    tryFinish.run();
+                });
+
+        userRef.child("closed-trades").get()
+                .addOnSuccessListener(snapshot -> {
+                    List<StockData> closed = parseStockDataList(snapshot);
+                    if (closed.isEmpty()) {
+                        userRef.child("closed_trades").get()
+                                .addOnSuccessListener(snapshot2 -> {
+                                    closedTradesRef.set(parseStockDataList(snapshot2));
+                                    tryFinish.run();
+                                })
+                                .addOnFailureListener(e -> {
+                                    Log.e(TAG, "Failed to load closed_trades fallback: " + e.getMessage(), e);
+                                    tryFinish.run();
+                                });
+                    } else {
+                        closedTradesRef.set(closed);
+                        tryFinish.run();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Failed to load closed-trades: " + e.getMessage(), e);
+                    userRef.child("closed_trades").get()
+                            .addOnSuccessListener(snapshot2 -> {
+                                closedTradesRef.set(parseStockDataList(snapshot2));
+                                tryFinish.run();
+                            })
+                            .addOnFailureListener(e2 -> {
+                                Log.e(TAG, "Failed to load closed_trades fallback: " + e2.getMessage(), e2);
+                                tryFinish.run();
+                            });
+                });
+    }
+
+    private static List<StockData> parseStockDataList(DataSnapshot snapshot) {
+        List<StockData> list = new ArrayList<>();
+        if (snapshot == null || !snapshot.exists()) return list;
+
+        for (DataSnapshot child : snapshot.getChildren()) {
+            StockData item = child.getValue(StockData.class);
+            if (item != null) {
+                list.add(item);
+            }
+        }
+        return list;
+    }
+
+    private static String buildSubject() {
         String date = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(new Date());
-        StringBuilder sb = new StringBuilder();
-        sb.append("סיכום יומי - MogoMarket | ").append(date).append("\n\n");
-
-        // ── פורטפוליו פתוח ───
-        sb.append("📈 פורטפוליו פתוח:\n");
-        DataSnapshot portfolio = snapshot.child("portfolio");
-        double totalPortfolioValue = 0;
-        int openCount = 0;
-        for (DataSnapshot item : portfolio.getChildren()) {
-            StockData stock = item.getValue(StockData.class);
-            if (stock == null) continue;
-            double currentVal = stock.currentPrice * (stock.tradeAmount > 0
-                    ? stock.tradeAmount / stock.buyPrice : 1);
-            sb.append(String.format(Locale.getDefault(),
-                    "  %s | קנייה: %.2f | עכשיו: %.2f | %.1f%%\n",
-                    stock.symbol, stock.buyPrice, stock.currentPrice, stock.changePercent));
-            totalPortfolioValue += currentVal;
-            openCount++;
-        }
-        if (openCount == 0) sb.append("  (אין מניות בפורטפוליו)\n");
-        sb.append(String.format(Locale.getDefault(),
-                "סה\"כ מניות פתוחות: %d\n\n", openCount));
-
-        // ── טריידים סגורים ───
-        sb.append("🔒 טריידים סגורים:\n");
-        DataSnapshot closed = snapshot.child("closed_trades");
-        double totalPnl = 0;
-        int closedCount = 0;
-        for (DataSnapshot item : closed.getChildren()) {
-            StockData stock = item.getValue(StockData.class);
-            if (stock == null) continue;
-            double pnl = (stock.sellPrice - stock.buyPrice) * (stock.tradeAmount / stock.buyPrice);
-            totalPnl += pnl;
-            sb.append(String.format(Locale.getDefault(),
-                    "  %s | קנייה: %.2f | מכירה: %.2f | P&L: %.2f\n",
-                    stock.symbol, stock.buyPrice, stock.sellPrice, pnl));
-            closedCount++;
-        }
-        if (closedCount == 0) sb.append("  (אין טריידים סגורים)\n");
-        sb.append(String.format(Locale.getDefault(),
-                "סה\"כ רווח/הפסד סגורים: %.2f$\n\n", totalPnl));
-
-        sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-        sb.append("נשלח אוטומטית ע\"י MogoMarket 📊");
-        return sb;
+        return "MogoMarket Daily Summary - " + date;
     }
 
-    // ── שליחת המייל ב-Thread נפרד ────────────────────────────────────────────
-    private void sendEmail(Context context, String toEmail, String body) {
+    private static String buildSummaryBody(List<StockData> portfolio,
+                                           List<StockData> watchlist,
+                                           List<StockData> closedTrades) {
+
+        String date = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(new Date());
+
+        double totalInvested = 0.0;
+        double totalCurrentValue = 0.0;
+        double openProfitLoss = 0.0;
+        int openPositions = 0;
+
+        for (StockData stock : portfolio) {
+            if (stock == null) continue;
+
+            double invested = stock.tradeAmount > 0 ? stock.tradeAmount : 0.0;
+            double currentValue;
+
+            if (stock.buyPrice > 0 && stock.tradeAmount > 0) {
+                double quantity = stock.tradeAmount / stock.buyPrice;
+                currentValue = quantity * stock.currentPrice;
+            } else {
+                currentValue = stock.tradeAmount > 0 ? stock.tradeAmount : 0.0;
+            }
+
+            totalInvested += invested;
+            totalCurrentValue += currentValue;
+            openProfitLoss += (currentValue - invested);
+            openPositions++;
+        }
+
+        double closedProfitLoss = 0.0;
+        int closedCount = 0;
+        int winningTrades = 0;
+        int losingTrades = 0;
+
+        for (StockData trade : closedTrades) {
+            if (trade == null) continue;
+
+            double invested = trade.tradeAmount > 0 ? trade.tradeAmount : 0.0;
+            double pnl = 0.0;
+
+            if (trade.buyPrice > 0 && invested > 0) {
+                double quantity = invested / trade.buyPrice;
+                pnl = (trade.sellPrice - trade.buyPrice) * quantity;
+            }
+
+            closedProfitLoss += pnl;
+            closedCount++;
+
+            if (pnl > 0) winningTrades++;
+            else if (pnl < 0) losingTrades++;
+        }
+
+        StockData topGainer = null;
+        StockData topLoser = null;
+
+        for (StockData item : watchlist) {
+            if (item == null) continue;
+
+            if (topGainer == null || item.changePercent > topGainer.changePercent) {
+                topGainer = item;
+            }
+            if (topLoser == null || item.changePercent < topLoser.changePercent) {
+                topLoser = item;
+            }
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("MogoMarket Daily Summary").append("\n");
+        sb.append("Date: ").append(date).append("\n\n");
+
+        sb.append("OPEN PORTFOLIO").append("\n");
+        sb.append("Open positions: ").append(openPositions).append("\n");
+        sb.append("Total invested: ").append(formatMoney(totalInvested)).append("\n");
+        sb.append("Current value: ").append(formatMoney(totalCurrentValue)).append("\n");
+        sb.append("Open P&L: ").append(formatSignedMoney(openProfitLoss)).append("\n\n");
+
+        if (!portfolio.isEmpty()) {
+            sb.append("Portfolio holdings:").append("\n");
+            for (StockData stock : portfolio) {
+                if (stock == null) continue;
+
+                double invested = stock.tradeAmount > 0 ? stock.tradeAmount : 0.0;
+                double currentValue = 0.0;
+                double pnl = 0.0;
+
+                if (stock.buyPrice > 0 && stock.tradeAmount > 0) {
+                    double quantity = stock.tradeAmount / stock.buyPrice;
+                    currentValue = quantity * stock.currentPrice;
+                    pnl = currentValue - invested;
+                }
+
+                sb.append("- ")
+                        .append(safe(stock.symbol))
+                        .append(" | Buy: ").append(formatMoney(stock.buyPrice))
+                        .append(" | Current: ").append(formatMoney(stock.currentPrice))
+                        .append(" | Change: ").append(formatPercent(stock.changePercent))
+                        .append(" | P&L: ").append(formatSignedMoney(pnl))
+                        .append("\n");
+            }
+            sb.append("\n");
+        } else {
+            sb.append("No open positions in portfolio.").append("\n\n");
+        }
+
+        sb.append("WATCHLIST").append("\n");
+        sb.append("Tracked symbols: ").append(watchlist.size()).append("\n");
+
+        if (topGainer != null) {
+            sb.append("Top gainer: ")
+                    .append(safe(topGainer.symbol))
+                    .append(" (").append(formatPercent(topGainer.changePercent)).append(")")
+                    .append("\n");
+        } else {
+            sb.append("Top gainer: N/A").append("\n");
+        }
+
+        if (topLoser != null) {
+            sb.append("Top loser: ")
+                    .append(safe(topLoser.symbol))
+                    .append(" (").append(formatPercent(topLoser.changePercent)).append(")")
+                    .append("\n");
+        } else {
+            sb.append("Top loser: N/A").append("\n");
+        }
+
+        if (!watchlist.isEmpty()) {
+            sb.append("\nWatchlist snapshot:").append("\n");
+            for (int i = 0; i < Math.min(watchlist.size(), 10); i++) {
+                StockData item = watchlist.get(i);
+                if (item == null) continue;
+
+                sb.append("- ")
+                        .append(safe(item.symbol))
+                        .append(" | Price: ").append(formatMoney(item.currentPrice))
+                        .append(" | Change: ").append(formatPercent(item.changePercent))
+                        .append("\n");
+            }
+        } else {
+            sb.append("No symbols in watchlist.").append("\n");
+        }
+
+        sb.append("\n");
+        sb.append("CLOSED TRADES").append("\n");
+        sb.append("Closed trades: ").append(closedCount).append("\n");
+        sb.append("Closed P&L: ").append(formatSignedMoney(closedProfitLoss)).append("\n");
+        sb.append("Winning trades: ").append(winningTrades).append("\n");
+        sb.append("Losing trades: ").append(losingTrades).append("\n");
+
+        if (!closedTrades.isEmpty()) {
+            sb.append("\nClosed trades details:").append("\n");
+            for (int i = 0; i < Math.min(closedTrades.size(), 10); i++) {
+                StockData trade = closedTrades.get(i);
+                if (trade == null) continue;
+
+                double invested = trade.tradeAmount > 0 ? trade.tradeAmount : 0.0;
+                double pnl = 0.0;
+                if (trade.buyPrice > 0 && invested > 0) {
+                    double quantity = invested / trade.buyPrice;
+                    pnl = (trade.sellPrice - trade.buyPrice) * quantity;
+                }
+
+                sb.append("- ")
+                        .append(safe(trade.symbol))
+                        .append(" | Buy: ").append(formatMoney(trade.buyPrice))
+                        .append(" | Sell: ").append(formatMoney(trade.sellPrice))
+                        .append(" | P&L: ").append(formatSignedMoney(pnl))
+                        .append("\n");
+            }
+        } else {
+            sb.append("No closed trades yet.").append("\n");
+        }
+
+        sb.append("\n");
+        sb.append("Generated automatically by MogoMarket.");
+        return sb.toString();
+    }
+
+    private static void sendEmail(Context context,
+                                  String toEmail,
+                                  String subject,
+                                  String body,
+                                  boolean showSuccessNotification) {
+
         new Thread(() -> {
             try {
                 Properties props = new Properties();
-                props.put("mail.smtp.auth",            "true");
+                props.put("mail.smtp.auth", "true");
                 props.put("mail.smtp.starttls.enable", "true");
-                props.put("mail.smtp.host",            "smtp.gmail.com");
-                props.put("mail.smtp.port",            "587");
+                props.put("mail.smtp.host", "smtp.gmail.com");
+                props.put("mail.smtp.port", "587");
+                props.put("mail.smtp.ssl.trust", "smtp.gmail.com");
 
                 Session session = Session.getInstance(props, new javax.mail.Authenticator() {
                     @Override
@@ -154,79 +364,122 @@ public class DailySummaryEmailService extends BroadcastReceiver {
                     }
                 });
 
-                String date = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(new Date());
                 Message message = new MimeMessage(session);
                 message.setFrom(new InternetAddress(SENDER_EMAIL, "MogoMarket"));
                 message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail));
-                message.setSubject("📊 סיכום יומי MogoMarket - " + date);
+                message.setSubject(subject);
                 message.setText(body);
+
                 Transport.send(message);
 
                 Log.d(TAG, "Daily summary email sent to: " + toEmail);
-                showNotification(context, "סיכום יומי נשלח", "המייל נשלח ל-" + toEmail);
+
+                if (showSuccessNotification) {
+                    showNotification(context,
+                            "Daily summary sent",
+                            "The email was sent to " + toEmail);
+                }
 
             } catch (Exception e) {
                 Log.e(TAG, "Failed to send email: " + e.getMessage(), e);
+                showNotification(context,
+                        "Daily summary failed",
+                        "Could not send the email");
             }
         }).start();
     }
 
-    // ── התראה מקומית לאישור שליחה ────────────────────────────────────────────
-    private void showNotification(Context context, String title, String text) {
-        String channelId = "daily_summary_channel";
-        NotificationManager nm = (NotificationManager)
-                context.getSystemService(Context.NOTIFICATION_SERVICE);
+    private static String formatMoney(double value) {
+        return String.format(Locale.US, "$%,.2f", value);
+    }
+
+    private static String formatMoney(float value) {
+        return String.format(Locale.US, "$%,.2f", value);
+    }
+
+    private static String formatSignedMoney(double value) {
+        return String.format(Locale.US, "%s$%,.2f", value >= 0 ? "+" : "-", Math.abs(value));
+    }
+
+    private static String formatPercent(float value) {
+        return String.format(Locale.US, "%s%.2f%%", value >= 0 ? "+" : "", value);
+    }
+
+    private static String safe(String value) {
+        return value == null || value.trim().isEmpty() ? "N/A" : value;
+    }
+
+    private static void showNotification(Context context, String title, String text) {
+        NotificationManager nm =
+                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+
+        if (nm == null) return;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                    channelId, "Daily Summary", NotificationManager.IMPORTANCE_DEFAULT);
+                    CHANNEL_ID,
+                    "Daily Summary",
+                    NotificationManager.IMPORTANCE_DEFAULT
+            );
             nm.createNotificationChannel(channel);
         }
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_dialog_email)
                 .setContentTitle(title)
                 .setContentText(text)
                 .setAutoCancel(true);
 
-        nm.notify(1001, builder.build());
+        nm.notify(NOTIFICATION_ID, builder.build());
     }
 
-    // ── רישום AlarmManager - קרא לזה מ-MainActivity או SplashActivity ─────────
-    /**
-     * מפעיל שליחת סיכום יומי בכל יום ב-08:00 בבוקר.
-     * יש לקרוא לשיטה זו פעם אחת בעת אתחול האפליקציה.
-     *
-     * usage (ב-MainActivity.onCreate):
-     *   DailySummaryEmailService.scheduleDailySummary(this);
-     */
     public static void scheduleDailySummary(Context context) {
-        android.app.AlarmManager alarmManager =
-                (android.app.AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        AlarmManager alarmManager =
+                (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+
+        if (alarmManager == null) return;
 
         Intent intent = new Intent(context, DailySummaryEmailService.class);
-        android.app.PendingIntent pendingIntent = android.app.PendingIntent.getBroadcast(
-                context, 0, intent,
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT |
-                android.app.PendingIntent.FLAG_IMMUTABLE);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                context,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
 
         java.util.Calendar calendar = java.util.Calendar.getInstance();
         calendar.setTimeInMillis(System.currentTimeMillis());
         calendar.set(java.util.Calendar.HOUR_OF_DAY, 8);
         calendar.set(java.util.Calendar.MINUTE, 0);
         calendar.set(java.util.Calendar.SECOND, 0);
+        calendar.set(java.util.Calendar.MILLISECOND, 0);
 
-        // אם כבר עבר 08:00 היום, תכנן למחר
-        if (calendar.getTimeInMillis() < System.currentTimeMillis()) {
+        if (calendar.getTimeInMillis() <= System.currentTimeMillis()) {
             calendar.add(java.util.Calendar.DAY_OF_YEAR, 1);
         }
 
         alarmManager.setRepeating(
-                android.app.AlarmManager.RTC_WAKEUP,
+                AlarmManager.RTC_WAKEUP,
                 calendar.getTimeInMillis(),
-                android.app.AlarmManager.INTERVAL_DAY,
-                pendingIntent);
+                AlarmManager.INTERVAL_DAY,
+                pendingIntent
+        );
+    }
 
-        Log.d(TAG, "Daily summary scheduled for: " + calendar.getTime());
+    public static void cancelDailySummary(Context context) {
+        AlarmManager alarmManager =
+                (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+
+        if (alarmManager == null) return;
+
+        Intent intent = new Intent(context, DailySummaryEmailService.class);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                context,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        alarmManager.cancel(pendingIntent);
     }
 }
