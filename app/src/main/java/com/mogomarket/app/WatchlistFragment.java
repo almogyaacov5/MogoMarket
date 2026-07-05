@@ -457,7 +457,7 @@ public class WatchlistFragment extends Fragment {
         }
 
         try {
-            String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8);
+            String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name());
             String url = "https://finnhub.io/api/v1/search?q=" + encoded + "&token=" + FINNHUB_KEY;
 
             Request req = new Request.Builder().url(url).build();
