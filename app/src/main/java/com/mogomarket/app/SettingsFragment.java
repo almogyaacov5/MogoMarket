@@ -22,13 +22,13 @@ import com.google.firebase.auth.FirebaseUser;
 
 public class SettingsFragment extends Fragment {
 
+
+    private MaterialButton btnThemeToggle;
+    private TextView tvThemeStatus;
     private static final String PREFS_NAME       = "app_prefs";
     private static final String KEY_THEME        = "dark_mode";
     private static final String KEY_PRICE_ALERTS = "price_alerts_enabled";
     private static final String KEY_DAILY_EMAIL  = "daily_email_enabled";
-
-    private LinearLayout btnLightMode, btnDarkMode;
-    private TextView tvThemeStatus;
     private boolean isDark;
     private SharedPreferences prefs;
 
@@ -52,26 +52,26 @@ public class SettingsFragment extends Fragment {
         prefs = requireActivity().getSharedPreferences(PREFS_NAME, 0);
 
         // Theme
-        btnLightMode  = v.findViewById(R.id.btnLightMode);
-        btnDarkMode   = v.findViewById(R.id.btnDarkMode);
+        btnThemeToggle = v.findViewById(R.id.btnThemeToggle);
         tvThemeStatus = v.findViewById(R.id.tvThemeStatus);
 
         isDark = prefs.getBoolean(KEY_THEME, true);
         updateThemeUI(isDark);
 
-        btnLightMode.setOnClickListener(view -> {
-            isDark = false;
-            prefs.edit().putBoolean(KEY_THEME, false).apply();
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
-            updateThemeUI(false);
-        });
+        if (btnThemeToggle != null) {
+            btnThemeToggle.setOnClickListener(view -> {
+                isDark = !isDark;
+                prefs.edit().putBoolean(KEY_THEME, isDark).apply();
 
-        btnDarkMode.setOnClickListener(view -> {
-            isDark = true;
-            prefs.edit().putBoolean(KEY_THEME, true).apply();
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
-            updateThemeUI(true);
-        });
+                AppCompatDelegate.setDefaultNightMode(
+                        isDark
+                                ? AppCompatDelegate.MODE_NIGHT_YES
+                                : AppCompatDelegate.MODE_NIGHT_NO
+                );
+
+                updateThemeUI(isDark);
+            });
+        }
 
         // Watchlist navigation
         SwitchMaterial switchWatchlistNav = v.findViewById(R.id.switchWatchlistNav);
@@ -335,26 +335,31 @@ public class SettingsFragment extends Fragment {
     }
 
     private void updateThemeUI(boolean dark) {
-        if (btnLightMode == null || btnDarkMode == null || tvThemeStatus == null) return;
+        if (btnThemeToggle == null || tvThemeStatus == null) return;
 
-        int selectedText   = requireContext().getColor(R.color.white);
-        int unselectedText = requireContext().getColor(R.color.text_secondary);
+        int primary = requireContext().getColor(R.color.primary);
+        int textSecondary = requireContext().getColor(R.color.text_secondary);
 
-        if (dark) {
-            btnDarkMode.setBackgroundResource(R.drawable.bg_theme_btn_selected);
-            btnLightMode.setBackgroundResource(R.drawable.bg_theme_btn_unselected);
-            setChildTextColors(btnDarkMode,  selectedText);
-            setChildTextColors(btnLightMode, unselectedText);
-            tvThemeStatus.setText("\uD83C\uDF19 Dark mode active");
-            tvThemeStatus.setTextColor(requireContext().getColor(R.color.primary));
-        } else {
-            btnLightMode.setBackgroundResource(R.drawable.bg_theme_btn_selected);
-            btnDarkMode.setBackgroundResource(R.drawable.bg_theme_btn_unselected);
-            setChildTextColors(btnLightMode, selectedText);
-            setChildTextColors(btnDarkMode,  unselectedText);
-            tvThemeStatus.setText("\u2600\uFE0F Light mode active");
-            tvThemeStatus.setTextColor(requireContext().getColor(R.color.gain));
-        }
+        tvThemeStatus.setText(dark ? "Dark" : "Light");
+        tvThemeStatus.setTextColor(primary);
+
+        btnThemeToggle.setText(dark ? "🌙 Dark" : "☀ Light");
+        btnThemeToggle.setStrokeColorResource(R.color.primary);
+        btnThemeToggle.setStrokeWidth(2);
+
+        btnThemeToggle.setTextColor(primary);
+        btnThemeToggle.setIconTintResource(R.color.primary);
+
+        btnThemeToggle.animate()
+                .scaleX(1.02f)
+                .scaleY(1.02f)
+                .setDuration(120)
+                .withEndAction(() -> btnThemeToggle.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(120)
+                        .start())
+                .start();
     }
 
     private void setChildTextColors(LinearLayout layout, int color) {
