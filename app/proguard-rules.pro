@@ -1,21 +1,29 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# MogoMarket - project specific ProGuard / R8 rules
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Keep useful stack trace info for Play Console crash reports
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Keep annotations/signatures used by reflection libraries
+-keepattributes Signature
+-keepattributes *Annotation*
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Gson
+-keep class com.google.gson.stream.** { *; }
+-keep class sun.misc.Unsafe { *; }
+
+# Firebase Realtime Database model used via reflection
+# Detected in code: child.getValue(StockData.class)
+-keep class com.mogomarket.app.StockData { *; }
+
+# JavaMail
+-keep class javax.mail.** { *; }
+-keep class com.sun.mail.** { *; }
+-dontwarn javax.mail.**
+-dontwarn com.sun.mail.**
+-dontwarn javax.activation.**
+
+# Optional: preserve no-arg constructors if future Firebase models are added
+-keepclassmembers class com.mogomarket.app.** {
+    public <init>();
+}
