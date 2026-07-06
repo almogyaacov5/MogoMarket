@@ -14,5 +14,5 @@
         יש להוסיף Google Sign-In provider ב-Firebase Console ולהוריד
         google-services.json מחדש.
     -->
-    <string name="default_web_client_id">YOUR_WEB_CLIENT_ID_HERE</string>
+    <string name="default_web_client_id">854718387056-pv4s7utff79t9lgq3mpd5gofhhhuf891.apps.googleusercontent.com</string>
 </resources>
