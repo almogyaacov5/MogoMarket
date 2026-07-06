@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -26,8 +27,10 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
 
@@ -36,22 +39,26 @@ import java.util.concurrent.Executor;
 public class AuthLogin extends AppCompatActivity {
 
     private static final String TAG = "AuthLogin";
-    private android.widget.EditText editTextEmailAddress, editTextPassword;
+
+    private EditText editTextEmailAddress, editTextPassword;
     private FirebaseAuth refAuth;
     private BiometricPrompt biometricPrompt;
     private BiometricPrompt.PromptInfo promptInfo;
 
-    // Google Sign-In
     private GoogleSignInClient googleSignInClient;
     private ActivityResultLauncher<Intent> googleSignInLauncher;
 
     @Override
     protected void onStart() {
         super.onStart();
+
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser != null) {
+            Log.d(TAG, "onStart: user already logged in -> " + currentUser.getUid());
             startActivity(new Intent(AuthLogin.this, MainActivity.class));
             finish();
+        } else {
+            Log.d(TAG, "onStart: no logged-in user");
         }
     }
 
@@ -67,142 +74,214 @@ public class AuthLogin extends AppCompatActivity {
             return insets;
         });
 
-        editTextEmailAddress = findViewById(R.id.editTextEmailAddress);
-        editTextPassword     = findViewById(R.id.editTextPassword);
-        refAuth              = FirebaseAuth.getInstance();
+        try {
+            FirebaseApp firebaseApp = FirebaseApp.getInstance();
+            Log.d(TAG, "FirebaseApp initialized: " + firebaseApp.getName());
+            Log.d(TAG, "Firebase projectId: " +
+                    (firebaseApp.getOptions() != null ? firebaseApp.getOptions().getProjectId() : "null"));
+            Log.d(TAG, "Firebase applicationId: " +
+                    (firebaseApp.getOptions() != null ? firebaseApp.getOptions().getApplicationId() : "null"));
+            Log.d(TAG, "Firebase apiKey: " +
+                    (firebaseApp.getOptions() != null ? firebaseApp.getOptions().getApiKey() : "null"));
+        } catch (Exception e) {
+            Log.e(TAG, "FirebaseApp initialization check failed", e);
+        }
 
-        // ── Google Sign-In Setup ──────────────────────────────────────────────
-        // IMPORTANT: Replace "YOUR_WEB_CLIENT_ID" with the Web Client ID from:
-        // Firebase Console → Project Settings → General → Your apps → Web client ID
-        // (also found in google-services.json under client → oauth_client → client_id where client_type == 3)
+        editTextEmailAddress = findViewById(R.id.editTextEmailAddress);
+        editTextPassword = findViewById(R.id.editTextPassword);
+        refAuth = FirebaseAuth.getInstance();
+
+        Log.d(TAG, "AuthLogin created");
+        Log.d(TAG, "Package name: " + getPackageName());
+        Log.d(TAG, "default_web_client_id: " + getString(R.string.default_web_client_id));
+
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id))
                 .requestEmail()
                 .build();
+
         googleSignInClient = GoogleSignIn.getClient(this, gso);
 
         googleSignInLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
-                this::handleGoogleSignInResult);
+                this::handleGoogleSignInResult
+        );
 
         android.view.View btnGoogle = findViewById(R.id.btnGoogleSignIn);
         if (btnGoogle != null) {
             btnGoogle.setOnClickListener(v -> signInWithGoogle());
+        } else {
+            Log.e(TAG, "btnGoogleSignIn not found in layout");
         }
 
-        // כניסה רגילה
-        findViewById(R.id.button).setOnClickListener(v -> loginUser());
+        android.view.View btnLogin = findViewById(R.id.button);
+        if (btnLogin != null) {
+            btnLogin.setOnClickListener(v -> loginUser());
+        } else {
+            Log.e(TAG, "Login button not found in layout");
+        }
 
-        // הרשמה
-        findViewById(R.id.btnNoUser).setOnClickListener(v ->
-                startActivity(new Intent(AuthLogin.this, AuthRegister.class)));
+        android.view.View btnRegister = findViewById(R.id.btnNoUser);
+        if (btnRegister != null) {
+            btnRegister.setOnClickListener(v ->
+                    startActivity(new Intent(AuthLogin.this, AuthRegister.class)));
+        } else {
+            Log.e(TAG, "btnNoUser not found in layout");
+        }
 
-        // ── כניסה כאורח ──────────────────────────────────────────────────────
         android.view.View btnGuest = findViewById(R.id.btnGuestLogin);
         if (btnGuest != null) {
             btnGuest.setOnClickListener(v -> loginAsGuest());
         } else {
-            Log.e(TAG, "btnGuestLogin not found in layout!");
+            Log.e(TAG, "btnGuestLogin not found in layout");
         }
 
         setupBiometricPrompt();
 
-        // ביומטרי
         android.view.View btnBio = findViewById(R.id.btnBiometricLogin);
         if (btnBio != null) {
             btnBio.setOnClickListener(v -> {
                 BiometricManager manager = BiometricManager.from(this);
                 int canAuth = manager.canAuthenticate(
                         BiometricManager.Authenticators.BIOMETRIC_STRONG
-                                | BiometricManager.Authenticators.DEVICE_CREDENTIAL);
+                                | BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                );
+
+                Log.d(TAG, "Biometric canAuthenticate result: " + canAuth);
+
                 if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
                     biometricPrompt.authenticate(promptInfo);
                 } else {
                     Toast.makeText(this,
-                            "המכשיר לא תומך או שלא מוגדרת טביעת אצבע",
+                            "Biometric authentication is not available on this device",
                             Toast.LENGTH_SHORT).show();
                 }
             });
+        } else {
+            Log.e(TAG, "btnBiometricLogin not found in layout");
         }
     }
 
-    // ── Google Sign-In ────────────────────────────────────────────────────────
     private void signInWithGoogle() {
-        // נתק חשבון קודם כדי לאפשר בחירת חשבון מחדש
-        googleSignInClient.signOut().addOnCompleteListener(this, task ->
-                googleSignInLauncher.launch(googleSignInClient.getSignInIntent()));
+        Log.d(TAG, "Starting Google Sign-In flow");
+
+        googleSignInClient.signOut().addOnCompleteListener(this, task -> {
+            Log.d(TAG, "Google signOut complete, launching sign-in intent");
+            googleSignInLauncher.launch(googleSignInClient.getSignInIntent());
+        });
     }
 
     private void handleGoogleSignInResult(ActivityResult result) {
-        Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(result.getData());
+        Log.d(TAG, "handleGoogleSignInResult called, resultCode=" + result.getResultCode());
+
+        Intent data = result.getData();
+        if (data == null) {
+            Log.e(TAG, "Google Sign-In returned null intent data");
+            Toast.makeText(this, "Google Sign-In failed: empty result", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
+
         try {
             GoogleSignInAccount account = task.getResult(ApiException.class);
-            if (account == null) return;
+            if (account == null) {
+                Log.e(TAG, "GoogleSignInAccount is null");
+                Toast.makeText(this, "Google Sign-In failed: account is null", Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            Log.d(TAG, "Google account email: " + account.getEmail());
+            Log.d(TAG, "Google idToken is null? " + (account.getIdToken() == null));
+
             firebaseAuthWithGoogle(account.getIdToken());
+
         } catch (ApiException e) {
-            Log.e(TAG, "Google Sign-In failed: " + e.getStatusCode(), e);
-            Toast.makeText(this, "כניסה עם Google נכשלה: " + e.getStatusCode(), Toast.LENGTH_LONG).show();
+            Log.e(TAG, "Google Sign-In failed, statusCode=" + e.getStatusCode(), e);
+            Toast.makeText(this,
+                    "Google Sign-In failed: " + e.getStatusCode(),
+                    Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Log.e(TAG, "Unexpected Google Sign-In error", e);
+            Toast.makeText(this,
+                    "Google Sign-In unexpected error: " + e.getMessage(),
+                    Toast.LENGTH_LONG).show();
         }
     }
 
     private void firebaseAuthWithGoogle(String idToken) {
+        if (idToken == null || idToken.trim().isEmpty()) {
+            Log.e(TAG, "firebaseAuthWithGoogle: idToken is null or empty");
+            Toast.makeText(this, "Google ID token is missing", Toast.LENGTH_LONG).show();
+            return;
+        }
+
         ProgressDialog pd = new ProgressDialog(this);
-        pd.setTitle("כניסה עם Google");
-        pd.setMessage("מתחבר...");
+        pd.setTitle("Google Sign-In");
+        pd.setMessage("Connecting...");
         pd.setCancelable(false);
         pd.show();
+
+        Log.d(TAG, "Calling Firebase signInWithCredential with Google credential");
 
         AuthCredential credential = GoogleAuthProvider.getCredential(idToken, null);
         refAuth.signInWithCredential(credential).addOnCompleteListener(this, task -> {
             pd.dismiss();
+
             if (task.isSuccessful()) {
                 FirebaseUser user = refAuth.getCurrentUser();
                 String name = (user != null && user.getDisplayName() != null)
                         ? user.getDisplayName() : "";
-                Log.d(TAG, "Google Sign-In OK: " + name);
-                Toast.makeText(this, "ברוך הבא, " + name + "!", Toast.LENGTH_SHORT).show();
-                startActivity(new Intent(AuthLogin.this, MainActivity.class));
-                finish();
-            } else {
-                String err = task.getException() != null
-                        ? task.getException().getMessage() : "Unknown error";
-                Log.e(TAG, "Firebase Google auth failed: " + err);
-                Toast.makeText(this, "שגיאה: " + err, Toast.LENGTH_LONG).show();
-            }
-        });
-    }
-
-    // ── כניסה אנונימית ────────────────────────────────────────────────────────
-    private void loginAsGuest() {
-        ProgressDialog pd = new ProgressDialog(this);
-        pd.setTitle("כניסה כאורח");
-        pd.setMessage("מתחבר...");
-        pd.setCancelable(false);
-        pd.show();
-
-        refAuth.signInAnonymously().addOnCompleteListener(this, task -> {
-            pd.dismiss();
-            if (task.isSuccessful()) {
-                Log.d(TAG, "Guest login OK");
-                Toast.makeText(this, "נכנסת כאורח", Toast.LENGTH_SHORT).show();
+                Log.d(TAG, "Firebase Google auth success, uid=" +
+                        (user != null ? user.getUid() : "null"));
+                Toast.makeText(this, "Welcome, " + name + "!", Toast.LENGTH_SHORT).show();
                 startActivity(new Intent(AuthLogin.this, MainActivity.class));
                 finish();
             } else {
                 Exception ex = task.getException();
-                String err = ex != null ? ex.getMessage() : "Unknown error";
-                Log.e(TAG, "Guest login failed: " + err, ex);
+                logFirebaseException("Firebase Google auth failed", ex);
+                Toast.makeText(this,
+                        "Google Firebase auth failed: " + getReadableError(ex),
+                        Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void loginAsGuest() {
+        ProgressDialog pd = new ProgressDialog(this);
+        pd.setTitle("Guest Login");
+        pd.setMessage("Connecting...");
+        pd.setCancelable(false);
+        pd.show();
+
+        Log.d(TAG, "Trying anonymous login");
+
+        refAuth.signInAnonymously().addOnCompleteListener(this, task -> {
+            pd.dismiss();
+
+            if (task.isSuccessful()) {
+                FirebaseUser user = refAuth.getCurrentUser();
+                Log.d(TAG, "Guest login success, uid=" + (user != null ? user.getUid() : "null"));
+                Toast.makeText(this, "Signed in as guest", Toast.LENGTH_SHORT).show();
+                startActivity(new Intent(AuthLogin.this, MainActivity.class));
+                finish();
+            } else {
+                Exception ex = task.getException();
+                logFirebaseException("Guest login failed", ex);
+
+                String err = getReadableError(ex);
                 String msg = (err != null && err.contains("CONFIGURATION_NOT_FOUND"))
-                        ? "כניסה כאורח לא מופעלת.\nפנה למנהל האפליקציה."
-                        : "שגיאה: " + err;
+                        ? "Guest login is not enabled in Firebase"
+                        : "Guest login failed: " + err;
+
                 Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
             }
         });
     }
 
-    // ── כניסה רגילה ──────────────────────────────────────────────────────────
     private void loginUser() {
         String email = editTextEmailAddress.getText().toString().trim();
-        String pass  = editTextPassword.getText().toString().trim();
+        String pass = editTextPassword.getText().toString().trim();
 
         if (email.isEmpty() || pass.isEmpty()) {
             Toast.makeText(this, "Please fill out all the fields", Toast.LENGTH_SHORT).show();
@@ -211,93 +290,149 @@ public class AuthLogin extends AppCompatActivity {
 
         ProgressDialog pd = new ProgressDialog(this);
         pd.setTitle("Connecting");
-        pd.setMessage("Logging in ...");
+        pd.setMessage("Logging in...");
         pd.setCancelable(false);
         pd.show();
+
+        Log.d(TAG, "Trying email login for: " + email);
 
         refAuth.signInWithEmailAndPassword(email, pass)
                 .addOnCompleteListener(this, task -> {
                     pd.dismiss();
+
                     if (task.isSuccessful()) {
+                        FirebaseUser user = refAuth.getCurrentUser();
+                        Log.d(TAG, "Email login success, uid=" +
+                                (user != null ? user.getUid() : "null"));
+
                         getSharedPreferences("auth_prefs", MODE_PRIVATE).edit()
                                 .putString("email", email)
                                 .putString("password", pass)
                                 .apply();
+
                         Toast.makeText(this, "User logged in successfully", Toast.LENGTH_SHORT).show();
                         startActivity(new Intent(AuthLogin.this, MainActivity.class));
                         finish();
                     } else {
-                        String err = task.getException() != null
-                                ? task.getException().getMessage() : "Unknown error";
-                        Toast.makeText(this, err, Toast.LENGTH_LONG).show();
+                        Exception ex = task.getException();
+                        logFirebaseException("Email login failed", ex);
+                        Toast.makeText(this,
+                                "Email login failed: " + getReadableError(ex),
+                                Toast.LENGTH_LONG).show();
                     }
                 });
     }
 
-    // ── Biometric ─────────────────────────────────────────────────────────────
     private void setupBiometricPrompt() {
         Executor executor = ContextCompat.getMainExecutor(this);
+
         biometricPrompt = new BiometricPrompt(this, executor,
                 new BiometricPrompt.AuthenticationCallback() {
                     @Override
                     public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
                         super.onAuthenticationSucceeded(result);
+                        Log.d(TAG, "Biometric authentication succeeded");
                         loginWithSavedCredentials();
                     }
+
                     @Override
                     public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
                         super.onAuthenticationError(errorCode, errString);
+                        Log.e(TAG, "Biometric authentication error: " + errorCode + " / " + errString);
+
                         if (errorCode != BiometricPrompt.ERROR_USER_CANCELED
                                 && errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
                             Toast.makeText(getApplicationContext(),
-                                    "Biometric error: " + errString, Toast.LENGTH_SHORT).show();
+                                    "Biometric error: " + errString,
+                                    Toast.LENGTH_SHORT).show();
                         }
                     }
+
                     @Override
                     public void onAuthenticationFailed() {
                         super.onAuthenticationFailed();
+                        Log.e(TAG, "Biometric authentication failed");
                         Toast.makeText(getApplicationContext(),
-                                "Authentication failed", Toast.LENGTH_SHORT).show();
+                                "Authentication failed",
+                                Toast.LENGTH_SHORT).show();
                     }
                 });
 
         promptInfo = new BiometricPrompt.PromptInfo.Builder()
-                .setTitle("כניסה עם טביעת אצבע")
-                .setSubtitle("אשר זהות כדי להיכנס לחשבון ההשקעות")
+                .setTitle("Biometric login")
+                .setSubtitle("Confirm your identity to sign in")
                 .setAllowedAuthenticators(
                         BiometricManager.Authenticators.BIOMETRIC_STRONG
-                                | BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                                | BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                )
                 .build();
     }
 
     private void loginWithSavedCredentials() {
         SharedPreferences prefs = getSharedPreferences("auth_prefs", MODE_PRIVATE);
         String savedEmail = prefs.getString("email", null);
-        String savedPass  = prefs.getString("password", null);
+        String savedPass = prefs.getString("password", null);
 
         if (savedEmail == null || savedPass == null) {
             Toast.makeText(this,
-                    "אין פרטי התחברות שמורים, התחבר פעם אחת עם אימייל+סיסמה",
+                    "No saved credentials found. Please log in once with email and password",
                     Toast.LENGTH_LONG).show();
+            Log.e(TAG, "No saved credentials for biometric login");
             return;
         }
 
         ProgressDialog pd = new ProgressDialog(this);
         pd.setTitle("Connecting");
-        pd.setMessage("Logging in ...");
+        pd.setMessage("Logging in...");
         pd.setCancelable(false);
         pd.show();
+
+        Log.d(TAG, "Trying biometric login with saved email: " + savedEmail);
 
         refAuth.signInWithEmailAndPassword(savedEmail, savedPass)
                 .addOnCompleteListener(this, task -> {
                     pd.dismiss();
+
                     if (task.isSuccessful()) {
+                        FirebaseUser user = refAuth.getCurrentUser();
+                        Log.d(TAG, "Biometric login success, uid=" +
+                                (user != null ? user.getUid() : "null"));
                         Toast.makeText(this, "Logged in with biometrics", Toast.LENGTH_SHORT).show();
                         startActivity(new Intent(AuthLogin.this, MainActivity.class));
                         finish();
                     } else {
-                        Toast.makeText(this, "Firebase login failed", Toast.LENGTH_SHORT).show();
+                        Exception ex = task.getException();
+                        logFirebaseException("Biometric login failed", ex);
+                        Toast.makeText(this,
+                                "Biometric login failed: " + getReadableError(ex),
+                                Toast.LENGTH_LONG).show();
                     }
                 });
+    }
+
+    private void logFirebaseException(String prefix, Exception ex) {
+        if (ex == null) {
+            Log.e(TAG, prefix + ": exception is null");
+            return;
+        }
+
+        if (ex instanceof FirebaseAuthException) {
+            FirebaseAuthException authEx = (FirebaseAuthException) ex;
+            Log.e(TAG, prefix + " | errorCode=" + authEx.getErrorCode()
+                    + " | message=" + authEx.getMessage(), authEx);
+        } else {
+            Log.e(TAG, prefix + " | message=" + ex.getMessage(), ex);
+        }
+    }
+
+    private String getReadableError(Exception ex) {
+        if (ex == null) return "Unknown error";
+
+        if (ex instanceof FirebaseAuthException) {
+            FirebaseAuthException authEx = (FirebaseAuthException) ex;
+            return authEx.getErrorCode() + " | " + authEx.getMessage();
+        }
+
+        return ex.getMessage() != null ? ex.getMessage() : "Unknown error";
     }
 }
