@@ -34,6 +34,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 /**
  * EmailSummaryService - שירות לשליחת סיכומים יומיים ושבועיים באימייל.
@@ -44,6 +45,9 @@ import okhttp3.Response;
  *
  * שליחת האימייל מתבצעת דרך EmailJS (emailjs.com) - שירות חינמי.
  * הגדר את הקבועים EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_DAILY וכו'.
+ *
+ * ⚠️ FINNHUB_KEY: הגדר ב-local.properties → finnhub.api.key=YOUR_KEY
+ *    ואז ב-build.gradle: buildConfigField "String","FINNHUB_KEY","\"${localProps['finnhub.api.key']}\""
  */
 public class EmailSummaryService extends BroadcastReceiver {
 
@@ -58,14 +62,19 @@ public class EmailSummaryService extends BroadcastReceiver {
     private static final int RC_WEEKLY = 2002;
 
     // ── EmailJS credentials ───────────────────────────────────────────────────
-    // הכנס כאן את הפרטים שלך מ-emailjs.com
-    private static final String EMAILJS_URL         = "https://api.emailjs.com/api/v1.0/email/send";
-    private static final String EMAILJS_SERVICE_ID  = "YOUR_SERVICE_ID";   // ← שנה
-    private static final String EMAILJS_USER_ID     = "YOUR_PUBLIC_KEY";   // ← שנה
+    private static final String EMAILJS_URL          = "https://api.emailjs.com/api/v1.0/email/send";
+    private static final String EMAILJS_SERVICE_ID   = "YOUR_SERVICE_ID";          // ← שנה
+    private static final String EMAILJS_USER_ID      = "YOUR_PUBLIC_KEY";          // ← שנה
     private static final String EMAILJS_TEMPLATE_DAILY  = "template_daily_summary";  // ← שנה
     private static final String EMAILJS_TEMPLATE_WEEKLY = "template_weekly_summary"; // ← שנה
 
-    private static final String FINNHUB_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
+    // ⚠️  Move this key to local.properties and expose via BuildConfig.FINNHUB_KEY
+    //     Example build.gradle line:
+    //       buildConfigField "String", "FINNHUB_KEY", "\"${localProps['finnhub.api.key']}\""
+    //     Then replace the line below with:
+    //       private static final String FINNHUB_KEY = BuildConfig.FINNHUB_KEY;
+    private static final String FINNHUB_KEY = BuildConfig.FINNHUB_KEY;
+
     private final OkHttpClient httpClient = new OkHttpClient();
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -73,7 +82,7 @@ public class EmailSummaryService extends BroadcastReceiver {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * מתזמן סיכום יומי כל יום ב-20:00 וסיכום שבועי כל ראשון ב-20:00.
+     * מתזמן סיכום יומי כל יום ב-20:00 וסיכום שבועי כל ראשון ב-20:05.
      * קרא לפונקציה זו ב-MainActivity.onCreate().
      */
     public static void scheduleDailySummary(Context context) {
@@ -95,29 +104,30 @@ public class EmailSummaryService extends BroadcastReceiver {
         cal.set(Calendar.HOUR_OF_DAY, hour);
         cal.set(Calendar.MINUTE, minute);
         cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
 
-        // עבור DAILY - כל יום
         if (action.equals(ACTION_DAILY)) {
+            // Daily: fire today if time hasn't passed, otherwise tomorrow
             if (cal.getTimeInMillis() <= System.currentTimeMillis()) {
                 cal.add(Calendar.DAY_OF_YEAR, 1);
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                am.setRepeating(AlarmManager.RTC_WAKEUP,
-                        cal.getTimeInMillis(), AlarmManager.INTERVAL_DAY, pi);
-            } else {
-                am.setRepeating(AlarmManager.RTC_WAKEUP,
-                        cal.getTimeInMillis(), AlarmManager.INTERVAL_DAY, pi);
-            }
         } else {
-            // עבור WEEKLY - כל ראשון
+            // Weekly: fire on the next Sunday at the given time
             int currentDay = cal.get(Calendar.DAY_OF_WEEK);
             int daysUntilSunday = (Calendar.SUNDAY - currentDay + 7) % 7;
             if (daysUntilSunday == 0 && cal.getTimeInMillis() <= System.currentTimeMillis()) {
                 daysUntilSunday = 7;
             }
             cal.add(Calendar.DAY_OF_YEAR, daysUntilSunday);
-            am.setRepeating(AlarmManager.RTC_WAKEUP,
-                    cal.getTimeInMillis(), AlarmManager.INTERVAL_DAY * 7, pi);
+        }
+
+        // FIX: Use setExactAndAllowWhileIdle instead of setRepeating.
+        // setRepeating is inexact on API 19+ and flagged by Play Console on API 31+.
+        // The BroadcastReceiver reschedules itself for the next occurrence on each fire.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
+        } else {
+            am.setExact(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
         }
 
         Log.d(TAG, "Scheduled " + action + " at " + cal.getTime());
@@ -126,11 +136,6 @@ public class EmailSummaryService extends BroadcastReceiver {
     public static void cancel(Context context) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (am == null) return;
-
-        for (String action : new String[]{ACTION_DAILY, ACTION_WEEKLY}) {
-            Intent intent = new Intent(context, EmailSummaryService.class);
-            intent.setAction(action);
-        }
 
         PendingIntent piDaily = PendingIntent.getBroadcast(context, RC_DAILY,
                 new Intent(context, EmailSummaryService.class).setAction(ACTION_DAILY),
@@ -144,12 +149,19 @@ public class EmailSummaryService extends BroadcastReceiver {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // onReceive
+    // onReceive — also reschedules the next alarm
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent == null || intent.getAction() == null) return;
+
+        // Reschedule for the next occurrence
+        if (ACTION_DAILY.equals(intent.getAction())) {
+            scheduleAlarm(context, ACTION_DAILY, RC_DAILY, Calendar.SUNDAY, 20, 0);
+        } else if (ACTION_WEEKLY.equals(intent.getAction())) {
+            scheduleAlarm(context, ACTION_WEEKLY, RC_WEEKLY, Calendar.SUNDAY, 20, 5);
+        }
 
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null || user.isAnonymous()) return;
@@ -205,7 +217,6 @@ public class EmailSummaryService extends BroadcastReceiver {
     private void computeAndSendDaily(Context context, String email,
                                      List<StockData> closedTrades,
                                      List<StockData> portfolio) {
-        // חישובי סיכום סגורים
         double totalClosedPnl = 0;
         int wins = 0, losses = 0;
         StockData bestTrade = null, worstTrade = null;
@@ -225,10 +236,10 @@ public class EmailSummaryService extends BroadcastReceiver {
         double totalInvested = 0;
         for (StockData s : portfolio) totalInvested += s.tradeAmount;
 
-        String dateStr    = new SimpleDateFormat("dd/MM/yyyy", new Locale("he")).format(new Date());
-        String sign       = totalClosedPnl >= 0 ? "+" : "";
-        String bestStr    = (bestTrade  != null) ? String.format(Locale.US, "%s (+%.2f%%)", bestTrade.symbol,  bestPct)  : "אין נתונים";
-        String worstStr   = (worstTrade != null) ? String.format(Locale.US, "%s (%.2f%%)",  worstTrade.symbol, worstPct) : "אין נתונים";
+        String dateStr  = new SimpleDateFormat("dd/MM/yyyy", new Locale("he")).format(new Date());
+        String sign     = totalClosedPnl >= 0 ? "+" : "";
+        String bestStr  = (bestTrade  != null) ? String.format(Locale.US, "%s (+%.2f%%)", bestTrade.symbol,  bestPct)  : "אין נתונים";
+        String worstStr = (worstTrade != null) ? String.format(Locale.US, "%s (%.2f%%)",  worstTrade.symbol, worstPct) : "אין נתונים";
 
         StringBuilder tradesTable = new StringBuilder();
         for (StockData t : closedTrades) {
@@ -238,7 +249,6 @@ public class EmailSummaryService extends BroadcastReceiver {
                     t.symbol, t.buyPrice, t.sellPrice, pct >= 0 ? "+" : "", pct));
         }
 
-        // HTML אימייל
         String htmlBody = buildDailyHtml(dateStr, sign, totalClosedPnl, wins, losses, winRate,
                 totalInvested, portfolio.size(), bestStr, worstStr, tradesTable.toString());
 
@@ -331,7 +341,6 @@ public class EmailSummaryService extends BroadcastReceiver {
     private void computeAndSendWeekly(Context context, String email,
                                        List<StockData> closedTrades,
                                        List<StockData> portfolio) {
-        // חישובי סיכום שבועי
         double totalPnl = 0;
         double totalInvested = 0;
         int wins = 0, losses = 0;
@@ -348,25 +357,23 @@ public class EmailSummaryService extends BroadcastReceiver {
             if (pct < worstPct) { worstPct = pct;  worstTrade = t; }
         }
 
-        int total    = closedTrades.size();
-        int winRate  = (total > 0) ? (int) ((wins * 100.0) / total) : 0;
-        double roi   = (totalInvested > 0) ? (totalPnl / totalInvested) * 100 : 0;
+        int total   = closedTrades.size();
+        int winRate = (total > 0) ? (int) ((wins * 100.0) / total) : 0;
+        double roi  = (totalInvested > 0) ? (totalPnl / totalInvested) * 100 : 0;
         double portfolioValue = 0;
         for (StockData s : portfolio) portfolioValue += s.tradeAmount;
 
-        // תאריכי שבוע
         Calendar weekStart = Calendar.getInstance();
         weekStart.add(Calendar.DAY_OF_YEAR, -7);
         Calendar weekEnd = Calendar.getInstance();
         String weekRange = new SimpleDateFormat("dd/MM", new Locale("he")).format(weekStart.getTime())
                 + " - " + new SimpleDateFormat("dd/MM/yyyy", new Locale("he")).format(weekEnd.getTime());
 
-        String sign      = totalPnl >= 0 ? "+" : "";
-        String roiSign   = roi >= 0 ? "+" : "";
-        String bestStr   = (bestTrade  != null) ? String.format(Locale.US, "%s (+%.2f%%)", bestTrade.symbol,  bestPct)  : "אין נתונים";
-        String worstStr  = (worstTrade != null) ? String.format(Locale.US, "%s (%.2f%%)",  worstTrade.symbol, worstPct) : "אין נתונים";
+        String sign    = totalPnl >= 0 ? "+" : "";
+        String roiSign = roi >= 0 ? "+" : "";
+        String bestStr  = (bestTrade  != null) ? String.format(Locale.US, "%s (+%.2f%%)", bestTrade.symbol,  bestPct)  : "אין נתונים";
+        String worstStr = (worstTrade != null) ? String.format(Locale.US, "%s (%.2f%%)",  worstTrade.symbol, worstPct) : "אין נתונים";
 
-        // ביצועי מניות Portfolio (fetch live prices)
         fetchPortfolioPerformanceAndSendWeekly(context, email, portfolio,
                 weekRange, sign, totalPnl, roiSign, roi,
                 wins, losses, winRate, total,
@@ -390,8 +397,9 @@ public class EmailSummaryService extends BroadcastReceiver {
             return;
         }
 
-        final double[] livePortfolioValue     = {0};
-        final double[] livePortfolioPnl       = {0};
+        final double[] livePortfolioValue = {0};
+        final double[] livePortfolioPnl   = {0};
+        final Object lock = new Object();   // single lock for both arrays + StringBuilder
         final AtomicInteger remaining = new AtomicInteger(portfolio.size());
         final StringBuilder portfolioRows = new StringBuilder();
 
@@ -424,42 +432,52 @@ public class EmailSummaryService extends BroadcastReceiver {
                 }
 
                 @Override public void onResponse(Call call, Response response) throws IOException {
-                    try {
-                        JSONObject obj = new JSONObject(response.body().string());
-                        double currentPrice = isCrypto
-                                ? obj.getDouble("lastPrice")
-                                : obj.getDouble("c");
-                        double weeklyChangePct = isCrypto
-                                ? obj.getDouble("priceChangePercent")
-                                : obj.getDouble("dp");
+                    // FIX: always close the ResponseBody to avoid connection leaks
+                    try (ResponseBody body = response.body()) {
+                        if (body != null) {
+                            JSONObject obj = new JSONObject(body.string());
+                            double currentPrice = isCrypto
+                                    ? obj.getDouble("lastPrice")
+                                    : obj.getDouble("c");
+                            double weeklyChangePct = isCrypto
+                                    ? obj.getDouble("priceChangePercent")
+                                    : obj.getDouble("dp");
 
-                        if (currentPrice > 0 && stock.buyPrice > 0) {
-                            double totalPct = (currentPrice - stock.buyPrice) / stock.buyPrice * 100;
-                            double pnl = stock.tradeAmount * (totalPct / 100.0);
-                            double currentValue = stock.tradeAmount + pnl;
-                            synchronized (livePortfolioValue) {
-                                livePortfolioValue[0] += currentValue;
-                                livePortfolioPnl[0]   += pnl;
-                            }
-                            synchronized (portfolioRows) {
-                                portfolioRows.append(String.format(Locale.US,
-                                        "<tr><td>%s</td><td>$%.2f</td><td>$%.2f</td>" +
-                                        "<td style='color:%s'>%s%.2f%%</td>" +
-                                        "<td style='color:%s'>%s%.2f%%</td></tr>",
-                                        stock.symbol, stock.buyPrice, currentPrice,
-                                        totalPct >= 0 ? "#00E676" : "#FF5252",
-                                        totalPct >= 0 ? "+" : "", totalPct,
-                                        weeklyChangePct >= 0 ? "#00E676" : "#FF5252",
-                                        weeklyChangePct >= 0 ? "+" : "", weeklyChangePct));
+                            if (currentPrice > 0 && stock.buyPrice > 0) {
+                                double totalPct = (currentPrice - stock.buyPrice) / stock.buyPrice * 100;
+                                double pnl = stock.tradeAmount * (totalPct / 100.0);
+                                double currentValue = stock.tradeAmount + pnl;
+                                // FIX: use a single lock object for all shared mutable state
+                                synchronized (lock) {
+                                    livePortfolioValue[0] += currentValue;
+                                    livePortfolioPnl[0]   += pnl;
+                                    portfolioRows.append(String.format(Locale.US,
+                                            "<tr><td>%s</td><td>$%.2f</td><td>$%.2f</td>" +
+                                            "<td style='color:%s'>%s%.2f%%</td>" +
+                                            "<td style='color:%s'>%s%.2f%%</td></tr>",
+                                            stock.symbol, stock.buyPrice, currentPrice,
+                                            totalPct >= 0 ? "#00E676" : "#FF5252",
+                                            totalPct >= 0 ? "+" : "", totalPct,
+                                            weeklyChangePct >= 0 ? "#00E676" : "#FF5252",
+                                            weeklyChangePct >= 0 ? "+" : "", weeklyChangePct));
+                                }
                             }
                         }
                     } catch (Exception ignored) {}
+
                     if (remaining.decrementAndGet() == 0) {
+                        double portfolioSnapshot, pnlSnapshot;
+                        String rowsSnapshot;
+                        synchronized (lock) {
+                            portfolioSnapshot = livePortfolioValue[0];
+                            pnlSnapshot       = livePortfolioPnl[0];
+                            rowsSnapshot      = portfolioRows.toString();
+                        }
                         finalizeWeeklyEmail(context, email, weekRange,
                                 sign, totalPnl, roiSign, roi,
                                 wins, losses, winRate, totalTrades,
-                                livePortfolioValue[0], livePortfolioPnl[0],
-                                best, worst, portfolioRows.toString());
+                                portfolioSnapshot, pnlSnapshot,
+                                best, worst, rowsSnapshot);
                     }
                 }
             });
@@ -576,6 +594,7 @@ public class EmailSummaryService extends BroadcastReceiver {
                 }
                 @Override public void onResponse(Call call, Response response) throws IOException {
                     Log.d(TAG, "Email sent: " + response.code() + " to " + toEmail);
+                    response.close();
                 }
             });
         } catch (Exception e) {
