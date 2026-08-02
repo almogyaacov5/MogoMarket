@@ -33,7 +33,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
-
+import com.google.firebase.auth.FirebaseAuthUserCollisionException;
 import java.util.concurrent.Executor;
 
 public class AuthLogin extends AppCompatActivity {
@@ -244,8 +244,9 @@ public class AuthLogin extends AppCompatActivity {
 
         Log.d(TAG, "Calling Firebase signInWithCredential with Google credential");
 
-        AuthCredential credential = GoogleAuthProvider.getCredential(idToken, null);
-        refAuth.signInWithCredential(credential).addOnCompleteListener(this, task -> {
+        AuthCredential googleCredential = GoogleAuthProvider.getCredential(idToken, null);
+
+        refAuth.signInWithCredential(googleCredential).addOnCompleteListener(this, task -> {
             pd.dismiss();
 
             if (task.isSuccessful()) {
@@ -259,12 +260,92 @@ public class AuthLogin extends AppCompatActivity {
                 finish();
             } else {
                 Exception ex = task.getException();
-                logFirebaseException("Firebase Google auth failed", ex);
-                Toast.makeText(this,
-                        "Google Firebase auth failed: " + getReadableError(ex),
-                        Toast.LENGTH_LONG).show();
+
+                if (ex instanceof FirebaseAuthUserCollisionException) {
+                    // אותו מייל קיים עם Email/Password — ננסה לקשר
+                    Log.w(TAG, "Account collision detected, attempting to link accounts");
+                    handleGoogleCollisionWithEmailLink(googleCredential);
+
+                } else {
+                    logFirebaseException("Firebase Google auth failed", ex);
+                    Toast.makeText(this,
+                            "Google Sign-In failed: " + getReadableError(ex),
+                            Toast.LENGTH_LONG).show();
+                }
             }
         });
+    }
+
+    private void handleGoogleCollisionWithEmailLink(AuthCredential googleCredential) {
+        // שואל את המשתמש להזין סיסמה כדי לקשר את החשבונות
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle("Link Accounts");
+        builder.setMessage("This email is already registered with Email/Password.\n\nEnter your password to link both sign-in methods:");
+
+        android.widget.EditText passwordInput = new android.widget.EditText(this);
+        passwordInput.setHint("Password");
+        passwordInput.setInputType(
+                android.text.InputType.TYPE_CLASS_TEXT |
+                        android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+        );
+        int padding = (int) (16 * getResources().getDisplayMetrics().density);
+        builder.setView(passwordInput);
+
+        builder.setPositiveButton("Link", (dialog, which) -> {
+            String email = editTextEmailAddress.getText().toString().trim();
+            String password = passwordInput.getText().toString().trim();
+
+            if (email.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Please enter your email and password", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            ProgressDialog pd2 = new ProgressDialog(this);
+            pd2.setTitle("Linking Accounts");
+            pd2.setMessage("Please wait...");
+            pd2.setCancelable(false);
+            pd2.show();
+
+            // מתחברים עם Email+Password ואז מקשרים את Google
+            AuthCredential emailCredential = com.google.firebase.auth.EmailAuthProvider
+                    .getCredential(email, password);
+
+            refAuth.signInWithCredential(emailCredential).addOnCompleteListener(this, signInTask -> {
+                if (signInTask.isSuccessful()) {
+                    FirebaseUser user = refAuth.getCurrentUser();
+                    if (user != null) {
+                        user.linkWithCredential(googleCredential).addOnCompleteListener(this, linkTask -> {
+                            pd2.dismiss();
+                            if (linkTask.isSuccessful()) {
+                                Log.d(TAG, "Accounts linked successfully");
+                                Toast.makeText(this,
+                                        "Accounts linked! You can now sign in with both methods.",
+                                        Toast.LENGTH_LONG).show();
+                                startActivity(new Intent(AuthLogin.this, MainActivity.class));
+                                finish();
+                            } else {
+                                logFirebaseException("Account linking failed", linkTask.getException());
+                                Toast.makeText(this,
+                                        "Linking failed: " + getReadableError(linkTask.getException()),
+                                        Toast.LENGTH_LONG).show();
+                            }
+                        });
+                    } else {
+                        pd2.dismiss();
+                        Toast.makeText(this, "Sign-in error: user is null", Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    pd2.dismiss();
+                    logFirebaseException("Email sign-in for linking failed", signInTask.getException());
+                    Toast.makeText(this,
+                            "Wrong password or email: " + getReadableError(signInTask.getException()),
+                            Toast.LENGTH_LONG).show();
+                }
+            });
+        });
+
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+        builder.show();
     }
 
     private void loginAsGuest() {
@@ -333,12 +414,27 @@ public class AuthLogin extends AppCompatActivity {
                         Toast.makeText(this, "User logged in successfully", Toast.LENGTH_SHORT).show();
                         startActivity(new Intent(AuthLogin.this, MainActivity.class));
                         finish();
+
                     } else {
                         Exception ex = task.getException();
-                        logFirebaseException("Email login failed", ex);
-                        Toast.makeText(this,
-                                "Email login failed: " + getReadableError(ex),
-                                Toast.LENGTH_LONG).show();
+
+                        if (ex instanceof FirebaseAuthUserCollisionException) {
+                            // אותו מייל קיים עם Google Sign-In
+                            Log.w(TAG, "Account collision: email exists with Google provider");
+                            Toast.makeText(this,
+                                    "This email is linked to a Google account.\n" +
+                                            "Please sign in with Google, or use 'Link Accounts' from settings.",
+                                    Toast.LENGTH_LONG).show();
+
+                        } else if (ex instanceof com.google.firebase.auth.FirebaseAuthInvalidCredentialsException) {
+                            Toast.makeText(this, "Wrong email or password.", Toast.LENGTH_LONG).show();
+
+                        } else {
+                            logFirebaseException("Email login failed", ex);
+                            Toast.makeText(this,
+                                    "Login failed: " + getReadableError(ex),
+                                    Toast.LENGTH_LONG).show();
+                        }
                     }
                 });
     }
