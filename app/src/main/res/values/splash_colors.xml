@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- רקע ה-Splash — זהה לרקע הכהה של האפליקציה -->
-    <color name="splash_background">#0D1B2A</color>
-</resources>

@@ -50,11 +50,10 @@ public class SettingsFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
 
         View v = inflater.inflate(R.layout.fragment_settings, container, false);
-        v.setBackgroundColor(requireContext().getColor(R.color.bg_primary));
+        // ❌ הוסר: v.setBackgroundColor(...)
 
         prefs = requireActivity().getSharedPreferences(PREFS_NAME, 0);
 
-        // Theme
         btnThemeToggle = v.findViewById(R.id.btnThemeToggle);
         tvThemeStatus  = v.findViewById(R.id.tvThemeStatus);
 
@@ -69,6 +68,7 @@ public class SettingsFragment extends Fragment {
                         isDark ? AppCompatDelegate.MODE_NIGHT_YES
                                 : AppCompatDelegate.MODE_NIGHT_NO);
                 updateThemeUI(isDark);
+                applyThemeToView(requireView(), isDark);  // ✅ צבעים בלי recreate
             });
         }
 
@@ -140,16 +140,13 @@ public class SettingsFragment extends Fragment {
             });
         }
 
-        // Default symbol section
         setupDefaultSymbolSection(v);
-
-        // Start page selector
         setupStartPageSelector(v);
 
         // Account email
         TextView tvEmail = v.findViewById(R.id.tvUserEmail);
         if (tvEmail != null) {
-            tvEmail.setTextColor(requireContext().getColor(R.color.primary));
+            // ❌ הוסר: tvEmail.setTextColor(...)
             FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
             if (user != null && user.isAnonymous()) {
                 tvEmail.setText("Guest");
@@ -161,7 +158,7 @@ public class SettingsFragment extends Fragment {
         // App version
         TextView tvVersion = v.findViewById(R.id.tvAppVersion);
         if (tvVersion != null) {
-            tvVersion.setTextColor(requireContext().getColor(R.color.text_secondary));
+            // ❌ הוסר: tvVersion.setTextColor(...)
             try {
                 String ver = requireContext().getPackageManager()
                         .getPackageInfo(requireContext().getPackageName(), 0).versionName;
@@ -174,10 +171,7 @@ public class SettingsFragment extends Fragment {
         // Logout
         MaterialButton btnLogout = v.findViewById(R.id.btnSettingsLogout);
         if (btnLogout != null) {
-            btnLogout.setBackgroundTintList(
-                    android.content.res.ColorStateList.valueOf(
-                            requireContext().getColor(R.color.loss)));
-            btnLogout.setTextColor(requireContext().getColor(R.color.white));
+            // ❌ הוסרו: setBackgroundTintList + setTextColor
             btnLogout.setOnClickListener(view -> {
                 FirebaseAuth.getInstance().signOut();
                 Intent intent = new Intent(requireActivity(), AuthLogin.class);
@@ -363,6 +357,7 @@ public class SettingsFragment extends Fragment {
         if (prefs == null) return;
         isDark = prefs.getBoolean(KEY_THEME, true);
         updateThemeUI(isDark);
+        applyThemeToView(requireView(), isDark);
     }
 
     private void updateThemeUI(boolean dark) {
@@ -390,6 +385,68 @@ public class SettingsFragment extends Fragment {
         for (int i = 0; i < layout.getChildCount(); i++) {
             View child = layout.getChildAt(i);
             if (child instanceof TextView) ((TextView) child).setTextColor(color);
+        }
+    }
+
+    private void applyThemeToView(View root, boolean dark) {
+        int bgPrimary     = dark ? 0xFF0B0F14 : 0xFFF0F4F8;
+        int bgSecondary   = dark ? 0xFF111826 : 0xFFFFFFFF;
+        int bgCard        = dark ? 0xFF151C2E : 0xFFFFFFFF;
+        int textPrimary   = dark ? 0xFFE6EDF3 : 0xFF0D1117;
+        int textSecondary = dark ? 0xFF8B98A5 : 0xFF4A5568;
+        int colorPrimary  = 0xFF4DA3FF;  // זהה ב-light וב-dark
+        int colorBorder   = dark ? 0xFF1E2A3A : 0xFFE2E8F0;
+
+        // רקע הכרטיסייה הראשית
+        root.setBackgroundColor(bgPrimary);
+
+        // כל ה-CardView ברקע bg_card
+        applyToAllCards(root, bgCard, colorBorder);
+
+        // כל ה-TextViews
+        applyToAllTextViews(root, textPrimary, textSecondary, colorPrimary);
+
+        // Bottom nav
+        if (getActivity() != null) {
+            com.google.android.material.bottomnavigation.BottomNavigationView nav =
+                    getActivity().findViewById(R.id.bottom_navigation);
+            if (nav != null) {
+                nav.setBackgroundColor(bgSecondary);
+            }
+        }
+    }
+
+    private void applyToAllCards(View root, int bgCard, int borderColor) {
+        if (root instanceof androidx.cardview.widget.CardView) {
+            ((androidx.cardview.widget.CardView) root).setCardBackgroundColor(bgCard);
+        } else if (root instanceof com.google.android.material.card.MaterialCardView) {
+            ((com.google.android.material.card.MaterialCardView) root).setCardBackgroundColor(bgCard);
+        }
+        if (root instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group = (android.view.ViewGroup) root;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                applyToAllCards(group.getChildAt(i), bgCard, borderColor);
+            }
+        }
+    }
+
+    private void applyToAllTextViews(View root, int textPrimary, int textSecondary, int colorPrimary) {
+        if (root instanceof android.widget.TextView) {
+            android.widget.TextView tv = (android.widget.TextView) root;
+            String tag = tv.getTag() != null ? tv.getTag().toString() : "";
+            if ("muted".equals(tag)) {
+                tv.setTextColor(textSecondary);
+            } else if ("accent".equals(tag)) {
+                tv.setTextColor(colorPrimary);
+            } else {
+                tv.setTextColor(textPrimary);
+            }
+        }
+        if (root instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group = (android.view.ViewGroup) root;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                applyToAllTextViews(group.getChildAt(i), textPrimary, textSecondary, colorPrimary);
+            }
         }
     }
 }

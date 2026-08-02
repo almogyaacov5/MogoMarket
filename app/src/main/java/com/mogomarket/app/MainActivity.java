@@ -5,11 +5,13 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
@@ -151,5 +153,25 @@ public class MainActivity extends AppCompatActivity {
         // אפס את ה-session symbol כדי שפתיחה הבאה תתחיל מ-fixed
         SharedViewModel vm = new ViewModelProvider(this).get(SharedViewModel.class);
         vm.clearSessionSymbol();
+    }
+
+    public void applyThemeToAllFragments(boolean isDark) {
+        // עדכן את כל ה-Fragments הקיימים
+        for (Fragment f : getSupportFragmentManager().getFragments()) {
+            if (f instanceof ChartFragment) {
+                ((ChartFragment) f).applyThemeExternal(isDark);
+            }
+            // ניתן להוסיף כאן WatchlistFragment, PortfolioFragment וכו' לפי הצורך
+        }
+
+        // עדכן את צבע ה-BottomNavigationView
+        int bgColor = isDark ? 0xFF151C2E : 0xFFFFFFFF;
+        View bottomNav = findViewById(R.id.bottom_navigation);
+
+        if (bottomNav != null) bottomNav.setBackgroundColor(bgColor);
+
+        // עדכן את הרקע הכללי
+        View root = findViewById(android.R.id.content);
+        if (root != null) root.setBackgroundColor(isDark ? 0xFF0B0F14 : 0xFFF0F4F8);
     }
 }

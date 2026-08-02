@@ -27,6 +27,12 @@
     <style name="Theme.Chart" parent="Base.Theme.MogoMarket" />
     <style name="Base.Theme.Chart" parent="Base.Theme.MogoMarket" />
 
+    <!-- ✅ חדש -->
+    <style name="Theme.Splash" parent="Theme.MogoMarket">
+        <item name="android:windowBackground">@color/bg_primary</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+
     <!-- Material Card -->
     <style name="CardStyle" parent="Widget.Material3.CardView.Elevated">
         <item name="cardBackgroundColor">@color/bg_card</item>

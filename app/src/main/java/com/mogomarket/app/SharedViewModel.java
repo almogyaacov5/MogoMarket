@@ -20,11 +20,7 @@ public class SharedViewModel extends ViewModel {
     }
 
     public void setSelectedSymbol(String symbol) {
-        if (symbol != null && symbol.equals(selectedSymbol.getValue())) {
-            selectedSymbol.setValue(null);
-        }
         selectedSymbol.setValue(symbol);
-        // שמור כ-session symbol (רק בזיכרון)
         if (symbol != null && !symbol.trim().isEmpty()) {
             sessionSymbol = symbol.trim();
         }

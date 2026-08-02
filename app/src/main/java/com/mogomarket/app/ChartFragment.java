@@ -481,7 +481,13 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         });
     }
 
-
+    public void applyThemeExternal(boolean dark) {
+        isDarkTheme = dark;
+        isChartDark = dark;
+        applyTheme();
+        applyChartColors();
+        updateChartThemeToggleLabel();
+    }
     private void updateTickerLabelTop() {
         if (tickerLabelTop == null) return;
         tickerLabelTop.setText(cleanDisplaySymbol(symbol));
