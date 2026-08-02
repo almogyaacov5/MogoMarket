@@ -215,7 +215,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private final List<String> dateLabels = new ArrayList<>();
     private float lastPrice = 0f;
     private boolean isManualSelection = false;
-
+    // מונע טעינה כפולה — onCreateView לא יטען, onViewCreated יטען
+    private boolean initialLoadDone = false;
     private ArrayAdapter<StockSuggestion> suggestionAdapter;
     private final Handler searchHandler = new Handler(Looper.getMainLooper());
     private Runnable pendingSearch;
@@ -391,7 +392,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         setupChartGestures();
 
         interval = TIMEFRAMES[currentTFIndex][1];
-        fetchStockData(symbol, interval);
 
         updateChartThemeToggleLabel();
         return v;
@@ -445,37 +445,42 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         SharedViewModel vm = new ViewModelProvider(requireActivity())
                 .get(SharedViewModel.class);
 
-        // observe — כל שינוי ב-selectedSymbol יטעין גרף
-        vm.getSelectedSymbol().observe(getViewLifecycleOwner(), selected -> {
-            if (selected != null && !selected.trim().isEmpty()) {
-                loadChartForSymbol(selected.trim());
-            }
-        });
-
         SharedPreferences prefs = requireActivity()
                 .getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE);
 
         String mode = prefs.getString(KEY_SYMBOL_MODE, "last");
 
+        // קבע מה לטעון בפעם הראשונה
+        String symbolToLoad;
+
         if ("fixed".equals(mode)) {
-            // בפיקסד: אם כבר נפתח גרף בסשן הזה (למשל מ-Watchlist) — השתמש בו
             String sessionSym = vm.getSessionSymbol();
-            if (sessionSym != null && !sessionSym.trim().isEmpty()) {
-                // המשתמש כבר ניווט לגרף במהלך הסשן — השאר מה שהיה
-                vm.setSelectedSymbol(sessionSym.trim());
-            } else {
-                // פתיחה ראשונה של האפליקציה בסשן — טען fixed
-                String fixedSymbol = prefs.getString(MainActivity.KEY_DEFAULT_SYMBOL, "SPY");
-                if (fixedSymbol == null || fixedSymbol.trim().isEmpty()) fixedSymbol = "SPY";
-                vm.setSelectedSymbol(fixedSymbol.trim());
-            }
+            String fixedSymbol = prefs.getString(MainActivity.KEY_DEFAULT_SYMBOL, "SPY");
+            if (fixedSymbol == null || fixedSymbol.trim().isEmpty()) fixedSymbol = "SPY";
+
+            // אם יש session symbol (הגיע מ-Watchlist) — תשתמש בו
+            // אחרת — טען fixed
+            symbolToLoad = (sessionSym != null && !sessionSym.trim().isEmpty())
+                    ? sessionSym.trim()
+                    : fixedSymbol.trim();
         } else {
-            // last mode — הכל כרגיל
             String lastSymbol = prefs.getString(MainActivity.KEY_LAST_SYMBOL, "SPY");
             if (lastSymbol == null || lastSymbol.trim().isEmpty()) lastSymbol = "SPY";
-            vm.setSelectedSymbol(lastSymbol.trim());
+            symbolToLoad = lastSymbol.trim();
         }
+
+        // עדכן UI וטען גרף ישירות — בלי VM בכלל בשלב הזה
+        loadChartForSymbol(symbolToLoad);
+
+        // observe לשינויים עתידיים בלבד (מ-Watchlist לאחר הטעינה הראשונית)
+        vm.getSelectedSymbol().observe(getViewLifecycleOwner(), selected -> {
+            if (selected != null && !selected.trim().isEmpty()
+                    && !selected.trim().equals(symbol)) {
+                loadChartForSymbol(selected.trim());
+            }
+        });
     }
+
 
     private void updateTickerLabelTop() {
         if (tickerLabelTop == null) return;
@@ -574,7 +579,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     interval = TIMEFRAMES[currentTFIndex][1];
                     updateTimeframePickerLabel();
                     hideCrosshairInfo();
-                    fetchStockData(symbol, interval);
                     if (dialogHolder[0] != null) dialogHolder[0].dismiss();
                 });
             }

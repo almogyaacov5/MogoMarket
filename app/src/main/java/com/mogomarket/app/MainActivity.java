@@ -144,4 +144,12 @@ public class MainActivity extends AppCompatActivity {
             navController.navigate(R.id.nav_settings);
         }
     }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // אפס את ה-session symbol כדי שפתיחה הבאה תתחיל מ-fixed
+        SharedViewModel vm = new ViewModelProvider(this).get(SharedViewModel.class);
+        vm.clearSessionSymbol();
+    }
 }

@@ -45,4 +45,9 @@ public class SharedViewModel extends ViewModel {
         current.put(symbol, price);
         prices.setValue(current);
     }
+
+    /** קרא לזה כשרוצים לאפס את הסשן (למשל ב-onDestroy של MainActivity) */
+    public void clearSessionSymbol() {
+        sessionSymbol = null;
+    }
 }
