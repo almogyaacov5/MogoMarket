@@ -38,7 +38,8 @@ import okhttp3.Response;
 
 public class WatchlistAdapter extends RecyclerView.Adapter<WatchlistAdapter.ViewHolder> {
 
-    private static final String FINNHUB_KEY = "d9ni1qpr01qjcq2r6po0d9ni1qpr01qjcq2r6pog";
+    private static final String FINNHUB_KEY = BuildConfig.FINNHUB_KEY;
+
 
     public interface OnWatchStockClickListener {
         void onStockClick(String symbol);

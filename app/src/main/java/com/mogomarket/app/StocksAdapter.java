@@ -188,8 +188,7 @@ public class StocksAdapter extends RecyclerView.Adapter<StocksAdapter.StockViewH
     private void fetchStockQuote(String symbol, StockData stock, StockViewHolder holder,
                                  int colorGain, int colorLoss, int textPrimary,
                                  int textSecondary, int colorNeutral) {
-        String url = "https://finnhub.io/api/v1/quote?symbol=" + symbol + "&token=" + FINNHUB_KEY;
-        client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
+        String url = "https://finnhub.io/api/v1/quote?symbol=" + symbol + "&token=" + BuildConfig.FINNHUB_KEY;        client.newCall(new Request.Builder().url(url).build()).enqueue(new Callback() {
             @Override public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 holder.currentPriceText.post(() -> { holder.currentPriceText.setText("?"); holder.currentPriceText.setTextColor(colorNeutral); });
                 holder.changePercentText.post(() -> holder.changePercentText.setText("N/A"));

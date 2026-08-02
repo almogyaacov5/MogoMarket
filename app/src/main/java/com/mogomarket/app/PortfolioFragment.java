@@ -67,7 +67,7 @@ public class PortfolioFragment extends Fragment {
             .writeTimeout(20, TimeUnit.SECONDS)
             .build();
 
-    private static final String FINNHUB_KEY = "d9ni1qpr01qjcq2r6po0d9ni1qpr01qjcq2r6pog";
+    private static final String FINNHUB_KEY = BuildConfig.FINNHUB_KEY;
 
     private boolean isGuest() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
