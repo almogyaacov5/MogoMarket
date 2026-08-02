@@ -107,6 +107,7 @@ public class AuthLogin extends AppCompatActivity {
                 this::handleGoogleSignInResult
         );
 
+        // Google Sign-In
         android.view.View btnGoogle = findViewById(R.id.btnGoogleSignIn);
         if (btnGoogle != null) {
             btnGoogle.setOnClickListener(v -> signInWithGoogle());
@@ -114,6 +115,7 @@ public class AuthLogin extends AppCompatActivity {
             Log.e(TAG, "btnGoogleSignIn not found in layout");
         }
 
+        // Login
         android.view.View btnLogin = findViewById(R.id.button);
         if (btnLogin != null) {
             btnLogin.setOnClickListener(v -> loginUser());
@@ -121,6 +123,7 @@ public class AuthLogin extends AppCompatActivity {
             Log.e(TAG, "Login button not found in layout");
         }
 
+        // Register
         android.view.View btnRegister = findViewById(R.id.btnNoUser);
         if (btnRegister != null) {
             btnRegister.setOnClickListener(v ->
@@ -129,12 +132,29 @@ public class AuthLogin extends AppCompatActivity {
             Log.e(TAG, "btnNoUser not found in layout");
         }
 
+        // Guest
         android.view.View btnGuest = findViewById(R.id.btnGuestLogin);
         if (btnGuest != null) {
             btnGuest.setOnClickListener(v -> loginAsGuest());
         } else {
             Log.e(TAG, "btnGuestLogin not found in layout");
         }
+
+        // ── Forgot Password ───────────────────────────────────────────────────
+        android.view.View btnForgot = findViewById(R.id.btnForgotPassword);
+        if (btnForgot != null) {
+            btnForgot.setOnClickListener(v -> {
+                String currentEmail = editTextEmailAddress.getText().toString().trim();
+                Intent intent = new Intent(AuthLogin.this, ForgotPasswordActivity.class);
+                if (!currentEmail.isEmpty()) {
+                    intent.putExtra("email", currentEmail); // pre-fill email
+                }
+                startActivity(intent);
+            });
+        } else {
+            Log.e(TAG, "btnForgotPassword not found in layout");
+        }
+        // ─────────────────────────────────────────────────────────────────────
 
         setupBiometricPrompt();
 
