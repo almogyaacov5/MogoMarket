@@ -7,30 +7,33 @@ import androidx.lifecycle.ViewModel;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * SharedViewModel — מקור אמת אחד לנתונים משותפים בין כל ה-Fragments באותה Activity.
- * משמש להעברת symbol לגרף, וגם למפת מחירים אם תרצה.
- */
 public class SharedViewModel extends ViewModel {
 
-    // הסמל הנבחר (לגרף)
     private final MutableLiveData<String> selectedSymbol = new MutableLiveData<>();
+    private final MutableLiveData<Map<String, Double>> prices = new MutableLiveData<>();
 
-    // מפה של מחירים (symbol -> price)
-    private final MutableLiveData<Map<String, Double>> prices =
-            new MutableLiveData<>();
-
-    // --- Selected Symbol ---
+    // נשמר בזיכרון בלבד — הסמל האחרון שנפתח בגרף בתוך הסשן הנוכחי
+    private String sessionSymbol = null;
 
     public LiveData<String> getSelectedSymbol() {
         return selectedSymbol;
     }
 
     public void setSelectedSymbol(String symbol) {
+        if (symbol != null && symbol.equals(selectedSymbol.getValue())) {
+            selectedSymbol.setValue(null);
+        }
         selectedSymbol.setValue(symbol);
+        // שמור כ-session symbol (רק בזיכרון)
+        if (symbol != null && !symbol.trim().isEmpty()) {
+            sessionSymbol = symbol.trim();
+        }
     }
 
-    // --- Prices Map ---
+    /** מחזיר את הסמל האחרון שנפתח בגרף בסשן הנוכחי, או null אם לא היה */
+    public String getSessionSymbol() {
+        return sessionSymbol;
+    }
 
     public LiveData<Map<String, Double>> getPrices() {
         return prices;
@@ -38,9 +41,7 @@ public class SharedViewModel extends ViewModel {
 
     public void updatePrice(String symbol, double price) {
         Map<String, Double> current = prices.getValue();
-        if (current == null) {
-            current = new HashMap<>();
-        }
+        if (current == null) current = new HashMap<>();
         current.put(symbol, price);
         prices.setValue(current);
     }

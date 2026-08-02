@@ -183,8 +183,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private com.google.android.material.button.MaterialButton btnTickerSelect;
     private com.google.android.material.button.MaterialButton btnTimeframePicker;
     private Button btnLoad, btnTimeFrame, btnToggleChart, btnAIAnalysis;
-    private com.google.android.material.button.MaterialButton btnChartRefresh, btnExpandChart,
-            btnExitFullscreen, btnSettings;
+    private com.google.android.material.button.MaterialButton btnChartRefresh, btnExpandChart, btnExitFullscreen, btnSettings;
     private Button btnChartThemeToggle;
 
     private View headerSection;
@@ -446,19 +445,12 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         SharedViewModel vm = new ViewModelProvider(requireActivity())
                 .get(SharedViewModel.class);
 
+        // observe — כל שינוי ב-selectedSymbol יטעין גרף
         vm.getSelectedSymbol().observe(getViewLifecycleOwner(), selected -> {
             if (selected != null && !selected.trim().isEmpty()) {
                 loadChartForSymbol(selected.trim());
             }
         });
-
-        Bundle args = getArguments();
-        if (args != null && args.containsKey("symbol")) {
-            String symbolFromArgs = args.getString("symbol");
-            if (symbolFromArgs != null && !symbolFromArgs.trim().isEmpty()) {
-                vm.setSelectedSymbol(symbolFromArgs.trim());
-            }
-        }
 
         SharedPreferences prefs = requireActivity()
                 .getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE);
@@ -466,16 +458,22 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         String mode = prefs.getString(KEY_SYMBOL_MODE, "last");
 
         if ("fixed".equals(mode)) {
-            // במצב fixed — טען תמיד את ה-default symbol ואל תדרוס
-            String fixedSymbol = prefs.getString(MainActivity.KEY_DEFAULT_SYMBOL, "SPY");
-            if (fixedSymbol == null || fixedSymbol.trim().isEmpty()) fixedSymbol = "SPY";
-            vm.setSelectedSymbol(fixedSymbol.trim());
-        } else {
-            // במצב last — טען את הסמל האחרון
-            String lastSymbol = prefs.getString(MainActivity.KEY_LAST_SYMBOL, null);
-            if (lastSymbol != null && !lastSymbol.trim().isEmpty()) {
-                vm.setSelectedSymbol(lastSymbol.trim());
+            // בפיקסד: אם כבר נפתח גרף בסשן הזה (למשל מ-Watchlist) — השתמש בו
+            String sessionSym = vm.getSessionSymbol();
+            if (sessionSym != null && !sessionSym.trim().isEmpty()) {
+                // המשתמש כבר ניווט לגרף במהלך הסשן — השאר מה שהיה
+                vm.setSelectedSymbol(sessionSym.trim());
+            } else {
+                // פתיחה ראשונה של האפליקציה בסשן — טען fixed
+                String fixedSymbol = prefs.getString(MainActivity.KEY_DEFAULT_SYMBOL, "SPY");
+                if (fixedSymbol == null || fixedSymbol.trim().isEmpty()) fixedSymbol = "SPY";
+                vm.setSelectedSymbol(fixedSymbol.trim());
             }
+        } else {
+            // last mode — הכל כרגיל
+            String lastSymbol = prefs.getString(MainActivity.KEY_LAST_SYMBOL, "SPY");
+            if (lastSymbol == null || lastSymbol.trim().isEmpty()) lastSymbol = "SPY";
+            vm.setSelectedSymbol(lastSymbol.trim());
         }
     }
 
