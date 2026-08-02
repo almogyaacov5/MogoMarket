@@ -728,6 +728,7 @@
                     android:layout_marginBottom="12dp"
                     android:background="@color/colorDivider" />
 
+                <!-- Log Out -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnSettingsLogout"
                     android:layout_width="match_parent"
@@ -736,6 +737,20 @@
                     android:textAllCaps="false"
                     android:textColor="@color/white"
                     app:backgroundTint="@color/colorLoss" />
+
+                <!-- Delete Account -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDeleteAccount"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="10dp"
+                    android:text="🗑 Delete Account"
+                    android:textAllCaps="false"
+                    android:textSize="14sp"
+                    android:textColor="@color/colorLoss"
+                    app:strokeColor="@color/colorLoss"
+                    app:strokeWidth="1dp" />
 
             </LinearLayout>
         </androidx.cardview.widget.CardView>

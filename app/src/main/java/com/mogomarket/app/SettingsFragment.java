@@ -1,5 +1,7 @@
 package com.mogomarket.app;
 
+import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -19,9 +21,9 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 public class SettingsFragment extends Fragment {
-
 
     private MaterialButton btnThemeToggle;
     private TextView tvThemeStatus;
@@ -53,7 +55,7 @@ public class SettingsFragment extends Fragment {
 
         // Theme
         btnThemeToggle = v.findViewById(R.id.btnThemeToggle);
-        tvThemeStatus = v.findViewById(R.id.tvThemeStatus);
+        tvThemeStatus  = v.findViewById(R.id.tvThemeStatus);
 
         isDark = prefs.getBoolean(KEY_THEME, true);
         updateThemeUI(isDark);
@@ -62,13 +64,9 @@ public class SettingsFragment extends Fragment {
             btnThemeToggle.setOnClickListener(view -> {
                 isDark = !isDark;
                 prefs.edit().putBoolean(KEY_THEME, isDark).apply();
-
                 AppCompatDelegate.setDefaultNightMode(
-                        isDark
-                                ? AppCompatDelegate.MODE_NIGHT_YES
-                                : AppCompatDelegate.MODE_NIGHT_NO
-                );
-
+                        isDark ? AppCompatDelegate.MODE_NIGHT_YES
+                                : AppCompatDelegate.MODE_NIGHT_NO);
                 updateThemeUI(isDark);
             });
         }
@@ -94,74 +92,52 @@ public class SettingsFragment extends Fragment {
         if (switchPriceAlerts != null) {
             boolean alertsEnabled = prefs.getBoolean(KEY_PRICE_ALERTS, false);
             switchPriceAlerts.setChecked(alertsEnabled);
-
-            if (alertsEnabled) {
-                PriceAlertScheduler.schedule(requireContext());
-            }
+            if (alertsEnabled) PriceAlertScheduler.schedule(requireContext());
 
             switchPriceAlerts.setOnCheckedChangeListener((btn, isChecked) -> {
                 prefs.edit().putBoolean(KEY_PRICE_ALERTS, isChecked).apply();
                 if (isChecked) {
                     PriceAlertScheduler.schedule(requireContext());
-                    Toast.makeText(requireContext(),
-                            "Price target alerts enabled",
-                            Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), "Price target alerts enabled", Toast.LENGTH_SHORT).show();
                 } else {
                     PriceAlertScheduler.cancel(requireContext());
-                    Toast.makeText(requireContext(),
-                            "Price target alerts disabled",
-                            Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), "Price target alerts disabled", Toast.LENGTH_SHORT).show();
                 }
             });
         }
 
-        // Daily summary email (automatic at 08:00)
+        // Daily summary email
         SwitchMaterial switchDailyEmail = v.findViewById(R.id.switchDailyEmail);
         if (switchDailyEmail != null) {
             boolean dailyEnabled = prefs.getBoolean(KEY_DAILY_EMAIL, false);
             switchDailyEmail.setChecked(dailyEnabled);
-
-            if (dailyEnabled) {
-                DailySummaryEmailService.scheduleDailySummary(requireContext());
-            }
+            if (dailyEnabled) DailySummaryEmailService.scheduleDailySummary(requireContext());
 
             switchDailyEmail.setOnCheckedChangeListener((btn, isChecked) -> {
                 prefs.edit().putBoolean(KEY_DAILY_EMAIL, isChecked).apply();
-
                 if (isChecked) {
                     DailySummaryEmailService.scheduleDailySummary(requireContext());
-                    Toast.makeText(requireContext(),
-                            "Daily summary email enabled (every day at 08:00)",
-                            Toast.LENGTH_LONG).show();
+                    Toast.makeText(requireContext(), "Daily summary email enabled (every day at 08:00)", Toast.LENGTH_LONG).show();
                 } else {
                     DailySummaryEmailService.cancelDailySummary(requireContext());
-                    Toast.makeText(requireContext(),
-                            "Daily summary email disabled",
-                            Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), "Daily summary email disabled", Toast.LENGTH_SHORT).show();
                 }
             });
         }
 
-// Button: send daily summary now (real automatic send, no email app)
+        // Button: send daily summary now
         MaterialButton btnSendEmailNow = v.findViewById(R.id.btnSendDailyEmailNow);
         if (btnSendEmailNow != null) {
             btnSendEmailNow.setOnClickListener(view -> {
                 FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
                 if (user == null || user.isAnonymous() || user.getEmail() == null || user.getEmail().trim().isEmpty()) {
-                    Toast.makeText(requireContext(),
-                            "No valid user email found",
-                            Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), "No valid user email found", Toast.LENGTH_SHORT).show();
                     return;
                 }
-
-                Toast.makeText(requireContext(),
-                        "Sending daily summary email...",
-                        Toast.LENGTH_SHORT).show();
-
+                Toast.makeText(requireContext(), "Sending daily summary email...", Toast.LENGTH_SHORT).show();
                 DailySummaryEmailService.sendNow(requireContext(), true);
             });
         }
-
 
         // Default symbol section
         setupDefaultSymbolSection(v);
@@ -177,9 +153,7 @@ public class SettingsFragment extends Fragment {
             if (user != null && user.isAnonymous()) {
                 tvEmail.setText("Guest");
             } else {
-                tvEmail.setText(user != null && user.getEmail() != null
-                        ? user.getEmail()
-                        : "Guest");
+                tvEmail.setText(user != null && user.getEmail() != null ? user.getEmail() : "Guest");
             }
         }
 
@@ -211,17 +185,71 @@ public class SettingsFragment extends Fragment {
             });
         }
 
+        // Delete Account
+        MaterialButton btnDeleteAccount = v.findViewById(R.id.btnDeleteAccount);
+        if (btnDeleteAccount != null) {
+            btnDeleteAccount.setOnClickListener(view -> showDeleteAccountDialog());
+        }
+
         return v;
     }
 
-    /**
-     * Default symbol section: text field + save button + mode toggle
-     * ("Last Viewed" vs "Fixed Default")
-     */
+    // ─── Delete Account ───────────────────────────────────────────────────────
+
+    private void showDeleteAccountDialog() {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Delete Account")
+                .setMessage("This will permanently delete your account and ALL your data (portfolio, watchlist, trades).\n\nThis cannot be undone. Are you sure?")
+                .setPositiveButton("Delete", (dialog, which) -> deleteAccount())
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void deleteAccount() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) return;
+
+        String uid = user.getUid();
+
+        ProgressDialog pd = new ProgressDialog(requireContext());
+        pd.setTitle("Deleting Account");
+        pd.setMessage("Please wait...");
+        pd.setCancelable(false);
+        pd.show();
+
+        // מחיקת נתוני Firestore ואז מחיקת חשבון Firebase Auth
+        FirebaseFirestore.getInstance()
+                .collection("users")
+                .document(uid)
+                .delete()
+                .addOnCompleteListener(task -> {
+                    user.delete().addOnCompleteListener(authTask -> {
+                        pd.dismiss();
+                        if (authTask.isSuccessful()) {
+                            Toast.makeText(requireContext(),
+                                    "Account deleted successfully",
+                                    Toast.LENGTH_SHORT).show();
+                            Intent intent = new Intent(requireActivity(), AuthLogin.class);
+                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                            startActivity(intent);
+                        } else {
+                            String msg = authTask.getException() != null
+                                    ? authTask.getException().getMessage()
+                                    : "Unknown error";
+                            Toast.makeText(requireContext(),
+                                    "Failed to delete account: " + msg,
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    });
+                });
+    }
+
+    // ─── Default Symbol ───────────────────────────────────────────────────────
+
     private void setupDefaultSymbolSection(View v) {
         android.widget.EditText etDefaultSymbol = v.findViewById(R.id.etDefaultSymbol);
-        MaterialButton btnSaveSymbol  = v.findViewById(R.id.btnSaveDefaultSymbol);
-        MaterialButton btnSymbolMode  = v.findViewById(R.id.btnSymbolMode);
+        MaterialButton btnSaveSymbol = v.findViewById(R.id.btnSaveDefaultSymbol);
+        MaterialButton btnSymbolMode = v.findViewById(R.id.btnSymbolMode);
 
         if (etDefaultSymbol != null) {
             String current = prefs.getString(MainActivity.KEY_DEFAULT_SYMBOL, "SPY");
@@ -239,9 +267,7 @@ public class SettingsFragment extends Fragment {
                 if ("fixed".equals(prefs.getString(ChartFragment.KEY_SYMBOL_MODE, "last"))) {
                     prefs.edit().putString(MainActivity.KEY_LAST_SYMBOL, sym).apply();
                 }
-                Toast.makeText(requireContext(),
-                        "\u2705 Default symbol saved: " + sym,
-                        Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "\u2705 Default symbol saved: " + sym, Toast.LENGTH_SHORT).show();
             });
         }
 
@@ -259,7 +285,6 @@ public class SettingsFragment extends Fragment {
         }
     }
 
-    /** Update text and style of the symbol mode button */
     private void updateSymbolModeButton(MaterialButton btn) {
         if (btn == null) return;
         String mode = prefs.getString(ChartFragment.KEY_SYMBOL_MODE, "last");
@@ -274,7 +299,8 @@ public class SettingsFragment extends Fragment {
         }
     }
 
-    /** Start page selector — 5 buttons */
+    // ─── Start Page Selector ─────────────────────────────────────────────────
+
     private void setupStartPageSelector(View v) {
         int[] btnIds = {
                 R.id.btnStartChart,
@@ -303,9 +329,7 @@ public class SettingsFragment extends Fragment {
 
             btn.setOnClickListener(click -> {
                 prefs.edit().putInt(MainActivity.KEY_START_PAGE, navId).apply();
-                Toast.makeText(requireContext(),
-                        "\u2705 Start page saved",
-                        Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "\u2705 Start page saved", Toast.LENGTH_SHORT).show();
                 for (int j = 0; j < btnIds.length; j++) {
                     MaterialButton b = v.findViewById(btnIds[j]);
                     if (b == null) continue;
@@ -317,20 +341,18 @@ public class SettingsFragment extends Fragment {
         }
     }
 
+    // ─── Lifecycle ────────────────────────────────────────────────────────────
+
     @Override
     public void onStart() {
         super.onStart();
-        if (prefs != null) {
-            prefs.registerOnSharedPreferenceChangeListener(prefListener);
-        }
+        if (prefs != null) prefs.registerOnSharedPreferenceChangeListener(prefListener);
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        if (prefs != null) {
-            prefs.unregisterOnSharedPreferenceChangeListener(prefListener);
-        }
+        if (prefs != null) prefs.unregisterOnSharedPreferenceChangeListener(prefListener);
     }
 
     @Override
@@ -345,7 +367,6 @@ public class SettingsFragment extends Fragment {
         if (btnThemeToggle == null || tvThemeStatus == null) return;
 
         int primary = requireContext().getColor(R.color.primary);
-        int textSecondary = requireContext().getColor(R.color.text_secondary);
 
         tvThemeStatus.setText(dark ? "Dark" : "Light");
         tvThemeStatus.setTextColor(primary);
@@ -353,29 +374,20 @@ public class SettingsFragment extends Fragment {
         btnThemeToggle.setText(dark ? "🌙 Dark" : "☀ Light");
         btnThemeToggle.setStrokeColorResource(R.color.primary);
         btnThemeToggle.setStrokeWidth(2);
-
         btnThemeToggle.setTextColor(primary);
         btnThemeToggle.setIconTintResource(R.color.primary);
 
         btnThemeToggle.animate()
-                .scaleX(1.02f)
-                .scaleY(1.02f)
-                .setDuration(120)
+                .scaleX(1.02f).scaleY(1.02f).setDuration(120)
                 .withEndAction(() -> btnThemeToggle.animate()
-                        .scaleX(1f)
-                        .scaleY(1f)
-                        .setDuration(120)
-                        .start())
+                        .scaleX(1f).scaleY(1f).setDuration(120).start())
                 .start();
     }
 
     private void setChildTextColors(LinearLayout layout, int color) {
         for (int i = 0; i < layout.getChildCount(); i++) {
             View child = layout.getChildAt(i);
-            if (child instanceof TextView) {
-                ((TextView) child).setTextColor(color);
-            }
+            if (child instanceof TextView) ((TextView) child).setTextColor(color);
         }
     }
-
 }
