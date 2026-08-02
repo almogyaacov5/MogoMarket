@@ -21,7 +21,8 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.database.FirebaseDatabase;
+
 
 public class SettingsFragment extends Fragment {
 
@@ -205,6 +206,7 @@ public class SettingsFragment extends Fragment {
                 .show();
     }
 
+
     private void deleteAccount() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) return;
@@ -217,11 +219,11 @@ public class SettingsFragment extends Fragment {
         pd.setCancelable(false);
         pd.show();
 
-        // מחיקת נתוני Firestore ואז מחיקת חשבון Firebase Auth
-        FirebaseFirestore.getInstance()
-                .collection("users")
-                .document(uid)
-                .delete()
+        // מחיקת נתונים ב-Realtime Database ואז מחיקת חשבון
+        FirebaseDatabase.getInstance()
+                .getReference("users")
+                .child(uid)
+                .removeValue()
                 .addOnCompleteListener(task -> {
                     user.delete().addOnCompleteListener(authTask -> {
                         pd.dismiss();
