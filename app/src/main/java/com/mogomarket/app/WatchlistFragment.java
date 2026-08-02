@@ -115,16 +115,23 @@ public class WatchlistFragment extends Fragment {
                         .get(SharedViewModel.class);
 
                 String mappedSymbol = mapSymbolForChart(symbol);
-                vm.setSelectedSymbol(mappedSymbol);
-
-                requireActivity()
-                        .getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE)
-                        .edit()
-                        .putString(MainActivity.KEY_LAST_SYMBOL, mappedSymbol)
-                        .apply();
 
                 SharedPreferences prefs = requireActivity()
                         .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+
+                String mode = prefs.getString(ChartFragment.KEY_SYMBOL_MODE, "last");
+
+                // שמור ב-last רק אם לא במצב fixed
+                if (!"fixed".equals(mode)) {
+                    requireActivity()
+                            .getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE)
+                            .edit()
+                            .putString(MainActivity.KEY_LAST_SYMBOL, mappedSymbol)
+                            .apply();
+                }
+
+                // תמיד עדכן את ה-ViewModel כדי שהגרף יציג את המניה שנבחרה
+                vm.setSelectedSymbol(mappedSymbol);
 
                 boolean navigateToChart = prefs.getBoolean(KEY_WATCHLIST_NAV, true);
                 if (navigateToChart) {

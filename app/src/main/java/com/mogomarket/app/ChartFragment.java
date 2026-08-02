@@ -416,11 +416,15 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         symbol = cleanSymbol;
 
         if (getActivity() != null) {
-            getActivity()
-                    .getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE)
-                    .edit()
-                    .putString(MainActivity.KEY_LAST_SYMBOL, cleanSymbol)
-                    .apply();
+            SharedPreferences prefs = getActivity()
+                    .getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE);
+            String mode = prefs.getString(KEY_SYMBOL_MODE, "last");
+            // שמור "last" רק אם לא במצב fixed
+            if (!"fixed".equals(mode)) {
+                prefs.edit()
+                        .putString(MainActivity.KEY_LAST_SYMBOL, cleanSymbol)
+                        .apply();
+            }
         }
 
         updateTickerButtonLabel();
@@ -459,9 +463,19 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         SharedPreferences prefs = requireActivity()
                 .getSharedPreferences(MainActivity.PREFS_NAME, Context.MODE_PRIVATE);
 
-        String lastSymbol = prefs.getString(MainActivity.KEY_LAST_SYMBOL, null);
-        if (lastSymbol != null && !lastSymbol.trim().isEmpty()) {
-            vm.setSelectedSymbol(lastSymbol.trim());
+        String mode = prefs.getString(KEY_SYMBOL_MODE, "last");
+
+        if ("fixed".equals(mode)) {
+            // במצב fixed — טען תמיד את ה-default symbol ואל תדרוס
+            String fixedSymbol = prefs.getString(MainActivity.KEY_DEFAULT_SYMBOL, "SPY");
+            if (fixedSymbol == null || fixedSymbol.trim().isEmpty()) fixedSymbol = "SPY";
+            vm.setSelectedSymbol(fixedSymbol.trim());
+        } else {
+            // במצב last — טען את הסמל האחרון
+            String lastSymbol = prefs.getString(MainActivity.KEY_LAST_SYMBOL, null);
+            if (lastSymbol != null && !lastSymbol.trim().isEmpty()) {
+                vm.setSelectedSymbol(lastSymbol.trim());
+            }
         }
     }
 
@@ -1136,20 +1150,23 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private void openChartFromInput(String raw) {
         String upper = raw.toUpperCase(Locale.US).trim();
 
-        // בדוק קריפטו קודם
         String cryptoSym = CRYPTO_MAP.get(upper);
         if (cryptoSym != null) {
             symbol = cryptoSym;
         } else {
-            // בדוק פורקס
             String forexSym = FOREX_MAP.get(upper);
             symbol = (forexSym != null) ? forexSym : upper;
         }
 
-        requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit()
-                .putString(KEY_LAST_SYMBOL, symbol)
-                .apply();
+        SharedPreferences prefs = requireActivity()
+                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String mode = prefs.getString(KEY_SYMBOL_MODE, "last");
+        // שמור "last" רק אם לא במצב fixed
+        if (!"fixed".equals(mode)) {
+            prefs.edit()
+                    .putString(KEY_LAST_SYMBOL, symbol)
+                    .apply();
+        }
 
         updateTickerButtonLabel();
         updateTickerLabelTop();
