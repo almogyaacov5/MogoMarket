@@ -88,7 +88,22 @@
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:background="#2F1F9990"
-                android:layout_marginBottom="24dp" />
+                android:layout_marginBottom="4dp" />
+
+            <!-- Forgot Password link -->
+            <TextView
+                android:id="@+id/btnForgotPassword"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Forgot password?"
+                android:textSize="13sp"
+                android:textColor="#4DA3FF"
+                android:paddingTop="6dp"
+                android:paddingBottom="18dp"
+                android:layout_gravity="end"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackgroundBorderless" />
 
             <!-- Log In -->
             <com.google.android.material.button.MaterialButton

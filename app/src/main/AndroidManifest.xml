@@ -45,8 +45,6 @@
             android:name=".DailySummaryEmailService"
             android:exported="false" />
 
-
-
         <!-- SplashActivity — LAUNCHER -->
         <activity
             android:name=".SplashActivity"
@@ -69,7 +67,12 @@
             android:exported="false"
             android:windowSoftInputMode="stateHidden|adjustResize" />
 
-        <!-- הוסרה uiMode מ-configChanges כדי לאפשר Recreation תקין -->
+        <activity
+            android:name=".ForgotPasswordActivity"
+            android:exported="false"
+            android:windowSoftInputMode="stateHidden|adjustResize" />
+
+        <!-- הוסרה uiMode מג-configChanges כדי לאפשר Recreation תקין -->
         <activity
             android:name=".MainActivity"
             android:exported="false"
