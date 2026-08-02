@@ -27,17 +27,14 @@ import javax.mail.internet.MimeMessage;
 
 public class ForgotPasswordActivity extends AppCompatActivity {
 
-    private static final String TAG = "ForgotPassword";
-
-    // Gmail SMTP credentials
+    private static final String TAG           = "ForgotPassword";
     private static final String SMTP_EMAIL    = "shoomdavar123@gmail.com";
     private static final String SMTP_PASSWORD = "lpry hxic pgvc gwxl";
 
-    private EditText editTextEmail;
-    private Button btnSendReset;
+    private EditText    editTextEmail;
+    private Button      btnSendReset;
     private ProgressBar progressBar;
-    private TextView tvBackToLogin;
-
+    private TextView    tvBackToLogin;
     private FirebaseAuth mAuth;
 
     @Override
@@ -45,14 +42,12 @@ public class ForgotPasswordActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_forgot_password);
 
-        mAuth = FirebaseAuth.getInstance();
-
+        mAuth         = FirebaseAuth.getInstance();
         editTextEmail = findViewById(R.id.editTextForgotEmail);
         btnSendReset  = findViewById(R.id.btnSendReset);
         progressBar   = findViewById(R.id.progressBarForgot);
         tvBackToLogin = findViewById(R.id.tvBackToLogin);
 
-        // Pre-fill email if passed from AuthLogin
         String prefillEmail = getIntent().getStringExtra("email");
         if (prefillEmail != null && !prefillEmail.isEmpty()) {
             editTextEmail.setText(prefillEmail);
@@ -75,26 +70,26 @@ public class ForgotPasswordActivity extends AppCompatActivity {
         progressBar.setVisibility(View.VISIBLE);
         btnSendReset.setEnabled(false);
 
-        // Step 1: Generate Firebase reset link, then send via Gmail SMTP
-        mAuth.generatePasswordResetLink(email)
+        // Step 1: Firebase sends the real reset link
+        mAuth.sendPasswordResetEmail(email)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
-                        String resetLink = task.getResult();
-                        Log.d(TAG, "Reset link generated, sending via Gmail...");
-                        sendViaGmail(email, resetLink);
+                        Log.d(TAG, "Firebase reset email sent successfully.");
+                        // Step 2: Also send a styled notification via Gmail
+                        sendGmailNotification(email);
                     } else {
                         progressBar.setVisibility(View.GONE);
                         btnSendReset.setEnabled(true);
                         String msg = task.getException() != null
                                 ? task.getException().getMessage()
-                                : "Failed to generate reset link.";
-                        Log.e(TAG, "generatePasswordResetLink failed: " + msg);
+                                : "Failed to send reset email.";
+                        Log.e(TAG, "Firebase error: " + msg);
                         Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
                     }
                 });
     }
 
-    private void sendViaGmail(String toEmail, String resetLink) {
+    private void sendGmailNotification(String toEmail) {
         Executors.newSingleThreadExecutor().execute(() -> {
             try {
                 Properties props = new Properties();
@@ -113,58 +108,51 @@ public class ForgotPasswordActivity extends AppCompatActivity {
                 MimeMessage message = new MimeMessage(session);
                 message.setFrom(new InternetAddress(SMTP_EMAIL, "MogoMarket"));
                 message.addRecipient(Message.RecipientType.TO, new InternetAddress(toEmail));
-                message.setSubject("\uD83D\uDD10 MogoMarket - איפוס סיסמה");
-                message.setContent(buildEmailHtml(resetLink), "text/html; charset=utf-8");
+                message.setSubject("MogoMarket - Password Reset Request");
+                message.setContent(buildEmailHtml(toEmail), "text/html; charset=utf-8");
 
                 Transport.send(message);
-                Log.d(TAG, "Email sent successfully to " + toEmail);
-
-                runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    btnSendReset.setEnabled(true);
-                    Toast.makeText(this,
-                            "\u2705 נשלח אימייל לאיפוס סיסמה! בדוק את תיבת הדואר.",
-                            Toast.LENGTH_LONG).show();
-                    finish();
-                });
+                Log.d(TAG, "Gmail notification sent to " + toEmail);
 
             } catch (Exception e) {
-                Log.e(TAG, "Failed to send email via Gmail: ", e);
-                runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    btnSendReset.setEnabled(true);
-                    Toast.makeText(this,
-                            "שגיאה בשליחת האימייל. נסה שנית.",
-                            Toast.LENGTH_LONG).show();
-                });
+                Log.e(TAG, "Gmail send failed: ", e);
+                // Gmail failure is non-critical — Firebase already sent the link
             }
+
+            runOnUiThread(() -> {
+                progressBar.setVisibility(View.GONE);
+                btnSendReset.setEnabled(true);
+                Toast.makeText(this,
+                        "MogoMarket שלחה לך מייל לאיפוס סיסמה. בדוק את תיבת הדואר שלך.",
+                        Toast.LENGTH_LONG).show();
+                finish();
+            });
         });
     }
 
-    private String buildEmailHtml(String resetLink) {
-        return "<!DOCTYPE html><html dir='rtl'><head><meta charset='UTF-8'>" +
+    private String buildEmailHtml(String toEmail) {
+        return "<!DOCTYPE html><html><head><meta charset='UTF-8'>" +
                 "<style>" +
                 "body{font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px}" +
-                ".container{max-width:480px;margin:auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.1)}" +
+                ".container{max-width:480px;margin:auto;background:#fff;border-radius:12px;" +
+                "overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.1)}" +
                 ".header{background:linear-gradient(135deg,#1565C0,#00695C);padding:30px;text-align:center}" +
-                ".header h1{color:#ffffff;margin:0;font-size:24px}" +
-                ".body{padding:30px;text-align:right}" +
+                ".header h1{color:#fff;margin:0;font-size:24px}" +
+                ".body{padding:30px}" +
                 ".body p{color:#333;font-size:15px;line-height:1.6}" +
-                ".btn{display:block;width:fit-content;margin:24px auto;padding:14px 32px;" +
-                "background:#1565C0;color:#ffffff;text-decoration:none;border-radius:8px;font-size:16px;font-weight:bold}" +
-                ".footer{background:#f9f9f9;padding:16px;text-align:center;color:#999;font-size:12px}" +
+                ".note{font-size:13px;color:#999;margin-top:16px}" +
+        ".footer{background:#f9f9f9;padding:16px;text-align:center;color:#999;font-size:12px}" +
                 "</style></head><body>" +
                 "<div class='container'>" +
-                "<div class='header'><h1>\uD83D\uDD10 MogoMarket</h1></div>" +
+                "<div class='header'><h1>&#128272; MogoMarket</h1></div>" +
                 "<div class='body'>" +
-                "<p>שלום,</p>" +
-                "<p>קיבלנו בקשה לאיפוס הסיסמה לחשבון שלך ב-MogoMarket.</p>" +
-                "<p>לחץ על הכפתור למטה כדי לאפס את הסיסמה:</p>" +
-                "<a href='" + resetLink + "' class='btn'>איפוס סיסמה</a>" +
-                "<p style='font-size:13px;color:#999'>הלינק תקף ל-24 שעות בלבד.<br>" +
-                "אם לא ביקשת איפוס סיסמה, התעלם מהודעה זו.</p>" +
+                "<p>Hi,</p>" +
+                "<p>We received a request to reset the password for your MogoMarket account associated with <strong>" + toEmail + "</strong>.</p>" +
+                "<p>A separate email with the reset link has been sent to you from Firebase. " +
+                "Please check your inbox — and if you don't see it, check your <strong>spam folder</strong>.</p>" +
+                "<p class='note'>If you didn't request a password reset, you can safely ignore this email.</p>" +
                 "</div>" +
-                "<div class='footer'>MogoMarket &copy; 2026 &bull; מערכת ניהול השקעות אישית</div>" +
+                "<div class='footer'>MogoMarket &copy; 2026 &bull; Personal Investment Manager</div>" +
                 "</div></body></html>";
     }
 }
