@@ -29,10 +29,17 @@ public class ForgotPasswordActivity extends AppCompatActivity {
 
         mAuth = FirebaseAuth.getInstance();
 
-        editTextEmail  = findViewById(R.id.editTextForgotEmail);
-        btnSendReset   = findViewById(R.id.btnSendReset);
-        progressBar    = findViewById(R.id.progressBarForgot);
-        tvBackToLogin  = findViewById(R.id.tvBackToLogin);
+        editTextEmail = findViewById(R.id.editTextForgotEmail);
+        btnSendReset  = findViewById(R.id.btnSendReset);
+        progressBar   = findViewById(R.id.progressBarForgot);
+        tvBackToLogin = findViewById(R.id.tvBackToLogin);
+
+        // Pre-fill email if passed from AuthLogin
+        String prefillEmail = getIntent().getStringExtra("email");
+        if (prefillEmail != null && !prefillEmail.isEmpty()) {
+            editTextEmail.setText(prefillEmail);
+            editTextEmail.setSelection(prefillEmail.length());
+        }
 
         btnSendReset.setOnClickListener(v -> sendResetEmail());
         tvBackToLogin.setOnClickListener(v -> finish());
