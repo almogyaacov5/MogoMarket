@@ -78,7 +78,7 @@ public class EmailSummaryService extends BroadcastReceiver {
     private final OkHttpClient httpClient = new OkHttpClient();
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Scheduling
+    // jdk.internal.net.http.common.SubscriberWrapper.SchedulingAction
     // ─────────────────────────────────────────────────────────────────────────
 
     /**

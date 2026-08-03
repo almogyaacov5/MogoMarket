@@ -11,12 +11,14 @@ if (localPropertiesFile.exists()) {
     localProperties.load(localPropertiesFile.inputStream())
 }
 
-val geminiKey = localProperties.getProperty("GEMINI_API_KEY") ?: ""
-val finnhubKey = localProperties.getProperty("FINNHUB_KEY") ?: ""
-val storeFileValue = localProperties.getProperty("STORE_FILE") ?: "C:/Trade APP/myapp-release.jks"
+val geminiKey        = localProperties.getProperty("GEMINI_API_KEY")  ?: ""
+val finnhubKey       = localProperties.getProperty("FINNHUB_KEY")     ?: ""
+val smtpEmail        = localProperties.getProperty("SMTP_EMAIL")      ?: ""
+val smtpPassword     = localProperties.getProperty("SMTP_PASSWORD")   ?: ""
+val storeFileValue   = localProperties.getProperty("STORE_FILE")      ?: "C:/Trade APP/myapp-release.jks"
 val storePasswordValue = localProperties.getProperty("STORE_PASSWORD") ?: ""
-val keyAliasValue = localProperties.getProperty("KEY_ALIAS") ?: "release"
-val keyPasswordValue = localProperties.getProperty("KEY_PASSWORD") ?: ""
+val keyAliasValue    = localProperties.getProperty("KEY_ALIAS")       ?: "release"
+val keyPasswordValue = localProperties.getProperty("KEY_PASSWORD")    ?: ""
 
 android {
     namespace = "com.mogomarket.app"
@@ -26,33 +28,35 @@ android {
         applicationId = "com.mogomarket.app"
         minSdk = 29
         targetSdk = 36
-        versionCode = 17
+        versionCode = 21
         versionName = "1.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "GEMINI_API_KEY", "\"$geminiKey\"")
-        buildConfigField("String", "FINNHUB_KEY", "\"$finnhubKey\"")
+        buildConfigField("String", "GEMINI_API_KEY",  "\"$geminiKey\"")
+        buildConfigField("String", "FINNHUB_KEY",     "\"$finnhubKey\"")
+        buildConfigField("String", "SMTP_EMAIL",      "\"$smtpEmail\"")
+        buildConfigField("String", "SMTP_PASSWORD",   "\"$smtpPassword\"")
     }
 
     signingConfigs {
         create("release") {
-            storeFile = file(storeFileValue)
+            storeFile     = file(storeFileValue)
             storePassword = storePasswordValue
-            keyAlias = keyAliasValue
-            keyPassword = keyPasswordValue
+            keyAlias      = keyAliasValue
+            keyPassword   = keyPasswordValue
         }
     }
 
     buildTypes {
         debug {
-            isMinifyEnabled = false
+            isMinifyEnabled   = false
             isShrinkResources = false
         }
         release {
-            isDebuggable = false
-            isMinifyEnabled = true
+            isDebuggable      = false
+            isMinifyEnabled   = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig     = signingConfigs.getByName("release")
             ndk {
                 debugSymbolLevel = "SYMBOL_TABLE"
             }
@@ -114,6 +118,4 @@ dependencies {
     implementation("androidx.navigation:navigation-ui:2.7.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel:2.7.0")
     implementation("androidx.lifecycle:lifecycle-livedata:2.7.0")
-    implementation("com.sun.mail:android-mail:1.6.7")
-    implementation("com.sun.mail:android-activation:1.6.7")
 }
