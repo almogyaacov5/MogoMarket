@@ -66,3 +66,12 @@
     public static * inflate(android.view.LayoutInflater, android.view.ViewGroup, boolean);
     public static * bind(android.view.View);
 }
+
+# Keep all application Fragments used by Navigation XML
+-keep class com.mogomarket.app.** extends androidx.fragment.app.Fragment { *; }
+
+# Keep fragment class names for XML / Navigation Component reflection
+-keepnames class * extends androidx.fragment.app.Fragment
+
+# Keep NavHostFragment name used from XML
+-keepnames class androidx.navigation.fragment.NavHostFragment

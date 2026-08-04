@@ -28,8 +28,8 @@ android {
         applicationId = "com.mogomarket.app"
         minSdk = 29
         targetSdk = 36
-        versionCode = 21
-        versionName = "1.7"
+        versionCode = 23
+        versionName = "1.7.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "GEMINI_API_KEY",  "\"$geminiKey\"")
@@ -51,15 +51,18 @@ android {
         debug {
             isMinifyEnabled   = false
             isShrinkResources = false
+
         }
         release {
-            isDebuggable      = false
-            isMinifyEnabled   = true
-            isShrinkResources = true
-            signingConfig     = signingConfigs.getByName("release")
+            isDebuggable = false
+            isMinifyEnabled = false
+            isShrinkResources = false
+            signingConfig = signingConfigs.getByName("release")
+
             ndk {
                 debugSymbolLevel = "SYMBOL_TABLE"
             }
+
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
