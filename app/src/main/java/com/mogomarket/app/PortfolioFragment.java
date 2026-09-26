@@ -49,7 +49,6 @@ public class PortfolioFragment extends Fragment {
         return v;
     }
 
-    // נקרא כשנטענים נתוני הטריידים
     public void setClosedTrades(List<StockData> trades) {
         this.stocksList = trades;
 
@@ -62,7 +61,6 @@ public class PortfolioFragment extends Fragment {
         updateSummaryFromLoadedData();
     }
 
-    // ⭐ הפונקציה עם השינויים
     private void updateSummaryFromLoadedData() {
         if (getActivity() == null) return;
 
