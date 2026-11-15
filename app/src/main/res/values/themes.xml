@@ -18,9 +18,16 @@
         <item name="colorOnError">@color/white</item>
         <item name="android:textColor">@color/text_primary</item>
         <item name="materialCardViewStyle">@style/CardStyle</item>
-        <item name="android:statusBarColor">@color/bg_primary</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="bottomNavigationStyle">@style/BottomNavStyle</item>
+        <item name="alertDialogTheme">@style/ThemeOverlay.MogoMarket.Dialog</item>
+        <item name="android:alertDialogTheme">@style/ThemeOverlay.MogoMarket.Dialog</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.MogoMarket.Dialog</item>
+        <item name="bottomSheetDialogTheme">@style/ThemeOverlay.MogoMarket.BottomSheetDialog</item>
+        <item name="popupMenuStyle">@style/MogoMarketPopupMenu</item>
+        <item name="android:popupMenuStyle">@style/MogoMarketPopupMenu</item>
+        <item name="android:datePickerDialogTheme">@style/ThemeOverlay.MogoMarket.Dialog</item>
+        <item name="android:timePickerDialogTheme">@style/ThemeOverlay.MogoMarket.Dialog</item>
     </style>
 
     <style name="Theme.MogoMarket" parent="Base.Theme.MogoMarket" />
@@ -33,13 +40,35 @@
         <item name="android:windowNoTitle">true</item>
     </style>
 
+    <style name="ThemeOverlay.MogoMarket.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorSurface">@color/bg_secondary</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="android:colorAccent">@color/primary</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:colorBackground">@color/bg_secondary</item>
+        <item name="android:windowBackground">@drawable/bg_dialog_glass</item>
+    </style>
+
+    <style name="ThemeOverlay.MogoMarket.BottomSheetDialog" parent="ThemeOverlay.Material3.BottomSheetDialog">
+        <item name="colorSurface">@color/bg_secondary</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+
+    <style name="MogoMarketPopupMenu" parent="Widget.AppCompat.PopupMenu">
+        <item name="android:popupBackground">@drawable/bg_dialog_glass</item>
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
+
     <!-- Material Card -->
     <style name="CardStyle" parent="Widget.Material3.CardView.Elevated">
         <item name="cardBackgroundColor">@color/bg_card</item>
-        <item name="strokeColor">@color/colorDivider</item>
-        <item name="strokeWidth">0dp</item>
+        <item name="strokeColor">@color/colorBorder</item>
+        <item name="strokeWidth">1dp</item>
         <item name="cardCornerRadius">16dp</item>
-        <item name="cardElevation">2dp</item>
+        <item name="cardElevation">0dp</item>
     </style>
 
     <!-- Bottom Navigation -->
@@ -55,6 +84,27 @@
         <item name="android:color">@android:color/transparent</item>
         <item name="android:width">0dp</item>
         <item name="android:height">0dp</item>
+    </style>
+
+    <style name="ChartTimeframeButton" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">40dp</item>
+        <item name="android:layout_marginHorizontal">3dp</item>
+        <item name="android:insetLeft">0dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetRight">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:paddingHorizontal">12dp</item>
+        <item name="android:textColor">@color/chart_tf_text</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:singleLine">true</item>
+        <item name="android:includeFontPadding">true</item>
+        <item name="android:backgroundTint">@color/chart_tf_unselected</item>
+        <item name="cornerRadius">28dp</item>
+        <item name="strokeColor">@color/chart_gold</item>
+        <item name="strokeWidth">1dp</item>
     </style>
 
     <!-- Primary Button -->

@@ -2,9 +2,13 @@ package com.mogomarket.app;
 
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
+import android.app.TimePickerDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -23,15 +27,17 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.FirebaseDatabase;
 
+import java.util.Calendar;
+import java.util.Locale;
 
 public class SettingsFragment extends Fragment {
 
     private MaterialButton btnThemeToggle;
     private TextView tvThemeStatus;
-    private static final String PREFS_NAME       = "app_prefs";
+    private static final String PREFS_NAME       = PriceAlertScheduler.PREFS_NAME;
     private static final String KEY_THEME        = "dark_mode";
-    private static final String KEY_PRICE_ALERTS = "price_alerts_enabled";
-    private static final String KEY_DAILY_EMAIL  = "daily_email_enabled";
+    private static final String KEY_PRICE_ALERTS = PriceAlertScheduler.KEY_ENABLED;
+    private static final String KEY_DAILY_EMAIL  = DailySummaryEmailService.KEY_ENABLED;
     private boolean isDark;
     private SharedPreferences prefs;
 
@@ -109,6 +115,24 @@ public class SettingsFragment extends Fragment {
 
         // Daily summary email
         SwitchMaterial switchDailyEmail = v.findViewById(R.id.switchDailyEmail);
+        MaterialButton btnDailySummaryTime = v.findViewById(R.id.btnDailySummaryTime);
+        if (btnDailySummaryTime != null) {
+            updateDailySummaryTimeButton(btnDailySummaryTime);
+            btnDailySummaryTime.setOnClickListener(view -> {
+                int hour = prefs.getInt(DailySummaryEmailService.KEY_HOUR, 8);
+                int minute = prefs.getInt(DailySummaryEmailService.KEY_MINUTE, 0);
+                new TimePickerDialog(requireContext(), (picker, selectedHour, selectedMinute) -> {
+                    prefs.edit()
+                            .putInt(DailySummaryEmailService.KEY_HOUR, selectedHour)
+                            .putInt(DailySummaryEmailService.KEY_MINUTE, selectedMinute)
+                            .apply();
+                    updateDailySummaryTimeButton(btnDailySummaryTime);
+                    if (prefs.getBoolean(KEY_DAILY_EMAIL, false)) {
+                        DailySummaryEmailService.scheduleDailySummary(requireContext());
+                    }
+                }, hour, minute, true).show();
+            });
+        }
         if (switchDailyEmail != null) {
             boolean dailyEnabled = prefs.getBoolean(KEY_DAILY_EMAIL, false);
             switchDailyEmail.setChecked(dailyEnabled);
@@ -118,7 +142,29 @@ public class SettingsFragment extends Fragment {
                 prefs.edit().putBoolean(KEY_DAILY_EMAIL, isChecked).apply();
                 if (isChecked) {
                     DailySummaryEmailService.scheduleDailySummary(requireContext());
-                    Toast.makeText(requireContext(), "Daily summary email enabled (every day at 08:00)", Toast.LENGTH_LONG).show();
+                    Toast.makeText(requireContext(),
+                            "Daily summary enabled Tuesday through Saturday", Toast.LENGTH_LONG).show();
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        android.app.AlarmManager alarmManager =
+                                requireContext().getSystemService(android.app.AlarmManager.class);
+                        if (alarmManager != null && !alarmManager.canScheduleExactAlarms()) {
+                            int hour = prefs.getInt(DailySummaryEmailService.KEY_HOUR, 8);
+                            int minute = prefs.getInt(DailySummaryEmailService.KEY_MINUTE, 0);
+                            new AlertDialog.Builder(requireContext())
+                                    .setTitle("Allow exact alarms")
+                                    .setMessage(String.format(Locale.getDefault(),
+                                            "Allow MogoMarket to schedule exact alarms so the email can be sent at %02d:%02d.",
+                                            hour, minute))
+                                    .setPositiveButton("Open settings", (dialog, which) -> {
+                                        Intent settingsIntent = new Intent(
+                                                Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                                                Uri.parse("package:" + requireContext().getPackageName()));
+                                        startActivity(settingsIntent);
+                                    })
+                                    .setNegativeButton("Not now", null)
+                                    .show();
+                        }
+                    }
                 } else {
                     DailySummaryEmailService.cancelDailySummary(requireContext());
                     Toast.makeText(requireContext(), "Daily summary email disabled", Toast.LENGTH_SHORT).show();
@@ -130,6 +176,13 @@ public class SettingsFragment extends Fragment {
         MaterialButton btnSendEmailNow = v.findViewById(R.id.btnSendDailyEmailNow);
         if (btnSendEmailNow != null) {
             btnSendEmailNow.setOnClickListener(view -> {
+                if (!DailySummaryEmailService.isSummaryDay(
+                        Calendar.getInstance().get(Calendar.DAY_OF_WEEK))) {
+                    Toast.makeText(requireContext(),
+                            "Daily summaries are available Tuesday through Saturday",
+                            Toast.LENGTH_LONG).show();
+                    return;
+                }
                 FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
                 if (user == null || user.isAnonymous() || user.getEmail() == null || user.getEmail().trim().isEmpty()) {
                     Toast.makeText(requireContext(), "No valid user email found", Toast.LENGTH_SHORT).show();
@@ -141,6 +194,7 @@ public class SettingsFragment extends Fragment {
         }
 
         setupDefaultSymbolSection(v);
+        setupDefaultChartTimeframe(v);
         setupStartPageSelector(v);
 
         // Account email
@@ -153,6 +207,7 @@ public class SettingsFragment extends Fragment {
             } else {
                 tvEmail.setText(user != null && user.getEmail() != null ? user.getEmail() : "Guest");
             }
+
         }
 
         // App version
@@ -187,6 +242,13 @@ public class SettingsFragment extends Fragment {
         }
 
         return v;
+    }
+
+    private void updateDailySummaryTimeButton(MaterialButton button) {
+        int hour = prefs.getInt(DailySummaryEmailService.KEY_HOUR, 8);
+        int minute = prefs.getInt(DailySummaryEmailService.KEY_MINUTE, 0);
+        button.setText(String.format(Locale.getDefault(), "Summary time: %02d:%02d",
+                hour, minute));
     }
 
     // ─── Delete Account ───────────────────────────────────────────────────────
@@ -279,6 +341,33 @@ public class SettingsFragment extends Fragment {
                 Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
             });
         }
+    }
+
+    private void setupDefaultChartTimeframe(View v) {
+        MaterialButton button = v.findViewById(R.id.btnDefaultChartTimeframe);
+        if (button == null) return;
+        String[] timeframes = ChartFragment.getTimeframeLabels();
+        button.setText(prefs.getString(ChartFragment.KEY_DEFAULT_TIMEFRAME, "1Y"));
+        button.setOnClickListener(view -> {
+            String current = prefs.getString(ChartFragment.KEY_DEFAULT_TIMEFRAME, "1Y");
+            int selected = java.util.Arrays.asList(timeframes).indexOf(current);
+            new AlertDialog.Builder(requireContext())
+                    .setTitle("Default chart timeframe")
+                    .setSingleChoiceItems(timeframes, Math.max(0, selected),
+                            (dialog, which) -> {
+                                String timeframe = timeframes[which];
+                                prefs.edit()
+                                        .putString(ChartFragment.KEY_DEFAULT_TIMEFRAME, timeframe)
+                                        .apply();
+                                button.setText(timeframe);
+                                dialog.dismiss();
+                                Toast.makeText(requireContext(),
+                                        "Default chart timeframe saved",
+                                        Toast.LENGTH_SHORT).show();
+                            })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+        });
     }
 
     private void updateSymbolModeButton(MaterialButton btn) {
@@ -389,13 +478,13 @@ public class SettingsFragment extends Fragment {
     }
 
     private void applyThemeToView(View root, boolean dark) {
-        int bgPrimary     = dark ? 0xFF0B0F14 : 0xFFF0F4F8;
-        int bgSecondary   = dark ? 0xFF111826 : 0xFFFFFFFF;
-        int bgCard        = dark ? 0xFF151C2E : 0xFFFFFFFF;
-        int textPrimary   = dark ? 0xFFE6EDF3 : 0xFF0D1117;
-        int textSecondary = dark ? 0xFF8B98A5 : 0xFF4A5568;
-        int colorPrimary  = 0xFF4DA3FF;  // זהה ב-light וב-dark
-        int colorBorder   = dark ? 0xFF1E2A3A : 0xFFE2E8F0;
+        int bgPrimary     = dark ? 0xFF07090D : 0xFFF0F4F8;
+        int bgSecondary   = dark ? 0xFF11151D : 0xFFFFFFFF;
+        int bgCard        = dark ? 0xFF121720 : 0xFFFFFFFF;
+        int textPrimary   = dark ? 0xFFF5F7FA : 0xFF0D1117;
+        int textSecondary = dark ? 0xFF96A3B5 : 0xFF4A5568;
+        int colorPrimary  = dark ? 0xFF22D3EE : 0xFF4DA3FF;
+        int colorBorder   = dark ? 0xFF2A303A : 0xFFE2E8F0;
 
         // רקע הכרטיסייה הראשית
         root.setBackgroundColor(bgPrimary);
@@ -408,19 +497,22 @@ public class SettingsFragment extends Fragment {
 
         // Bottom nav
         if (getActivity() != null) {
-            com.google.android.material.bottomnavigation.BottomNavigationView nav =
-                    getActivity().findViewById(R.id.bottom_navigation);
-            if (nav != null) {
-                nav.setBackgroundColor(bgSecondary);
+            View dockBackground = getActivity().findViewById(R.id.navigation_dock_background);
+            if (dockBackground != null) {
+                dockBackground.setBackgroundResource(R.drawable.bg_liquid_glass);
             }
         }
     }
 
     private void applyToAllCards(View root, int bgCard, int borderColor) {
-        if (root instanceof androidx.cardview.widget.CardView) {
+        if (root instanceof com.google.android.material.card.MaterialCardView) {
+            com.google.android.material.card.MaterialCardView card =
+                    (com.google.android.material.card.MaterialCardView) root;
+            card.setCardBackgroundColor(bgCard);
+            card.setStrokeColor(borderColor);
+            card.setStrokeWidth(Math.round(1 * getResources().getDisplayMetrics().density));
+        } else if (root instanceof androidx.cardview.widget.CardView) {
             ((androidx.cardview.widget.CardView) root).setCardBackgroundColor(bgCard);
-        } else if (root instanceof com.google.android.material.card.MaterialCardView) {
-            ((com.google.android.material.card.MaterialCardView) root).setCardBackgroundColor(bgCard);
         }
         if (root instanceof android.view.ViewGroup) {
             android.view.ViewGroup group = (android.view.ViewGroup) root;

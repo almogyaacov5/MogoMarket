@@ -6,39 +6,60 @@
          ============================ -->
 
     <!-- רקעות -->
-    <color name="bg_primary">#0B0F14</color>
-    <color name="bg_secondary">#111826</color>
-    <color name="bg_card">#151C2E</color>
+    <color name="bg_primary">#07090D</color>
+    <color name="bg_secondary">#11151D</color>
+    <color name="bg_card">#121720</color>
 
     <!-- צבעים ראשיים -->
-    <color name="primary">#4DA3FF</color>
-    <color name="primary_dark">#1C6DD0</color>
+    <color name="primary">#22D3EE</color>
+    <color name="primary_dark">#0891B2</color>
 
     <!-- טקסטים -->
-    <color name="text_primary">#E6EDF3</color>
-    <color name="text_secondary">#8B98A5</color>
+    <color name="text_primary">#F5F7FA</color>
+    <color name="text_secondary">#96A3B5</color>
 
     <!-- רווח / הפסד -->
-    <color name="gain">#00C896</color>
-    <color name="loss">#FF4D4D</color>
+    <color name="gain">#10B981</color>
+    <color name="loss">#FB5A75</color>
 
     <!-- aliases נפוצים -->
-    <color name="colorProfit">#00C896</color>
-    <color name="colorLoss">#FF4D4D</color>
-    <color name="colorBorder">#1E2A3A</color>
-    <color name="colorDivider">#1A2435</color>
+    <color name="colorProfit">#10B981</color>
+    <color name="colorLoss">#FB5A75</color>
+    <color name="colorBorder">#2A303A</color>
+    <color name="colorDivider">#27303B</color>
+    <color name="dialog_surface">#F211151D</color>
+    <color name="dialog_response_bg">#1A22D3EE</color>
+    <color name="nav_dock_tint">#99111720</color>
+    <color name="nav_dock_border">#667E8B99</color>
+    <color name="nav_dock_overlay">#33111720</color>
 
     <!-- ספריים כלליים -->
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
 
     <!-- Theme toggle כפתור -->
-    <color name="theme_toggle_bg">#1E2A3A</color>
-    <color name="theme_toggle_icon">#E6EDF3</color>
+    <color name="theme_toggle_bg">#1E252F</color>
+    <color name="theme_toggle_icon">#F5F7FA</color>
 
     <!-- Nav bar -->
-    <color name="nav_bar_bg">#111826</color>
-    <color name="nav_active">#4DA3FF</color>
-    <color name="nav_inactive">#8B98A5</color>
+    <color name="nav_bar_bg">#11151D</color>
+    <color name="nav_active">#22D3EE</color>
+    <color name="nav_inactive">#96A3B5</color>
+    <color name="navigation_icon_color">#22D3EE</color>
+    <color name="watchlist_card">#191A1E</color>
+    <color name="watchlist_card_border">#D8A97A</color>
+    <color name="watchlist_ticker">#8FEFFF</color>
+    <color name="watchlist_price">#F8DFAF</color>
+    <color name="watchlist_gold">#F3C879</color>
+    <color name="watchlist_add_icon">#352719</color>
+    <color name="chart_surface">#171719</color>
+    <color name="chart_gold">#E8BC82</color>
+    <color name="chart_ticker_text">#332411</color>
+    <color name="chart_text">#F5F7FA</color>
+    <color name="chart_price">#F07670</color>
+    <color name="chart_loss">#E77972</color>
+    <color name="chart_tf_selected">#365B5B</color>
+    <color name="chart_tf_unselected">#242326</color>
+    <color name="chart_tf_text">#C5B7A7</color>
 
 </resources>

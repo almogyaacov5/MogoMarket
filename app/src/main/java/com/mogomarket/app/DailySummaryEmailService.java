@@ -7,25 +7,26 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
+import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Properties;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.TimeUnit;
 
 import javax.mail.Message;
 import javax.mail.PasswordAuthentication;
@@ -37,324 +38,205 @@ import javax.mail.internet.MimeMessage;
 public class DailySummaryEmailService extends BroadcastReceiver {
 
     private static final String TAG = "DailySummaryEmail";
-
-    // TEST ONLY - move to backend / Cloud Function for production
-    private static final String SENDER_EMAIL = "shoomdavar123@gmail.com";
-    private static final String SENDER_PASSWORD = "lpry hxic pgvc gwxl";
-
     private static final String CHANNEL_ID = "daily_summary_channel";
     private static final int NOTIFICATION_ID = 1001;
+    private static final int REQUEST_CODE = 1002;
+    private static final String ACTION_DAILY = "com.mogomarket.app.DAILY_EMAIL_SUMMARY";
+
+    public static final String PREFS_NAME = "app_prefs";
+    public static final String KEY_ENABLED = "daily_email_enabled";
+    public static final String KEY_HOUR = "daily_email_hour";
+    public static final String KEY_MINUTE = "daily_email_minute";
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        sendNow(context, false);
+        String action = intent != null ? intent.getAction() : null;
+        if (Intent.ACTION_BOOT_COMPLETED.equals(action)
+                || Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)
+                || "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED".equals(action)) {
+            if (isEnabled(context)) scheduleDailySummary(context);
+            return;
+        }
+
+        if (!ACTION_DAILY.equals(action)) return;
+
+        if (!isEnabled(context)) {
+            return;
+        }
+
+        scheduleDailySummary(context);
+        if (isSummaryDay(Calendar.getInstance().get(Calendar.DAY_OF_WEEK))) {
+            DailySummaryEmailWorker.enqueue(context, false);
+        }
     }
 
     public static void sendNow(Context context, boolean showSuccessNotification) {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) {
-            Log.d(TAG, "No logged-in user. Skipping daily summary email.");
-            return;
-        }
-
-        String uid = user.getUid();
-        String userEmail = user.getEmail();
-
-        if (userEmail == null || userEmail.trim().isEmpty()) {
-            Log.d(TAG, "User email is empty. Skipping daily summary email.");
-            return;
-        }
-
-        DatabaseReference userRef = FirebaseDatabase.getInstance()
-                .getReference("users")
-                .child(uid);
-
-        fetchAndSendSummary(context, userRef, userEmail, showSuccessNotification);
+        DailySummaryEmailWorker.enqueueManual(context, showSuccessNotification);
     }
 
-    private static void fetchAndSendSummary(Context context,
-                                            DatabaseReference userRef,
-                                            String toEmail,
-                                            boolean showSuccessNotification) {
-
-        AtomicReference<List<StockData>> portfolioRef = new AtomicReference<>(new ArrayList<>());
-        AtomicReference<List<StockData>> watchlistRef = new AtomicReference<>(new ArrayList<>());
-        AtomicReference<List<StockData>> closedTradesRef = new AtomicReference<>(new ArrayList<>());
-        AtomicInteger completed = new AtomicInteger(0);
-
-        Runnable tryFinish = () -> {
-            if (completed.incrementAndGet() == 3) {
-                String subject = buildSubject();
-                String body = buildSummaryBody(
-                        portfolioRef.get(),
-                        watchlistRef.get(),
-                        closedTradesRef.get()
-                );
-                sendEmail(context, toEmail, subject, body, showSuccessNotification);
-            }
-        };
-
-        userRef.child("portfolio-stocks").get()
-                .addOnSuccessListener(snapshot -> {
-                    portfolioRef.set(parseStockDataList(snapshot));
-                    tryFinish.run();
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Failed to load portfolio-stocks: " + e.getMessage(), e);
-                    tryFinish.run();
-                });
-
-        userRef.child("watchlist").get()
-                .addOnSuccessListener(snapshot -> {
-                    watchlistRef.set(parseStockDataList(snapshot));
-                    tryFinish.run();
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Failed to load watchlist: " + e.getMessage(), e);
-                    tryFinish.run();
-                });
-
-        userRef.child("closed-trades").get()
-                .addOnSuccessListener(snapshot -> {
-                    List<StockData> closed = parseStockDataList(snapshot);
-                    if (closed.isEmpty()) {
-                        userRef.child("closed_trades").get()
-                                .addOnSuccessListener(snapshot2 -> {
-                                    closedTradesRef.set(parseStockDataList(snapshot2));
-                                    tryFinish.run();
-                                })
-                                .addOnFailureListener(e -> {
-                                    Log.e(TAG, "Failed to load closed_trades fallback: " + e.getMessage(), e);
-                                    tryFinish.run();
-                                });
-                    } else {
-                        closedTradesRef.set(closed);
-                        tryFinish.run();
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Failed to load closed-trades: " + e.getMessage(), e);
-                    userRef.child("closed_trades").get()
-                            .addOnSuccessListener(snapshot2 -> {
-                                closedTradesRef.set(parseStockDataList(snapshot2));
-                                tryFinish.run();
-                            })
-                            .addOnFailureListener(e2 -> {
-                                Log.e(TAG, "Failed to load closed_trades fallback: " + e2.getMessage(), e2);
-                                tryFinish.run();
-                            });
-                });
-    }
-
-    private static List<StockData> parseStockDataList(DataSnapshot snapshot) {
-        List<StockData> list = new ArrayList<>();
-        if (snapshot == null || !snapshot.exists()) return list;
-
-        for (DataSnapshot child : snapshot.getChildren()) {
-            StockData item = child.getValue(StockData.class);
-            if (item != null) {
-                list.add(item);
-            }
-        }
-        return list;
-    }
-
-    private static String buildSubject() {
-        String date = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(new Date());
-        return "MogoMarket Daily Summary - " + date;
-    }
-
-    private static String buildSummaryBody(List<StockData> portfolio,
-                                           List<StockData> watchlist,
-                                           List<StockData> closedTrades) {
-
-        String date = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(new Date());
-
-        double totalInvested = 0.0;
-        double totalCurrentValue = 0.0;
-        double openProfitLoss = 0.0;
-        int openPositions = 0;
-
-        for (StockData stock : portfolio) {
-            if (stock == null) continue;
-            if (stock.tradeAmount <= 0) continue;
-
-            // משתמש בשדות שנשמרו מהפורטפוליו
-            totalInvested += stock.tradeAmount;
-            totalCurrentValue += stock.currentValue;
-            openProfitLoss += stock.profitLoss;
-            openPositions++;
-        }
-
-        double closedProfitLoss = 0.0;
-        int closedCount = 0;
-        int winningTrades = 0;
-        int losingTrades = 0;
-
-        for (StockData trade : closedTrades) {
-            if (trade == null) continue;
-
-            double invested = trade.tradeAmount > 0 ? trade.tradeAmount : 0.0;
-            double pnl = 0.0;
-
-            if (trade.buyPrice > 0 && invested > 0) {
-                double quantity = invested / trade.buyPrice;
-                pnl = (trade.sellPrice - trade.buyPrice) * quantity;
-            }
-
-            closedProfitLoss += pnl;
-            closedCount++;
-
-            if (pnl > 0) winningTrades++;
-            else if (pnl < 0) losingTrades++;
-        }
-
-        StockData topGainer = null;
-        StockData topLoser = null;
-
-        for (StockData item : watchlist) {
-            if (item == null) continue;
-
-            if (topGainer == null || item.changePercent > topGainer.changePercent) {
-                topGainer = item;
-            }
-            if (topLoser == null || item.changePercent < topLoser.changePercent) {
-                topLoser = item;
-            }
-        }
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("MogoMarket Daily Summary").append("\n");
-        sb.append("Date: ").append(date).append("\n\n");
-
-        sb.append("OPEN PORTFOLIO").append("\n");
-        sb.append("Open positions: ").append(openPositions).append("\n");
-        sb.append("Total invested: ").append(formatMoney(totalInvested)).append("\n");
-        sb.append("Current value: ").append(formatMoney(totalCurrentValue)).append("\n");
-        sb.append("Open P&L: ").append(formatSignedMoney(openProfitLoss)).append("\n\n");
-
-        if (!portfolio.isEmpty()) {
-            sb.append("Portfolio holdings:").append("\n");
-
-            for (StockData stock : portfolio) {
-                if (stock == null) continue;
-
-                sb.append("- ")
-                        .append(safe(stock.symbol))
-                        .append(" | Buy: ").append(formatMoney(stock.buyPrice))
-                        .append(" | Current: ").append(formatMoney(stock.currentPrice))
-                        .append("\n  ")
-                        .append("Day: ")
-                        .append(formatPercent((float) stock.dailyProfitLossPercent))
-                        .append(" (").append(formatSignedMoney(stock.dailyProfitLoss)).append(")")
-                        .append("Total: ")
-                        .append(formatPercent((float) stock.profitLossPercent))
-                        .append(" (").append(formatSignedMoney(stock.profitLoss)).append(")")
-                        .append("\n\n");
-            }
-
-            sb.append("\n");
-        } else {
-            sb.append("No open positions in portfolio.").append("\n\n");
-        }
-
-        sb.append("WATCHLIST").append("\n");
-        sb.append("Tracked symbols: ").append(watchlist.size()).append("\n");
-
-        if (topGainer != null) {
-            sb.append("Top gainer: ")
-                    .append(safe(topGainer.symbol))
-                    .append(" (").append(formatPercent(topGainer.changePercent)).append(")")
-                    .append("\n");
-        } else {
-            sb.append("Top gainer: N/A").append("\n");
-        }
-
-        if (topLoser != null) {
-            sb.append("Top loser: ")
-                    .append(safe(topLoser.symbol))
-                    .append(" (").append(formatPercent(topLoser.changePercent)).append(")")
-                    .append("\n");
-        } else {
-            sb.append("Top loser: N/A").append("\n");
-        }
-
-        if (!watchlist.isEmpty()) {
-            sb.append("\nWatchlist snapshot:").append("\n");
-            for (int i = 0; i < Math.min(watchlist.size(), 10); i++) {
-                StockData item = watchlist.get(i);
-                if (item == null) continue;
-
-                sb.append("- ")
-                        .append(safe(item.symbol))
-                        .append(" | Price: ").append(formatMoney(item.currentPrice))
-                        .append(" | Change: ").append(formatPercent(item.changePercent))
-                        .append("\n");
-            }
-        } else {
-            sb.append("No symbols in watchlist.").append("\n");
-        }
-
-        sb.append("\n");
-
-
-        sb.append("\n");
-        sb.append("Generated automatically by MogoMarket.");
-        return sb.toString();
-    }
-
-    private static void sendEmail(Context context,
-                                  String toEmail,
-                                  String subject,
-                                  String body,
+    static boolean sendSummaryNow(Context context, long reportDateMillis,
                                   boolean showSuccessNotification) {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null || user.isAnonymous()) {
+            Log.w(TAG, "Daily summary skipped: no signed-in user.");
+            return false;
+        }
 
-        new Thread(() -> {
-            try {
-                Properties props = new Properties();
-                props.put("mail.smtp.auth", "true");
-                props.put("mail.smtp.starttls.enable", "true");
-                props.put("mail.smtp.host", "smtp.gmail.com");
-                props.put("mail.smtp.port", "587");
-                props.put("mail.smtp.ssl.trust", "smtp.gmail.com");
+        String toEmail = user.getEmail();
+        if (toEmail == null || toEmail.trim().isEmpty()) {
+            Log.w(TAG, "Daily summary skipped: signed-in user has no email.");
+            return false;
+        }
 
-                Session session = Session.getInstance(props, new javax.mail.Authenticator() {
-                    @Override
-                    protected PasswordAuthentication getPasswordAuthentication() {
-                        return new PasswordAuthentication(SENDER_EMAIL, SENDER_PASSWORD);
-                    }
-                });
+        try {
+            Calendar reportDate = Calendar.getInstance();
+            reportDate.setTimeInMillis(reportDateMillis);
+            Calendar nextDay = (Calendar) reportDate.clone();
+            nextDay.add(Calendar.DAY_OF_YEAR, 1);
+            long startOfReportDay = reportDate.getTimeInMillis();
+            long endOfReportDay = nextDay.getTimeInMillis();
 
-                Message message = new MimeMessage(session);
-                message.setFrom(new InternetAddress(SENDER_EMAIL, "MogoMarket"));
-                message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail));
-                message.setSubject(subject);
-                message.setText(body);
+            com.google.firebase.database.DatabaseReference userRef =
+                    FirebaseDatabase.getInstance().getReference("users").child(user.getUid());
+            DataSnapshot eventsSnapshot = Tasks.await(
+                    userRef.child("daily-trade-events").get(), 30, TimeUnit.SECONDS);
+            DataSnapshot openTradesSnapshot = Tasks.await(
+                    userRef.child("portfolio-stocks").get(), 30, TimeUnit.SECONDS);
+            DataSnapshot closedTradesSnapshot = Tasks.await(
+                    userRef.child("closed-trades").get(), 30, TimeUnit.SECONDS);
 
-                Transport.send(message);
-
-                Log.d(TAG, "Daily summary email sent to: " + toEmail);
-
-                if (showSuccessNotification) {
-                    showNotification(context,
-                            "Daily summary sent",
-                            "The email was sent to " + toEmail);
+            List<DailyTradeEvent> yesterdayTrades = new ArrayList<>();
+            for (DataSnapshot child : eventsSnapshot.getChildren()) {
+                DailyTradeEvent event = child.getValue(DailyTradeEvent.class);
+                if (event != null && event.closedAt >= startOfReportDay
+                        && event.closedAt < endOfReportDay) {
+                    yesterdayTrades.add(event);
                 }
-
-            } catch (Exception e) {
-                Log.e(TAG, "Failed to send email: " + e.getMessage(), e);
-                showNotification(context,
-                        "Daily summary failed",
-                        "Could not send the email");
             }
-        }).start();
+
+            List<StockData> openTrades = readTrades(openTradesSnapshot);
+            List<StockData> closedTrades = readTrades(closedTradesSnapshot);
+            PortfolioDailyPerformance.Result portfolioPerformance =
+                    PortfolioDailyPerformance.calculate(openTrades, closedTrades,
+                            startOfReportDay, endOfReportDay);
+            String dateText = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                    .format(new Date(startOfReportDay));
+            String subject = "MogoMarket Daily Summary - " + dateText;
+            String body = buildSummaryBody(dateText, yesterdayTrades, portfolioPerformance);
+            return sendEmail(context, toEmail, subject, body, showSuccessNotification);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to load daily trading data", e);
+            return false;
+        }
+    }
+
+    private static List<StockData> readTrades(DataSnapshot snapshot) {
+        List<StockData> trades = new ArrayList<>();
+        for (DataSnapshot child : snapshot.getChildren()) {
+            StockData trade = child.getValue(StockData.class);
+            if (trade != null) trades.add(trade);
+        }
+        return trades;
+    }
+
+    private static String buildSummaryBody(String date, List<DailyTradeEvent> trades,
+                                          PortfolioDailyPerformance.Result portfolio) {
+        double totalProfitLoss = 0;
+        int wins = 0;
+        int losses = 0;
+        StringBuilder tradeLines = new StringBuilder();
+
+        for (DailyTradeEvent trade : trades) {
+            totalProfitLoss += trade.profitLoss;
+            if (trade.profitLoss > 0) wins++;
+            else if (trade.profitLoss < 0) losses++;
+
+            tradeLines.append("- ")
+                    .append(safe(trade.symbol))
+                    .append(" | Buy: ").append(formatMoney(trade.buyPrice))
+                    .append(" | Sell: ").append(formatMoney(trade.sellPrice))
+                    .append(" | P&L: ").append(formatSignedMoney(trade.profitLoss))
+                    .append('\n');
+        }
+
+        StringBuilder body = new StringBuilder()
+                .append("MogoMarket Daily Summary\n")
+                .append("Report for: ").append(date).append("\n\n")
+                .append("PORTFOLIO PERFORMANCE YESTERDAY\n")
+                .append("Daily P&L from held positions: ")
+                .append(formatSignedMoney(portfolio.profitLoss)).append('\n')
+                .append("Positions valued: ").append(portfolio.valuedPositions).append('\n');
+
+        if (portfolio.positionsWithoutAmount > 0) {
+            body.append("Positions without investment amounts (excluded): ")
+                    .append(portfolio.positionsWithoutAmount).append('\n');
+        }
+        body.append("Cash balance is excluded; no daily cash-flow history is available.\n\n");
+
+        if (trades.isEmpty()) {
+            body.append("No trades were closed yesterday.\n");
+        } else {
+            int winRate = Math.round(wins * 100f / trades.size());
+            body.append("CLOSED TRADES YESTERDAY\n")
+                    .append("Trades closed: ").append(trades.size()).append('\n')
+                    .append("Closed-trade P&L vs. entry: ")
+                    .append(formatSignedMoney(totalProfitLoss)).append('\n')
+                    .append("Winning trades: ").append(wins).append('\n')
+                    .append("Losing trades: ").append(losses).append('\n')
+                    .append("Win rate: ").append(winRate).append("%\n\n")
+                    .append("Trade details:\n")
+                    .append(tradeLines);
+        }
+
+        return body.append("\nGenerated automatically by MogoMarket.").toString();
+    }
+
+    private static boolean sendEmail(Context context, String toEmail, String subject, String body,
+                                     boolean showSuccessNotification) {
+        String senderEmail = BuildConfig.SMTP_EMAIL;
+        String senderPassword = BuildConfig.SMTP_PASSWORD;
+        if (senderEmail.trim().isEmpty() || senderPassword.trim().isEmpty()) {
+            Log.e(TAG, "SMTP credentials are missing from the build configuration.");
+            return false;
+        }
+
+        try {
+            Properties props = new Properties();
+            props.put("mail.smtp.auth", "true");
+            props.put("mail.smtp.starttls.enable", "true");
+            props.put("mail.smtp.host", "smtp.gmail.com");
+            props.put("mail.smtp.port", "587");
+            props.put("mail.smtp.ssl.trust", "smtp.gmail.com");
+            props.put("mail.smtp.connectiontimeout", "15000");
+            props.put("mail.smtp.timeout", "15000");
+            props.put("mail.smtp.writetimeout", "15000");
+
+            Session session = Session.getInstance(props, new javax.mail.Authenticator() {
+                @Override
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    return new PasswordAuthentication(senderEmail, senderPassword);
+                }
+            });
+
+            Message message = new MimeMessage(session);
+            message.setFrom(new InternetAddress(senderEmail, "MogoMarket"));
+            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail));
+            message.setSubject(subject);
+            message.setText(body);
+            Transport.send(message);
+
+            Log.i(TAG, "Daily summary sent for " + subject);
+            if (showSuccessNotification) {
+                showNotification(context, "Daily summary sent", "The email was sent to " + toEmail);
+            }
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to send daily summary email", e);
+            return false;
+        }
     }
 
     private static String formatMoney(double value) {
-        return String.format(Locale.US, "$%,.2f", value);
-    }
-
-    private static String formatMoney(float value) {
         return String.format(Locale.US, "$%,.2f", value);
     }
 
@@ -362,85 +244,102 @@ public class DailySummaryEmailService extends BroadcastReceiver {
         return String.format(Locale.US, "%s$%,.2f", value >= 0 ? "+" : "-", Math.abs(value));
     }
 
-    private static String formatPercent(float value) {
-        return String.format(Locale.US, "%s%.2f%%", value >= 0 ? "+" : "", value);
-    }
-
     private static String safe(String value) {
         return value == null || value.trim().isEmpty() ? "N/A" : value;
     }
 
-    private static void showNotification(Context context, String title, String text) {
-        NotificationManager nm =
-                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+    private static boolean isEnabled(Context context) {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getBoolean(KEY_ENABLED, false);
+    }
 
-        if (nm == null) return;
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID,
-                    "Daily Summary",
-                    NotificationManager.IMPORTANCE_DEFAULT
-            );
-            nm.createNotificationChannel(channel);
+    public static void scheduleDailySummary(Context context) {
+        if (!isEnabled(context)) {
+            cancelDailySummary(context);
+            return;
         }
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager == null) {
+            Log.e(TAG, "Cannot schedule daily summary: AlarmManager is unavailable.");
+            return;
+        }
+
+        SharedPreferences preferences = context.getSharedPreferences(
+                PREFS_NAME, Context.MODE_PRIVATE);
+        Calendar now = Calendar.getInstance();
+        Calendar nextRun = (Calendar) now.clone();
+        nextRun.set(Calendar.HOUR_OF_DAY, preferences.getInt(KEY_HOUR, 8));
+        nextRun.set(Calendar.MINUTE, preferences.getInt(KEY_MINUTE, 0));
+        nextRun.set(Calendar.SECOND, 0);
+        nextRun.set(Calendar.MILLISECOND, 0);
+        if (nextRun.getTimeInMillis() <= now.getTimeInMillis()) {
+            nextRun.add(Calendar.DAY_OF_YEAR, 1);
+        }
+        while (!isSummaryDay(nextRun.get(Calendar.DAY_OF_WEEK))) {
+            nextRun.add(Calendar.DAY_OF_YEAR, 1);
+        }
+
+        PendingIntent pendingIntent = buildPendingIntent(context);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                    && alarmManager.canScheduleExactAlarms()) {
+                alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP, nextRun.getTimeInMillis(), pendingIntent);
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP, nextRun.getTimeInMillis(), pendingIntent);
+            } else {
+                alarmManager.setExact(
+                        AlarmManager.RTC_WAKEUP, nextRun.getTimeInMillis(), pendingIntent);
+            }
+
+            Log.i(TAG, "Daily summary scheduled for " + nextRun.getTime());
+        } catch (SecurityException e) {
+            Log.e(TAG, "Exact alarm permission was revoked; scheduling an inexact alarm.", e);
+            alarmManager.setAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP, nextRun.getTimeInMillis(), pendingIntent);
+        }
+    }
+
+    static boolean isSummaryDay(int dayOfWeek) {
+        return dayOfWeek >= Calendar.TUESDAY && dayOfWeek <= Calendar.SATURDAY;
+    }
+
+    public static void cancelDailySummary(Context context) {
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager != null) alarmManager.cancel(buildPendingIntent(context));
+    }
+
+    private static PendingIntent buildPendingIntent(Context context) {
+        Intent intent = new Intent(context, DailySummaryEmailService.class).setAction(ACTION_DAILY);
+        return PendingIntent.getBroadcast(context, REQUEST_CODE, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    private static void showNotification(Context context, String title, String text) {
+        NotificationManager manager = context.getSystemService(NotificationManager.class);
+        if (manager == null) return;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            manager.createNotificationChannel(new NotificationChannel(
+                    CHANNEL_ID, "Daily Summary", NotificationManager.IMPORTANCE_DEFAULT));
+        }
+
+        NotificationCompat.Builder notification = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_dialog_email)
                 .setContentTitle(title)
                 .setContentText(text)
                 .setAutoCancel(true);
-
-        nm.notify(NOTIFICATION_ID, builder.build());
-    }
-
-    public static void scheduleDailySummary(Context context) {
-        AlarmManager alarmManager =
-                (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-
-        if (alarmManager == null) return;
-
-        Intent intent = new Intent(context, DailySummaryEmailService.class);
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                context,
-                0,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
-
-        java.util.Calendar calendar = java.util.Calendar.getInstance();
-        calendar.setTimeInMillis(System.currentTimeMillis());
-        calendar.set(java.util.Calendar.HOUR_OF_DAY, 8);
-        calendar.set(java.util.Calendar.MINUTE, 0);
-        calendar.set(java.util.Calendar.SECOND, 0);
-        calendar.set(java.util.Calendar.MILLISECOND, 0);
-
-        if (calendar.getTimeInMillis() <= System.currentTimeMillis()) {
-            calendar.add(java.util.Calendar.DAY_OF_YEAR, 1);
+        try {
+            manager.notify(NOTIFICATION_ID, notification.build());
+        } catch (SecurityException e) {
+            Log.w(TAG, "Notification permission is unavailable.", e);
         }
-
-        alarmManager.setRepeating(
-                AlarmManager.RTC_WAKEUP,
-                calendar.getTimeInMillis(),
-                AlarmManager.INTERVAL_DAY,
-                pendingIntent
-        );
     }
 
-    public static void cancelDailySummary(Context context) {
-        AlarmManager alarmManager =
-                (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-
-        if (alarmManager == null) return;
-
-        Intent intent = new Intent(context, DailySummaryEmailService.class);
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                context,
-                0,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
-
-        alarmManager.cancel(pendingIntent);
+    static void showFailureNotification(Context context) {
+        showNotification(context, "Daily summary failed",
+                "Check your sign-in, network, and email settings.");
     }
 }

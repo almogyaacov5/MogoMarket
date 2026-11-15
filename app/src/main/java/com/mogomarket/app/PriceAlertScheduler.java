@@ -12,6 +12,9 @@ import android.os.Build;
  */
 public class PriceAlertScheduler {
 
+    public static final String PREFS_NAME = "app_prefs";
+    public static final String KEY_ENABLED = "price_alerts_enabled";
+
     private static final long INTERVAL_MS = 15 * 60 * 1000L;
     private static final String ACTION    = "com.example.chart.CHECK_PRICE_ALERTS";
     private static final int REQUEST_CODE = 1001;

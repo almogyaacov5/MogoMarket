@@ -1,105 +1,175 @@
-<LinearLayout
+<ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="32dp"
-    android:gravity="center"
-    android:background="#F4F6F8">
+    android:id="@+id/portfolioAddRoot"
+    android:fillViewport="true"
+    android:clipToPadding="false"
+    android:background="#F4F6F8"
+    android:padding="20dp">
 
     <LinearLayout
+        android:id="@+id/portfolioAddContent"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="14dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginBottom="28dp"
-        android:background="#FFFFFF"
-        android:clipToOutline="true"
-        android:elevation="4dp"
-        android:orientation="vertical"
-        android:padding="24dp"
-        android:radius="22dp"
-        android:shape="rectangle">
+        android:orientation="vertical">
 
-        <!-- AutoCompleteTextView במקום EditText רגיל -->
-        <AutoCompleteTextView
-            android:id="@+id/editTicker"
+        <LinearLayout
+            android:id="@+id/portfolioAddCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:background="#F3F7FE"
-            android:hint="Stock Ticker (e.g. AAPL)"
-            android:inputType="textCapCharacters"
-            android:padding="16dp"
-            android:textColor="#1E293B"
+            android:layout_marginBottom="14dp"
+            android:background="#FFFFFF"
+            android:elevation="4dp"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <AutoCompleteTextView
+                android:id="@+id/editTicker"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="14dp"
+                android:background="#F3F7FE"
+                android:completionThreshold="1"
+                android:dropDownHeight="wrap_content"
+                android:hint="Stock Ticker (e.g. AAPL)"
+                android:inputType="textCapCharacters"
+                android:padding="16dp"
+                android:textColor="#1E293B"
+                android:textSize="20sp" />
+
+            <Spinner
+                android:id="@+id/spinnerStrategy"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginBottom="14dp"
+                android:background="#F3F7FE"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp" />
+
+            <Spinner
+                android:id="@+id/spinnerSector"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginBottom="14dp"
+                android:background="#F3F7FE"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp" />
+
+            <EditText
+                android:id="@+id/editBuyPrice"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="14dp"
+                android:background="#F3F7FE"
+                android:hint="Entry Price ($)"
+                android:inputType="numberDecimal"
+                android:padding="16dp"
+                android:textColor="#1E293B"
+                android:textSize="20sp" />
+
+            <EditText
+                android:id="@+id/editTargetPrice"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="14dp"
+                android:background="#F3F7FE"
+                android:hint="Target Price ($) - optional"
+                android:inputType="numberDecimal"
+                android:padding="16dp"
+                android:textColor="#1E293B"
+                android:textSize="20sp" />
+
+            <EditText
+                android:id="@+id/editStopLoss"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="14dp"
+                android:background="#F3F7FE"
+                android:hint="Stop Loss ($) - optional"
+                android:inputType="numberDecimal"
+                android:padding="16dp"
+                android:textColor="#1E293B"
+                android:textSize="20sp" />
+
+            <EditText
+                android:id="@+id/editTradeAmount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="14dp"
+                android:background="#F3F7FE"
+                android:hint="Trade Amount ($) - optional"
+                android:inputType="numberDecimal"
+                android:padding="16dp"
+                android:textColor="#1E293B"
+                android:textSize="20sp" />
+
+            <EditText
+                android:id="@+id/editShares"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="14dp"
+                android:background="#F3F7FE"
+                android:hint="Number of shares - optional"
+                android:inputType="numberDecimal"
+                android:padding="16dp"
+                android:textColor="#1E293B"
+                android:textSize="20sp" />
+
+            <EditText
+                android:id="@+id/editEntryFees"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="14dp"
+                android:background="#F3F7FE"
+                android:hint="Entry fees ($) - optional"
+                android:inputType="numberDecimal"
+                android:padding="16dp"
+                android:textColor="#1E293B"
+                android:textSize="20sp" />
+
+            <Button
+                android:id="@+id/btnOpenDate"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginBottom="14dp"
+                android:backgroundTint="#334DA3FF"
+                android:gravity="start|center_vertical"
+                android:text="Open date: Today"
+                android:textAllCaps="false"
+                android:textColor="#1E293B" />
+
+            <EditText
+                android:id="@+id/editNotes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="#F3F7FE"
+                android:gravity="top"
+                android:hint="Notes / Buy Reason - optional"
+                android:inputType="textMultiLine"
+                android:maxLines="4"
+                android:minLines="2"
+                android:padding="16dp"
+                android:textColor="#1E293B"
+                android:textSize="18sp" />
+
+            <Button
+                android:id="@+id/btnEntryScreenshot"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="10dp"
+                android:text="Import / attach trade screenshot" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnAddStock"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:backgroundTint="#2563EB"
+            android:elevation="2dp"
+            android:text="Add"
+            android:textColor="#FFF"
             android:textSize="20sp"
-            android:completionThreshold="1"
-            android:dropDownHeight="wrap_content"
-            android:popupBackground="#FFFFFF" />
-
-        <EditText
-            android:id="@+id/editBuyPrice"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:background="#F3F7FE"
-            android:hint="Entry Price ($)"
-            android:inputType="numberDecimal"
-            android:padding="16dp"
-            android:textColor="#1E293B"
-            android:textSize="20sp" />
-
-        <EditText
-            android:id="@+id/editTargetPrice"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:background="#F3F7FE"
-            android:hint="Target Price ($) - optional"
-            android:inputType="numberDecimal"
-            android:padding="16dp"
-            android:textColor="#1E293B"
-            android:textSize="20sp" />
-
-        <EditText
-            android:id="@+id/editTradeAmount"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:background="#F3F7FE"
-            android:hint="Trade Amount ($) - optional"
-            android:inputType="numberDecimal"
-            android:padding="16dp"
-            android:textColor="#1E293B"
-            android:textSize="20sp" />
-
-        <EditText
-            android:id="@+id/editNotes"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="#F3F7FE"
-            android:hint="Notes / Buy Reason - optional"
-            android:inputType="textMultiLine"
-            android:minLines="2"
-            android:maxLines="4"
-            android:gravity="top"
-            android:padding="16dp"
-            android:textColor="#1E293B"
-            android:textSize="18sp" />
-
+            android:textStyle="bold" />
     </LinearLayout>
-
-    <Button
-        android:id="@+id/btnAddStock"
-        android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:layout_marginTop="6dp"
-        android:backgroundTint="#2563EB"
-        android:elevation="2dp"
-        android:text="Add"
-        android:textColor="#FFF"
-        android:textSize="20sp"
-        android:textStyle="bold" />
-</LinearLayout>
+</ScrollView>

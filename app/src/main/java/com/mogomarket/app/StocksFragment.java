@@ -9,7 +9,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
-import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -18,6 +17,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.button.MaterialButton;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -44,7 +44,7 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
     private RecyclerView stocksRecyclerView;
     private AutoCompleteTextView stockInput;   // שונה מ-EditText ל-AutoCompleteTextView
     private Button addStockBtn;
-    private ImageButton btnRefreshAll;
+    private MaterialButton btnRefreshAll;
     private StocksAdapter adapter;
     private List<StockData> stocksList = new ArrayList<>();
     private DatabaseReference stocksRef;
@@ -70,7 +70,10 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
         loadStocks();
 
         if (btnRefreshAll != null)
-            btnRefreshAll.setOnClickListener(v -> reloadAllStocks());
+            btnRefreshAll.setOnClickListener(v -> {
+                v.animate().rotationBy(360f).setDuration(450L).start();
+                reloadAllStocks();
+            });
 
         if (addStockBtn != null) {
             addStockBtn.setOnClickListener(v -> {
@@ -237,7 +240,8 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
     }
 
     @Override
-    public void onStockDelete(String symbol, double sellPrice) {
+    public void onStockDelete(String symbol, double sellPrice, String exitReason,
+                              double exitFees, double taxes) {
         stocksRef.child(symbol).removeValue();
         Toast.makeText(getContext(), "Removed from watchlist", Toast.LENGTH_SHORT).show();
     }
@@ -245,5 +249,11 @@ public class StocksFragment extends Fragment implements StocksAdapter.OnStockCli
     @Override
     public void onStockEdit(StockData updatedStock, String oldSymbol) {
         // פרגמנט זה הוא legacy - עריכה לא רלוונטית כאן
+    }
+
+    @Override
+    public void onManageScreenshots(StockData stock) {
+        Toast.makeText(getContext(), "Screenshots are available for portfolio trades",
+                Toast.LENGTH_SHORT).show();
     }
 }

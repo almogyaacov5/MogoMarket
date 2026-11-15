@@ -3,5 +3,12 @@
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nav_chart_label">Chart</string>
+    <string name="nav_portfolio_label">Portfolio</string>
+    <string name="nav_watchlist_label">Watchlist</string>
+    <string name="nav_trades_label">Trades</string>
+    <string name="nav_simulator_label">Simulator</string>
+    <string name="nav_settings_label">Settings</string>
+    <string name="watchlist_price_trend">Price trend</string>
     <string name="default_web_client_id">686946641629-c3mepucfrshg95ng1rlkdnr19ltlsnno.apps.googleusercontent.com</string>
 </resources>

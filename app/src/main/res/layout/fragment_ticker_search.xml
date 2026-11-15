@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#FF151C2E">
+    android:background="?attr/colorSurface">
 
     <!-- Handle bar -->
     <View
@@ -12,7 +12,7 @@
         android:layout_height="4dp"
         android:layout_gravity="center_horizontal"
         android:layout_marginTop="12dp"
-        android:background="#FF2A3550"
+        android:background="?attr/colorOutline"
         android:layout_marginBottom="8dp"/>
 
     <!-- Header row: חץ חזרה + כותרת -->
@@ -31,7 +31,7 @@
             android:layout_height="44dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/baseline_arrow_back_24"
-            android:tint="#FFE6EDF3"
+            android:tint="?attr/colorOnSurface"
             android:contentDescription="Back"/>
 
         <TextView
@@ -39,7 +39,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Search Symbol"
-            android:textColor="#FFE6EDF3"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="18sp"
             android:textStyle="bold"
             android:paddingStart="4dp"/>
@@ -72,8 +72,8 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:hint="e.g. AAPL, BTC, TSLA"
-            android:textColorHint="#FF4A5568"
-            android:textColor="#FFE6EDF3"
+            android:textColorHint="?attr/colorOnSurfaceVariant"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="17sp"
             android:background="@null"
             android:inputType="textCapCharacters"
@@ -87,7 +87,7 @@
             android:layout_height="36dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/baseline_close_24"
-            android:tint="#FF8B98A5"
+            android:tint="?attr/colorOnSurfaceVariant"
             android:contentDescription="Clear"
             android:visibility="gone"/>
     </LinearLayout>
@@ -99,7 +99,7 @@
         android:layout_marginTop="14dp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:background="#FF1E2A3A"/>
+        android:background="?attr/colorOutlineVariant"/>
 
     <!-- Label "Results" -->
     <TextView
@@ -107,7 +107,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Popular"
-        android:textColor="#FF8B98A5"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:textSize="11sp"
         android:letterSpacing="0.08"
         android:paddingStart="20dp"
@@ -120,7 +120,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:divider="#FF1E2A3A"
+        android:divider="?attr/colorOutlineVariant"
         android:dividerHeight="1dp"
         android:paddingTop="4dp"
         android:clipToPadding="false"

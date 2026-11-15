@@ -3,6 +3,7 @@ package com.mogomarket.app;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -30,8 +31,11 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -40,6 +44,7 @@ import okhttp3.Request;
 import okhttp3.Response;
 
 public class TickerSearchSheet extends BottomSheetDialogFragment {
+    private static final String TAG = "TickerSearchSheet";
 
     public interface OnTickerSelectedListener {
         void onTickerSelected(String symbol);
@@ -57,6 +62,7 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
     private final OkHttpClient client = new OkHttpClient();
     private final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
     private Runnable pendingSearch;
+    private int searchGeneration;
 
     private String currentSymbol = "SPY";
 
@@ -180,7 +186,7 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
                             header.setTextSize(13f);
                             header.setTypeface(null, android.graphics.Typeface.BOLD);
                             header.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(6));
-                            header.setTextColor(0xFF8B98A5);
+                            header.setTextColor(requireContext().getColor(R.color.text_secondary));
                             return header;
                         }
 
@@ -218,13 +224,13 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
                         TextView companyName = new TextView(requireContext());
                         companyName.setTextSize(14f);
                         companyName.setTypeface(null, android.graphics.Typeface.BOLD);
-                        companyName.setTextColor(0xFFE6EDF3);
+                        companyName.setTextColor(requireContext().getColor(R.color.text_primary));
                         companyName.setSingleLine(true);
                         companyName.setEllipsize(android.text.TextUtils.TruncateAt.END);
 
                         TextView symbolText = new TextView(requireContext());
                         symbolText.setTextSize(12f);
-                        symbolText.setTextColor(0xFF8B98A5);
+                        symbolText.setTextColor(requireContext().getColor(R.color.text_secondary));
                         symbolText.setSingleLine(true);
                         symbolText.setEllipsize(android.text.TextUtils.TruncateAt.END);
 
@@ -249,9 +255,15 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
                             companyName.setText(displayName);
                             symbolText.setText(displaySymbol);
 
-                            String pct = String.format(Locale.US, "%+.2f%%", item.dailyChangePercent);
+                            String pct = Float.isNaN(item.dailyChangePercent)
+                                    ? "—"
+                                    : String.format(Locale.US, "%+.2f%%", item.dailyChangePercent);
                             dailyChange.setText(pct);
-                            dailyChange.setTextColor(item.dailyChangePercent >= 0 ? 0xFF00C896 : 0xFFFF4D4D);
+                            int color = Float.isNaN(item.dailyChangePercent)
+                                    ? requireContext().getColor(R.color.text_secondary)
+                                    : requireContext().getColor(item.dailyChangePercent >= 0
+                                            ? R.color.gain : R.color.loss);
+                            dailyChange.setTextColor(color);
                         }
 
                         return row;
@@ -324,17 +336,18 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
             @Override
             public void afterTextChanged(Editable s) {
                 String q = s.toString().trim();
+                int generation = ++searchGeneration;
 
                 handler.removeCallbacksAndMessages(null);
 
                 if (q.isEmpty()) {
                     labelResults.setText("Suggestions");
-                    renderDefaultSuggestions(adapter);
+                    renderDefaultSuggestions(adapter, generation);
                     return;
                 }
 
                 labelResults.setText("Results");
-                pendingSearch = () -> fetchAll(q, adapter);
+                pendingSearch = () -> fetchAll(q, adapter, generation);
                 handler.postDelayed(pendingSearch, DEBOUNCE_MS);
             }
         });
@@ -367,14 +380,16 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
 //        if (txtChart != null) txtChart.setText("Viewing chart");
 //    }
 
-    private void fetchAll(String query, ArrayAdapter<ChartFragment.StockSuggestion> adapter) {
+    private void fetchAll(String query,
+                          ArrayAdapter<ChartFragment.StockSuggestion> adapter,
+                          int generation) {
         String q = query.toUpperCase(Locale.US);
 
         List<ChartFragment.StockSuggestion> cryptoMatches = new ArrayList<>();
         for (ChartFragment.StockSuggestion c : CRYPTO_LIST) {
             if (c.symbol != null &&
                     (c.symbol.startsWith(q) || (c.name != null && c.name.toUpperCase(Locale.US).contains(q)))) {
-                cryptoMatches.add(copySuggestionWithQuote(c, 0f));
+                cryptoMatches.add(copySuggestionWithQuote(c, Float.NaN));
             }
         }
 
@@ -382,17 +397,17 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
         for (ChartFragment.StockSuggestion f : FOREX_LIST) {
             if (f.symbol != null &&
                     (f.symbol.contains(q) || (f.name != null && f.name.toUpperCase(Locale.US).contains(q)))) {
-                forexMatches.add(copySuggestionWithQuote(f, 0f));
+                forexMatches.add(copySuggestionWithQuote(f, Float.NaN));
             }
         }
 
-        fetchStocks(query, cryptoMatches, forexMatches, adapter);
+        SearchAccumulator accumulator = new SearchAccumulator(
+                query, cryptoMatches, forexMatches, adapter, generation);
+        fetchFinnhubStocks(query, accumulator);
+        fetchYahooStocks(query, accumulator);
     }
 
-    private void fetchStocks(String query,
-                             List<ChartFragment.StockSuggestion> cryptoMatches,
-                             List<ChartFragment.StockSuggestion> forexMatches,
-                             ArrayAdapter<ChartFragment.StockSuggestion> adapter) {
+    private void fetchFinnhubStocks(String query, SearchAccumulator accumulator) {
         try {
             String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name());
             String url = "https://finnhub.io/api/v1/search?q=" + encoded + "&token=" + FINNHUB_KEY;
@@ -401,7 +416,7 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
             client.newCall(req).enqueue(new Callback() {
                 @Override
                 public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    postResults(cryptoMatches, forexMatches, new ArrayList<>(), adapter);
+                    accumulator.complete(new ArrayList<>());
                 }
 
                 @Override
@@ -414,7 +429,7 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
                             JSONArray arr = root.optJSONArray("result");
 
                             if (arr != null) {
-                                for (int i = 0; i < Math.min(arr.length(), 8); i++) {
+                                for (int i = 0; i < arr.length(); i++) {
                                     JSONObject o = arr.getJSONObject(i);
                                     String sym = o.optString("symbol", "");
                                     String name = o.optString("description", "");
@@ -427,51 +442,146 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
                                                 exch,
                                                 false,
                                                 null,
-                                                0f
+                                                Float.NaN
                                         ));
                                     }
                                 }
                             }
-                        } catch (Exception ignored) {
+                        } catch (org.json.JSONException ignored) {
                         }
                     }
 
-                    postResults(cryptoMatches, forexMatches, stocks, adapter);
+                    accumulator.complete(stocks);
                 }
             });
-        } catch (Exception ignored) {
-            postResults(cryptoMatches, forexMatches, new ArrayList<>(), adapter);
+        } catch (java.io.UnsupportedEncodingException e) {
+            accumulator.complete(new ArrayList<>());
         }
     }
 
-    private void postResults(List<ChartFragment.StockSuggestion> crypto,
-                             List<ChartFragment.StockSuggestion> forex,
-                             List<ChartFragment.StockSuggestion> stocks,
-                             ArrayAdapter<ChartFragment.StockSuggestion> adapter) {
-        if (getActivity() == null) return;
+    private void fetchYahooStocks(String query, SearchAccumulator accumulator) {
+        try {
+            String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name());
+            String url = "https://query1.finance.yahoo.com/v1/finance/search?q=" + encoded
+                    + "&quotesCount=25&newsCount=0";
+            Request request = new Request.Builder()
+                    .url(url)
+                    .header("User-Agent", "Mozilla/5.0")
+                    .build();
+
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                    accumulator.complete(new ArrayList<>());
+                }
+
+                @Override
+                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                    List<ChartFragment.StockSuggestion> stocks = new ArrayList<>();
+                    if (response.isSuccessful() && response.body() != null) {
+                        try {
+                            JSONObject root = new JSONObject(response.body().string());
+                            JSONArray quotes = root.optJSONArray("quotes");
+                            if (quotes != null) {
+                                for (int i = 0; i < quotes.length(); i++) {
+                                    JSONObject quote = quotes.optJSONObject(i);
+                                    if (quote == null) continue;
+                                    String symbol = quote.optString("symbol", "").trim();
+                                    if (symbol.isEmpty()) continue;
+                                    String name = quote.optString("longname",
+                                                quote.optString("shortname", symbol));
+                                    String exchange = quote.optString("exchDisp",
+                                                quote.optString("quoteType", ""));
+                                    stocks.add(new ChartFragment.StockSuggestion(symbol, name, exchange));
+                                }
+                            }
+                        } catch (org.json.JSONException ignored) {
+                        }
+                    }
+                    accumulator.complete(stocks);
+                }
+            });
+        } catch (java.io.UnsupportedEncodingException e) {
+            accumulator.complete(new ArrayList<>());
+        }
+    }
+
+    private void postResults(SearchAccumulator accumulator) {
+        if (getActivity() == null || accumulator.generation != searchGeneration) return;
 
         getActivity().runOnUiThread(() -> {
+            if (!isAdded() || accumulator.generation != searchGeneration) return;
+
+            List<ChartFragment.StockSuggestion> stocks = new ArrayList<>(accumulator.stocks);
+            String directSymbol = accumulator.query.trim().toUpperCase(Locale.US);
+            if (directSymbol.matches("[A-Z0-9.^=_:-]{1,24}")) {
+                stocks.add(new ChartFragment.StockSuggestion(
+                        directSymbol, "Use ticker " + directSymbol, "Symbol"));
+            }
+            stocks = removeDuplicateSuggestions(stocks);
+
             List<ChartFragment.StockSuggestion> merged = new ArrayList<>();
-
-            if (!crypto.isEmpty() || !forex.isEmpty() || !stocks.isEmpty()) {
-                if (!stocks.isEmpty()) {
-                    merged.add(ChartFragment.StockSuggestion.section("Stocks"));
-                    merged.addAll(stocks);
-                }
-
-                if (!crypto.isEmpty() || !forex.isEmpty()) {
-                    merged.add(ChartFragment.StockSuggestion.section("Popular Crypto & Forex"));
-                    merged.addAll(crypto);
-                    merged.addAll(forex);
-                }
+            if (!stocks.isEmpty()) {
+                merged.add(ChartFragment.StockSuggestion.section("Stocks"));
+                merged.addAll(stocks);
+            }
+            if (!accumulator.crypto.isEmpty() || !accumulator.forex.isEmpty()) {
+                merged.add(ChartFragment.StockSuggestion.section("Popular Crypto & Forex"));
+                merged.addAll(accumulator.crypto);
+                merged.addAll(accumulator.forex);
             }
 
-            adapter.clear();
-            adapter.addAll(merged);
-            adapter.notifyDataSetChanged();
+            accumulator.adapter.clear();
+            accumulator.adapter.addAll(merged);
+            accumulator.adapter.notifyDataSetChanged();
+            fetchDailyChanges(merged, accumulator.adapter, accumulator.generation);
         });
     }
+
+    private List<ChartFragment.StockSuggestion> removeDuplicateSuggestions(
+            List<ChartFragment.StockSuggestion> suggestions) {
+        List<ChartFragment.StockSuggestion> unique = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (ChartFragment.StockSuggestion suggestion : suggestions) {
+            if (suggestion == null || suggestion.symbol == null) continue;
+            String key = suggestion.symbol.trim().toUpperCase(Locale.US);
+            if (seen.add(key)) unique.add(suggestion);
+        }
+        return unique;
+    }
+
+    private final class SearchAccumulator {
+        private final String query;
+        private final List<ChartFragment.StockSuggestion> crypto;
+        private final List<ChartFragment.StockSuggestion> forex;
+        private final ArrayAdapter<ChartFragment.StockSuggestion> adapter;
+        private final int generation;
+        private final List<ChartFragment.StockSuggestion> stocks = new ArrayList<>();
+        private final AtomicInteger pendingProviders = new AtomicInteger(2);
+
+        private SearchAccumulator(String query,
+                                  List<ChartFragment.StockSuggestion> crypto,
+                                  List<ChartFragment.StockSuggestion> forex,
+                                  ArrayAdapter<ChartFragment.StockSuggestion> adapter,
+                                  int generation) {
+            this.query = query;
+            this.crypto = crypto;
+            this.forex = forex;
+            this.adapter = adapter;
+            this.generation = generation;
+        }
+
+        private synchronized void complete(List<ChartFragment.StockSuggestion> results) {
+            stocks.addAll(results);
+            if (pendingProviders.decrementAndGet() == 0) postResults(this);
+        }
+    }
     private void renderDefaultSuggestions(ArrayAdapter<ChartFragment.StockSuggestion> adapter) {
+        renderDefaultSuggestions(adapter, searchGeneration);
+    }
+
+    private void renderDefaultSuggestions(ArrayAdapter<ChartFragment.StockSuggestion> adapter,
+                                          int generation) {
         List<ChartFragment.StockSuggestion> merged = new ArrayList<>();
 
         List<ChartFragment.StockSuggestion> recent = loadRecentSearches();
@@ -482,21 +592,22 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
 
         merged.add(ChartFragment.StockSuggestion.section("Popular Stocks"));
         for (ChartFragment.StockSuggestion item : POPULAR) {
-            merged.add(copySuggestionWithQuote(item, 0f));
+            merged.add(copySuggestionWithQuote(item, Float.NaN));
         }
 
         merged.add(ChartFragment.StockSuggestion.section("Popular Crypto & Forex"));
         for (int i = 0; i < Math.min(4, CRYPTO_LIST.size()); i++) {
-            merged.add(copySuggestionWithQuote(CRYPTO_LIST.get(i), 0f));
+            merged.add(copySuggestionWithQuote(CRYPTO_LIST.get(i), Float.NaN));
         }
-        merged.add(copySuggestionWithQuote(new ChartFragment.StockSuggestion("EURUSD", "Euro / US Dollar", "Forex", false, null, 0f), 0f));
-        merged.add(copySuggestionWithQuote(new ChartFragment.StockSuggestion("USDILS", "US Dollar / Israeli Shekel", "Forex", false, null, 0f), 0f));
-        merged.add(copySuggestionWithQuote(new ChartFragment.StockSuggestion("GBPUSD", "British Pound / US Dollar", "Forex", false, null, 0f), 0f));
-        merged.add(copySuggestionWithQuote(new ChartFragment.StockSuggestion("USDJPY", "US Dollar / Japanese Yen", "Forex", false, null, 0f), 0f));
+        merged.add(copySuggestionWithQuote(new ChartFragment.StockSuggestion("EURUSD", "Euro / US Dollar", "Forex"), Float.NaN));
+        merged.add(copySuggestionWithQuote(new ChartFragment.StockSuggestion("USDILS", "US Dollar / Israeli Shekel", "Forex"), Float.NaN));
+        merged.add(copySuggestionWithQuote(new ChartFragment.StockSuggestion("GBPUSD", "British Pound / US Dollar", "Forex"), Float.NaN));
+        merged.add(copySuggestionWithQuote(new ChartFragment.StockSuggestion("USDJPY", "US Dollar / Japanese Yen", "Forex"), Float.NaN));
 
         adapter.clear();
         adapter.addAll(merged);
         adapter.notifyDataSetChanged();
+        fetchDailyChanges(merged, adapter, generation);
     }
 
     private List<ChartFragment.StockSuggestion> loadRecentSearches() {
@@ -559,9 +670,16 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
         prefs.edit().putString("recent_symbols", joined).apply();
     }
 
+    @Override
+    public void onDestroyView() {
+        searchGeneration++;
+        handler.removeCallbacksAndMessages(null);
+        super.onDestroyView();
+    }
+
     private ChartFragment.StockSuggestion copySuggestionWithQuote(ChartFragment.StockSuggestion item, float dailyChangePercent) {
         if (item == null) {
-            return new ChartFragment.StockSuggestion("", "", "", false, null, 0f);
+            return new ChartFragment.StockSuggestion("", "", "", false, null, Float.NaN);
         }
 
         return new ChartFragment.StockSuggestion(
@@ -588,86 +706,83 @@ public class TickerSearchSheet extends BottomSheetDialogFragment {
         return Math.round(dp * requireContext().getResources().getDisplayMetrics().density);
     }
 
-    private void enrichSuggestionsWithDailyChange(
-            List<ChartFragment.StockSuggestion> items,
-            java.util.function.Consumer<List<ChartFragment.StockSuggestion>> callback
-    ) {
-        if (items == null || items.isEmpty()) {
-            callback.accept(items);
-            return;
-        }
-
-        // נבנה רשימת סימבולים לחיפוש ב־Finnhub (או שירות אחר)
-        StringBuilder sb = new StringBuilder();
-        for (ChartFragment.StockSuggestion s : items) {
-            if (s == null || s.symbol == null || s.symbol.trim().isEmpty()) continue;
-            if (sb.length() > 0) sb.append(",");
-            sb.append(s.symbol.trim().toUpperCase(Locale.US));
-        }
-
-        if (sb.length() == 0) {
-            callback.accept(items);
-            return;
-        }
-
-        String symbolsParam = sb.toString();
-
-        try {
-            String encoded = URLEncoder.encode(symbolsParam, StandardCharsets.UTF_8.name());
-            // דוגמה API: כאן משתמשים ב-Finnhub quote (צריך להתאים ל-plan שלך)
-            String url = "https://finnhub.io/api/v1/quote?symbol=" + encoded + "&token=" + FINNHUB_KEY;
-
-            Request req = new Request.Builder().url(url).build();
-
-            client.newCall(req).enqueue(new Callback() {
-                @Override
-                public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    // במקרה של כישלון: נחזיר את הרשימה בלי שינוי
-                    callback.accept(items);
-                }
-
-                @Override
-                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                    if (!response.isSuccessful() || response.body() == null) {
-                        callback.accept(items);
-                        return;
+    private void fetchDailyChanges(List<ChartFragment.StockSuggestion> items,
+                                   ArrayAdapter<ChartFragment.StockSuggestion> adapter,
+                                   int generation) {
+        for (ChartFragment.StockSuggestion item : items) {
+            if (item == null || item.isSectionHeader || item.symbol == null) continue;
+            String symbol = item.symbol;
+            String yahooSymbol = getYahooSymbol(symbol);
+            try {
+                String encoded = URLEncoder.encode(yahooSymbol, StandardCharsets.UTF_8.name());
+                Request request = new Request.Builder()
+                        .url("https://query1.finance.yahoo.com/v8/finance/chart/" + encoded
+                                + "?range=5d&interval=1d&includePrePost=false")
+                        .header("User-Agent", "Mozilla/5.0")
+                        .build();
+                client.newCall(request).enqueue(new Callback() {
+                    @Override
+                    public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                        Log.w(TAG, "Failed to fetch daily change for " + symbol, e);
                     }
 
-                    List<ChartFragment.StockSuggestion> enriched = new ArrayList<>();
-
-                    try {
-                        JSONObject root = new JSONObject(response.body().string());
-                        // כאן קוד לדוגמה: אם אתה משתמש ב-API אחר שמחזיר רשימה, צריך להתאים
-                        // לדוגמה: ציפייה לשדות c (current), pc (previous close)
-                        double current = root.optDouble("c", Double.NaN);
-                        double prev    = root.optDouble("pc", Double.NaN);
-                        float pct      = 0f;
-
-                        if (!Double.isNaN(current) && !Double.isNaN(prev) && prev != 0.0) {
-                            pct = (float) (((current - prev) / prev) * 100.0);
+                    @Override
+                    public void onResponse(@NonNull Call call, @NonNull Response response)
+                            throws IOException {
+                        if (!response.isSuccessful() || response.body() == null) {
+                            Log.w(TAG, "Daily change request failed for " + symbol
+                                    + ": HTTP " + response.code());
+                            return;
                         }
-
-                        for (ChartFragment.StockSuggestion s : items) {
-                            if (s == null) continue;
-                            enriched.add(new ChartFragment.StockSuggestion(
-                                    s.symbol,
-                                    s.name,
-                                    s.exchange,
-                                    s.isSectionHeader,
-                                    s.sectionTitle,
-                                    s.isSectionHeader ? 0f : pct
-                            ));
+                        float change;
+                        try {
+                            JSONObject root = new JSONObject(response.body().string())
+                                    .getJSONObject("chart");
+                            JSONArray results = root.optJSONArray("result");
+                            if (results == null || results.length() == 0) return;
+                            YahooQuoteMath.Quote marketQuote =
+                                    YahooQuoteMath.fromChartItem(results.getJSONObject(0));
+                            change = (float) marketQuote.percentChange();
+                        } catch (Exception e) {
+                            Log.w(TAG, "Failed to parse daily change for " + symbol, e);
+                            return;
                         }
-                    } catch (Exception e) {
-                        enriched.clear();
-                        enriched.addAll(items);
+                        if (!Float.isFinite(change) || getActivity() == null) return;
+                        getActivity().runOnUiThread(() -> {
+                            if (!isAdded() || generation != searchGeneration) return;
+                            for (int i = 0; i < adapter.getCount(); i++) {
+                                ChartFragment.StockSuggestion current = adapter.getItem(i);
+                                if (current == null || current.isSectionHeader
+                                        || !symbol.equalsIgnoreCase(current.symbol)) continue;
+                                ChartFragment.StockSuggestion updated = new ChartFragment.StockSuggestion(
+                                        current.symbol, current.name, current.exchange,
+                                        false, null, change);
+                                adapter.setNotifyOnChange(false);
+                                adapter.remove(current);
+                                adapter.insert(updated, i);
+                                adapter.notifyDataSetChanged();
+                                adapter.setNotifyOnChange(true);
+                                break;
+                            }
+                        });
                     }
-
-                    callback.accept(enriched);
-                }
-            });
-        } catch (Exception e) {
-            callback.accept(items);
+                });
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to prepare daily change request for " + symbol, e);
+            }
         }
+    }
+
+    private String getYahooSymbol(String symbol) {
+        String normalized = symbol.trim().toUpperCase(Locale.US);
+        String crypto = ChartFragment.CRYPTO_MAP.get(normalized);
+        if (crypto != null) {
+            String pair = crypto.substring(crypto.indexOf(':') + 1);
+            if (pair.endsWith("USDT")) return pair.substring(0, pair.length() - 4) + "-USD";
+            return pair;
+        }
+        String forex = ChartFragment.FOREX_MAP.get(normalized);
+        if (forex != null) return forex;
+        return normalized;
     }
 }

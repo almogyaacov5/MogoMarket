@@ -60,6 +60,10 @@ public class LLMService {
 
     public LLMService() { }
 
+    public static boolean isConfigured() {
+        return API_KEY != null && !API_KEY.trim().isEmpty();
+    }
+
     // מתודה ציבורית לשליחת prompt גנרי - עוטפת את AnalysisCallback ב-LLMCallback
     public void generateContent(String prompt, LLMCallback callback) {
         sendToGemini(prompt, new AnalysisCallback() {
@@ -129,6 +133,11 @@ public class LLMService {
 
     // הפונקציה הפרטית שמבצעת את קריאת ה-HTTP בפועל ל-Gemini
     private void sendToGemini(String prompt, AnalysisCallback callback) {
+        if (!isConfigured()) {
+            notifyError(callback, "מפתח Gemini אינו מוגדר. הוסף GEMINI_API_KEY ל-local.properties.");
+            return;
+        }
+
         long now = System.currentTimeMillis();
         long timeSinceLast = now - lastRequestTime;
 
@@ -157,16 +166,15 @@ public class LLMService {
             return;
         }
 
-        String urlWithKey = GEMINI_API_URL + "?key=" + API_KEY; // הוספת המפתח ל-URL
-
         RequestBody body = RequestBody.create(
                 requestBody.toString(),
                 MediaType.get("application/json; charset=utf-8")
         );
 
         Request request = new Request.Builder()
-                .url(urlWithKey)
+                .url(GEMINI_API_URL)
                 .addHeader("Accept", "application/json")
+                .addHeader("x-goog-api-key", API_KEY)
                 .post(body)
                 .build();
 
@@ -190,10 +198,9 @@ public class LLMService {
                     return;
                 }
 
-                // קוד 403 = גישה נדחית (מפתח לא תקין / מכסה נגמרה)
                 if (response.code() == 403) {
-                    android.util.Log.w("LLM", "המכסה ניגמרה להיום, חכה עד מחר בעשר בבוקר");
-                    notifyError(callback, "המכסה היומית של Gemini נגמרה.\nנסה שוב מחר בשעה 10:00 בבוקר.");
+                    android.util.Log.w("LLM", "Gemini access denied");
+                    notifyError(callback, "Gemini דחה את הבקשה. בדוק שהמפתח תקין, פעיל ומורשה ל-Gemini API.");
                     return;
                 }
 

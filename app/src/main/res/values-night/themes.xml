@@ -18,9 +18,16 @@
         <item name="colorOnError">@color/white</item>
         <item name="android:textColor">@color/text_primary</item>
         <item name="materialCardViewStyle">@style/CardStyle</item>
-        <item name="android:statusBarColor">@color/bg_primary</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="bottomNavigationStyle">@style/BottomNavStyle</item>
+        <item name="alertDialogTheme">@style/ThemeOverlay.MogoMarket.Dialog</item>
+        <item name="android:alertDialogTheme">@style/ThemeOverlay.MogoMarket.Dialog</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.MogoMarket.Dialog</item>
+        <item name="bottomSheetDialogTheme">@style/ThemeOverlay.MogoMarket.BottomSheetDialog</item>
+        <item name="popupMenuStyle">@style/MogoMarketPopupMenu</item>
+        <item name="android:popupMenuStyle">@style/MogoMarketPopupMenu</item>
+        <item name="android:datePickerDialogTheme">@style/ThemeOverlay.MogoMarket.Dialog</item>
+        <item name="android:timePickerDialogTheme">@style/ThemeOverlay.MogoMarket.Dialog</item>
     </style>
 
 </resources>

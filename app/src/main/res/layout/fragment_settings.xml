@@ -10,7 +10,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="16dp"
+        android:paddingBottom="24dp">
 
         <!-- Header -->
         <TextView
@@ -30,13 +31,12 @@
             android:textSize="14sp" />
 
         <!-- About Card -->
-        <androidx.cardview.widget.CardView
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
             app:cardCornerRadius="18dp"
-            app:cardElevation="4dp"
-            app:cardUseCompatPadding="true"
+            app:cardElevation="0dp"
             app:cardBackgroundColor="?attr/colorSurface">
 
             <LinearLayout
@@ -112,16 +112,15 @@
                     android:textDirection="rtl" />
 
             </LinearLayout>
-        </androidx.cardview.widget.CardView>
+        </com.google.android.material.card.MaterialCardView>
 
         <!-- Appearance Card -->
-        <androidx.cardview.widget.CardView
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             app:cardCornerRadius="18dp"
-            app:cardElevation="3dp"
-            app:cardUseCompatPadding="true"
+            app:cardElevation="0dp"
             app:cardBackgroundColor="?attr/colorSurface">
 
             <LinearLayout
@@ -189,16 +188,15 @@
                     app:strokeWidth="1dp" />
 
             </LinearLayout>
-        </androidx.cardview.widget.CardView>
+        </com.google.android.material.card.MaterialCardView>
 
         <!-- Navigation + Keyboard Settings Card -->
-        <androidx.cardview.widget.CardView
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             app:cardCornerRadius="18dp"
-            app:cardElevation="4dp"
-            app:cardUseCompatPadding="true"
+            app:cardElevation="0dp"
             app:cardBackgroundColor="?attr/colorSurface">
 
             <LinearLayout
@@ -300,16 +298,15 @@
                 </LinearLayout>
 
             </LinearLayout>
-        </androidx.cardview.widget.CardView>
+        </com.google.android.material.card.MaterialCardView>
 
         <!-- Notifications & Summary Card (English only) -->
-        <androidx.cardview.widget.CardView
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             app:cardCornerRadius="18dp"
-            app:cardElevation="4dp"
-            app:cardUseCompatPadding="true"
+            app:cardElevation="0dp"
             app:cardBackgroundColor="?attr/colorSurface">
 
             <LinearLayout
@@ -405,7 +402,7 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Receive a daily email at 08:00 with portfolio and trades performance"
+                            android:text="Receive a summary Tuesday through Saturday at your chosen time"
                             android:textColor="?attr/colorOnSurfaceVariant"
                             android:textSize="12sp"
                             android:layout_marginTop="2dp" />
@@ -413,6 +410,18 @@
                     </LinearLayout>
 
                 </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDailySummaryTime"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:layout_marginBottom="10dp"
+                    android:text="Summary time: 08:00"
+                    android:textAllCaps="false"
+                    android:textSize="14sp"
+                    app:strokeColor="?attr/colorPrimary"
+                    app:strokeWidth="1dp" />
 
                 <!-- Button: Send now -->
                 <com.google.android.material.button.MaterialButton
@@ -427,16 +436,15 @@
                     app:strokeWidth="1dp" />
 
             </LinearLayout>
-        </androidx.cardview.widget.CardView>
+        </com.google.android.material.card.MaterialCardView>
 
         <!-- Default Symbol Card -->
-        <androidx.cardview.widget.CardView
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             app:cardCornerRadius="18dp"
-            app:cardElevation="4dp"
-            app:cardUseCompatPadding="true"
+            app:cardElevation="0dp"
             app:cardBackgroundColor="?attr/colorSurface">
 
             <LinearLayout
@@ -545,17 +553,35 @@
                     android:textAllCaps="false"
                     app:backgroundTint="?attr/colorPrimary" />
 
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="Default chart timeframe"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDefaultChartTimeframe"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="8dp"
+                    android:text="1Y"
+                    android:textAllCaps="false"
+                    app:strokeWidth="1dp" />
+
             </LinearLayout>
-        </androidx.cardview.widget.CardView>
+        </com.google.android.material.card.MaterialCardView>
 
         <!-- Start Page Card -->
-        <androidx.cardview.widget.CardView
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             app:cardCornerRadius="18dp"
-            app:cardElevation="4dp"
-            app:cardUseCompatPadding="true"
+            app:cardElevation="0dp"
             app:cardBackgroundColor="?attr/colorSurface">
 
             <LinearLayout
@@ -670,16 +696,15 @@
                 </LinearLayout>
 
             </LinearLayout>
-        </androidx.cardview.widget.CardView>
+        </com.google.android.material.card.MaterialCardView>
 
         <!-- Account Card -->
-        <androidx.cardview.widget.CardView
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             app:cardCornerRadius="18dp"
-            app:cardElevation="4dp"
-            app:cardUseCompatPadding="true"
+            app:cardElevation="0dp"
             app:cardBackgroundColor="?attr/colorSurface">
 
             <LinearLayout
@@ -753,7 +778,7 @@
                     app:strokeWidth="1dp" />
 
             </LinearLayout>
-        </androidx.cardview.widget.CardView>
+        </com.google.android.material.card.MaterialCardView>
 
         <!-- App Info Card -->
         <androidx.cardview.widget.CardView
@@ -762,8 +787,7 @@
             android:layout_marginTop="14dp"
             android:layout_marginBottom="8dp"
             app:cardCornerRadius="18dp"
-            app:cardElevation="4dp"
-            app:cardUseCompatPadding="true"
+            app:cardElevation="0dp"
             app:cardBackgroundColor="?attr/colorSurface">
 
             <LinearLayout

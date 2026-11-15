@@ -9,7 +9,6 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
@@ -35,7 +34,7 @@ public class AuthRegister extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this); // תצוגה מקצה לקצה
+        EdgeToEdgeHelper.enable(this); // תצוגה מקצה לקצה
         setContentView(R.layout.activity_auth_register); // layout של ה-Register
 
         // ריפוד נכון לפי גודל סרגלי המערכת

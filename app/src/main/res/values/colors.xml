@@ -27,6 +27,11 @@
     <color name="colorLoss">#FF4D4D</color>
     <color name="colorBorder">#CBD5E0</color>
     <color name="colorDivider">#E2E8F0</color>
+    <color name="dialog_surface">#F5F9FE</color>
+    <color name="dialog_response_bg">#E8F5FC</color>
+    <color name="nav_dock_tint">#99FFFFFF</color>
+    <color name="nav_dock_border">#99FFFFFF</color>
+    <color name="nav_dock_overlay">#44FFFFFF</color>
 
     <!-- ספריים כלליים -->
     <color name="white">#FFFFFF</color>
@@ -40,5 +45,21 @@
     <color name="nav_bar_bg">#F0F4F8</color>
     <color name="nav_active">#4DA3FF</color>
     <color name="nav_inactive">#718096</color>
+    <color name="navigation_icon_color">#CC00FFA6</color>
+    <color name="watchlist_card">#FFFDF9</color>
+    <color name="watchlist_card_border">#E8B98D</color>
+    <color name="watchlist_ticker">#087E8B</color>
+    <color name="watchlist_price">#9B6B28</color>
+    <color name="watchlist_gold">#F3C879</color>
+    <color name="watchlist_add_icon">#352719</color>
+    <color name="chart_surface">#FFF9F2</color>
+    <color name="chart_gold">#D8A97A</color>
+    <color name="chart_ticker_text">#352719</color>
+    <color name="chart_text">#0D1117</color>
+    <color name="chart_price">#A84F45</color>
+    <color name="chart_loss">#C75656</color>
+    <color name="chart_tf_selected">#D8F2F1</color>
+    <color name="chart_tf_unselected">#E8DFD2</color>
+    <color name="chart_tf_text">#42545A</color>
 
 </resources>

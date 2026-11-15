@@ -3,280 +3,443 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#07080B"
     android:orientation="vertical"
-    android:background="?attr/colorBackground">
+    android:paddingHorizontal="12dp"
+    android:paddingTop="10dp">
 
-    <!-- Header -->
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="190dp"
+        android:layout_marginBottom="12dp"
+        app:cardBackgroundColor="#0C1018"
+        app:cardCornerRadius="22dp"
+        app:cardElevation="0dp"
+        app:strokeColor="#3322D3EE"
+        app:strokeWidth="1dp">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <com.mogomarket.app.PortfolioHeroChartView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:alpha="0.82" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_portfolio_hero_overlay"
+                android:gravity="center_vertical"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Portfolio Value"
+                    android:textColor="#63D7F2"
+                    android:textSize="24sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvPortfolioValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="$0.00"
+                    android:textColor="#FFFFFF"
+                    android:textSize="36sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:layout_marginTop="4dp"
+                    android:background="@drawable/bg_pill_glow_gold"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="5dp">
+
+                    <TextView
+                        android:id="@+id/tvTotalPnl"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="$0.00"
+                        android:textColor="#FFB84D"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvTotalPct"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="+0.00%"
+                        android:textColor="#FFD996"
+                        android:textSize="10sp"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Total Profit"
+                        android:textColor="#FFD996"
+                        android:textSize="10sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </FrameLayout>
+    </com.google.android.material.card.MaterialCardView>
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:layout_marginBottom="10dp"
+        android:orientation="horizontal"
+        android:weightSum="4">
 
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:layout_width="0dp"
+            android:layout_height="62dp"
+            android:layout_marginEnd="4dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_stat_today"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="5dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="My Trades"
-                android:textColor="?attr/colorOnBackground"
-                android:textSize="28sp"
+                android:text="Today"
+                android:textColor="#FF7279"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvDailyPnl"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:text="$0.00"
+                android:textColor="#FF7279"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvDailyPct"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="62dp"
+            android:layout_marginHorizontal="3dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_glass_pill_card"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="5dp">
+
+            <TextView
+                android:id="@+id/tvOpenCount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0 Open"
+                android:textColor="#A8DDF0"
+                android:textSize="13sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="Track, refresh and manage your portfolio"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="14sp" />
+                android:text="Positions"
+                android:textColor="#A8DDF0"
+                android:textSize="11sp" />
         </LinearLayout>
 
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:clipToOutline="true"
-            app:cardCornerRadius="20dp"
-            app:cardElevation="4dp"
-            app:cardPreventCornerOverlap="true"
-            app:strokeWidth="0dp">
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="62dp"
+            android:layout_marginHorizontal="3dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_glass_pill_card"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="5dp">
 
-            <LinearLayout
-                android:layout_width="match_parent"
+            <TextView
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="@android:color/transparent"
-                android:padding="16dp">
+                android:text="Cash"
+                android:textColor="#E6DDF4"
+                android:textSize="12sp"
+                android:textStyle="bold" />
 
-                <!-- שורה עליונה: Open / Total P&L / Today -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+            <TextView
+                android:id="@+id/tvCash"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="Cash balance. Long press to edit"
+                android:longClickable="true"
+                android:text="$0.00"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
 
-                    <!-- Open Positions -->
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical"
-                        android:background="@android:color/transparent"
-                        android:gravity="center">
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="62dp"
+            android:layout_marginStart="4dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_glass_pill_card"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="5dp">
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Open Positions"
-                            android:textSize="12sp"
-                            android:textColor="?attr/colorOnSurfaceVariant" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Invested"
+                android:textColor="#E6DDF4"
+                android:textSize="12sp"
+                android:textStyle="bold" />
 
-                        <TextView
-                            android:id="@+id/tvOpenCount"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="0"
-                            android:textSize="20sp"
-                            android:textStyle="bold"
-                            android:textColor="?attr/colorOnSurface" />
-                    </LinearLayout>
-
-                    <View
-                        android:layout_width="1dp"
-                        android:layout_height="match_parent"
-                        android:background="@color/colorDivider"
-                        android:layout_marginHorizontal="8dp" />
-
-                    <!-- Total P&L -->
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical"
-                        android:background="@android:color/transparent"
-                        android:gravity="center">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Total P&amp;L"
-                            android:textSize="12sp"
-                            android:textColor="?attr/colorOnSurfaceVariant" />
-
-                        <TextView
-                            android:id="@+id/tvTotalPnl"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="$0.00"
-                            android:textSize="20sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/gain" />
-
-                        <TextView
-                            android:id="@+id/tvTotalPct"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="+0.00%"
-                            android:textSize="11sp"
-                            android:textColor="@color/gain" />
-
-                    </LinearLayout>
-
-                    <View
-                        android:layout_width="1dp"
-                        android:layout_height="match_parent"
-                        android:background="@color/colorDivider"
-                        android:layout_marginHorizontal="8dp" />
-
-                    <!-- Daily P&L -->
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical"
-                        android:background="@android:color/transparent"
-                        android:gravity="center">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Today"
-                            android:textSize="12sp"
-                            android:textColor="?attr/colorOnSurfaceVariant" />
-
-                        <TextView
-                            android:id="@+id/tvDailyPnl"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="$0.00"
-                            android:textSize="16sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/gain" />
-
-                        <TextView
-                            android:id="@+id/tvDailyPct"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="+0.00%"
-                            android:textSize="11sp"
-                            android:textColor="@color/gain" />
-
-                    </LinearLayout>
-
-                </LinearLayout>
-
-                <!-- קו הפרדה -->
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginVertical="10dp"
-                    android:background="@color/colorDivider" />
-
-                <!-- שורת סה"כ הושקע -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="💰 Total Invested:  "
-                        android:textSize="13sp"
-                        android:textColor="?attr/colorOnSurfaceVariant" />
-
-                    <TextView
-                        android:id="@+id/tvTotalInvested"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="$0.00"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:textColor="?attr/colorOnSurface" />
-
-                </LinearLayout>
-
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Open Positions Label -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="Open Positions"
-            android:textColor="?attr/colorOnSurface"
-            android:textSize="18sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text="Your active trades appear here"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:textSize="13sp" />
-
+            <TextView
+                android:id="@+id/tvTotalInvested"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="$0.00"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </LinearLayout>
     </LinearLayout>
 
-    <!-- RecyclerView -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/concentrationRiskCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="#21171A"
+        app:cardCornerRadius="18dp"
+        app:cardElevation="0dp"
+        app:strokeColor="#99FF755E"
+        app:strokeWidth="1dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_gradient_warning"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="12dp">
+
+            <ImageView
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:contentDescription="Concentration risk warning"
+                android:src="@android:drawable/ic_dialog_alert"
+                android:tint="#FFF3D2" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Concentration Risk"
+                    android:textColor="#FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvConcentrationAlert"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#FFF1E8"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_badge_high_risk"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="5dp"
+                android:text="HIGH RISK"
+                android:textColor="#241207"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="5dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Open Positions"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnIncomingShares"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:paddingHorizontal="8dp"
+            android:text="Shared"
+            android:textColor="#8FDFF0"
+            android:textSize="11sp" />
+
+        <LinearLayout
+            android:id="@+id/assetAllocationToggle"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="4dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Allocation"
+                android:textColor="#8D9AAE"
+                android:textSize="11sp" />
+
+            <ImageView
+                android:id="@+id/assetAllocationArrow"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:contentDescription="Expand asset allocation chart"
+                android:src="@drawable/ic_arrow_drop_down_24"
+                android:tint="#8D9AAE" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <com.mogomarket.app.AssetAllocationChart
+        android:id="@+id/assetAllocationChart"
+        android:layout_width="match_parent"
+        android:layout_height="120dp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/tvPortfolioBeta"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingBottom="2dp"
+        android:text="Portfolio beta vs. S&amp;P 500: calculating"
+        android:textColor="#657184"
+        android:textSize="10sp" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/tradesRecyclerView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:clipToPadding="false"
         android:clipChildren="false"
+        android:clipToPadding="false"
         android:overScrollMode="never"
-        android:paddingBottom="8dp"
+        android:paddingBottom="6dp"
         android:scrollbars="vertical" />
 
-    <!-- Action Buttons -->
-    <com.google.android.material.card.MaterialCardView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginBottom="12dp"
-        android:clipToOutline="true"
-        app:cardCornerRadius="20dp"
-        app:cardElevation="4dp"
-        app:cardPreventCornerOverlap="true"
-        app:strokeWidth="0dp">
+        android:layout_marginBottom="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:background="@android:color/transparent"
-            android:padding="8dp">
+            android:layout_weight="1"
+            android:gravity="start">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnRefreshPortfolio"
-                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
-                android:layout_width="50dp"
-                android:layout_height="50dp"
-                android:layout_marginEnd="6dp"
+                style="@style/Widget.Material3.Button.IconButton.Filled"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:contentDescription="Refresh portfolio"
-                app:icon="@drawable/baseline_refresh_24" />
+                android:insetLeft="0dp"
+                android:insetTop="0dp"
+                android:insetRight="0dp"
+                android:insetBottom="0dp"
+                app:backgroundTint="#1E2A3A"
+                app:cornerRadius="12dp"
+                app:icon="@drawable/baseline_refresh_24"
+                app:iconPadding="0dp"
+                app:iconSize="18dp"
+                app:iconTint="#4DA3FF" />
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnAddStockToPortfolio"
-                style="@style/Widget.Material3.Button"
-                android:layout_width="0dp"
-                android:layout_height="52dp"
-                android:layout_weight="1"
-                android:text="&#65291; Add Trade"
-                android:textAllCaps="false"
-                android:textStyle="bold" />
-
+                android:id="@+id/btnSharePortfolio"
+                style="@style/Widget.Material3.Button.IconButton.Filled"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginStart="6dp"
+                android:contentDescription="Share portfolio or trade"
+                android:insetLeft="0dp"
+                android:insetTop="0dp"
+                android:insetRight="0dp"
+                android:insetBottom="0dp"
+                app:backgroundTint="#1E2A3A"
+                app:cornerRadius="12dp"
+                app:icon="@android:drawable/ic_menu_share"
+                app:iconPadding="0dp"
+                app:iconSize="18dp"
+                app:iconTint="#4DA3FF" />
         </LinearLayout>
 
-    </com.google.android.material.card.MaterialCardView>
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAddStockToPortfolio"
+            style="@style/Widget.Material3.Button.IconButton.Filled"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:contentDescription="Add trade"
+            android:insetLeft="0dp"
+            android:insetTop="0dp"
+            android:insetRight="0dp"
+            android:insetBottom="0dp"
+            app:backgroundTint="#FFB84D"
+            app:cornerRadius="27dp"
+            app:icon="@drawable/ic_add_24"
+            app:iconPadding="0dp"
+            app:iconSize="30dp"
+            app:iconTint="#271709" />
 
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+    </LinearLayout>
 </LinearLayout>

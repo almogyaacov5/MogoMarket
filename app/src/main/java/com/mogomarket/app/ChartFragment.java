@@ -30,13 +30,14 @@ import androidx.appcompat.app.AppCompatDelegate;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
-import com.github.mikephil.charting.charts.CandleStickChart;
+import com.github.mikephil.charting.charts.CombinedChart;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.CandleData;
 import com.github.mikephil.charting.data.CandleDataSet;
 import com.github.mikephil.charting.data.CandleEntry;
+import com.github.mikephil.charting.data.CombinedData;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
@@ -49,6 +50,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -58,6 +61,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TreeMap;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -73,33 +77,34 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private static final String KEY_LAST_SYMBOL = "last_chart_symbol";
 
     public static final String KEY_SYMBOL_MODE  = "chart_symbol_mode";
+    public static final String KEY_DEFAULT_TIMEFRAME = "chart_default_timeframe";
 
-    private static final int DARK_BG        = 0xFF0B0F14;
-    private static final int DARK_CARD      = 0xFF151C2E;
-    private static final int DARK_TEXT_PRI  = 0xFFE6EDF3;
-    private static final int DARK_TEXT_SEC  = 0xFF8B98A5;
+    private static final int DARK_BG        = 0xFF07090D;
+    private static final int DARK_CARD      = 0xFF121720;
+    private static final int DARK_TEXT_PRI  = 0xFFF5F7FA;
+    private static final int DARK_TEXT_SEC  = 0xFF96A3B5;
     private static final int LIGHT_BG       = 0xFFF0F4F8;
     private static final int LIGHT_CARD     = 0xFFFFFFFF;
     private static final int LIGHT_TEXT_PRI = 0xFF1A1D23;
     private static final int LIGHT_TEXT_SEC = 0xFF6B7280;
-    private static final int COLOR_PRIMARY  = 0xFF4DA3FF;
-    private static final int COLOR_GAIN     = 0xFF00C896;
-    private static final int COLOR_LOSS     = 0xFFFF4D4D;
-    private static final int COLOR_FILL     = 0xFF1C6DD0;
+    private static final int COLOR_PRIMARY  = 0xFF22D3EE;
+    private static final int COLOR_GAIN     = 0xFF10B981;
+    private static final int COLOR_LOSS     = 0xFFFB5A75;
+    private static final int COLOR_FILL     = 0xFF0891B2;
 
     private static final long DOUBLE_TAP_TIMEOUT_MS = 350;
     private long lastTapTime = 0;
 
     private static final String[][] TIMEFRAMES = {
-        {"1m",  "1min",   "1m",  "1d",  "1m"},
-        {"5m",  "5min",   "5m",  "5d",  "5m"},
-        {"15m", "15min",  "15m", "5d",  "15m"},
-        {"30m", "30min",  "30m", "1mo", "30m"},
-        {"1H",  "60min",  "1h",  "5d",  "1h"},
-        {"4H",  "4hour",  "1h",  "1mo", "4h"},
-        {"1D",  "1day",   "1d",  "1y",  "1d"},
-        {"1W",  "1week",  "1wk", "5y",  "1w"},
-        {"1M",  "1month", "1mo", "max", "1M"},
+        {"1D",  "1day", "1d", "1d",  "1d"},
+        {"1W",  "1day", "1d", "5d",  "1d"},
+        {"1M",  "1day", "1d", "1mo", "1d"},
+        {"3M",  "1day", "1d", "3mo", "1d"},
+        {"6M",  "1day", "1d", "6mo", "1d"},
+        {"1Y",  "1day", "1d", "1y",  "1d"},
+        {"2Y",  "1day", "1d", "2y",  "1d"},
+        {"5Y",  "1day", "1d", "5y",  "1d"},
+        {"MAX", "1day", "1d", "max", "1d"},
     };
 
     static final Map<String, String> CRYPTO_MAP = new HashMap<>();
@@ -169,52 +174,67 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private boolean isFullscreen = false;
     private boolean isCrosshairActive = false;
 
-    private int currentTFIndex = 6;
+    private int currentTFIndex = 5;
 
-    private com.google.android.material.button.MaterialButton btnTF1D, btnTF1W, btnTF1M, btnTF3M, btnTF1Y;
     private com.google.android.material.button.MaterialButton activeTFButton = null;
 
     private ViewGroup.LayoutParams chartOriginalParams;
 
-    private CandleStickChart candleStickChart;
+    private CombinedChart candleStickChart;
     private LineChart lineChart;
     private AutoCompleteTextView tickerInput;
 
     private com.google.android.material.button.MaterialButton btnTickerSelect;
     private com.google.android.material.button.MaterialButton btnTimeframePicker;
-    private Button btnLoad, btnTimeFrame, btnToggleChart, btnAIAnalysis;
-    private com.google.android.material.button.MaterialButton btnChartRefresh, btnExpandChart, btnExitFullscreen, btnSettings;
+    private com.google.android.material.button.MaterialButton btnChartRefresh;
+    private com.google.android.material.button.MaterialButton btnChartMenu;
+    private com.google.android.material.button.MaterialButton btnMagnetMode;
+    private Button btnLoad, btnTimeFrame;
+    private com.google.android.material.button.MaterialButton btnExpandChart, btnExitFullscreen, btnSettings;
     private Button btnChartThemeToggle;
 
     private View headerSection;
     private View searchSection;
-    private View controlsSection;
     private View bottomBar;
     private FrameLayout chartContainer;
     private View chartRootLayout;
     private TextView timeFrameText, tickerText, priceText, changeText, currentPriceDisplay;
     private TextView tickerLabelTop;
-    private ProgressBar progressAI;
 
     private LinearLayout crosshairInfoBar;
     private TextView crosshairPrice;
     private TextView crosshairDate;
+    private FreeCrosshairOverlay freeCrosshairOverlay;
+    private float freeCrosshairX;
+    private float freeCrosshairY;
+    private float crosshairDragStartTouchX;
+    private float crosshairDragStartTouchY;
+    private float crosshairDragStartX;
+    private float crosshairDragStartY;
+    private boolean crosshairGestureMoved;
+    private boolean crosshairDismissGesture;
 
     private final OkHttpClient client = new OkHttpClient();
     private final String FINNHUB_KEY = "d918pn9r01qr1uqui560d918pn9r01qr1uqui56g";
 
     private String symbol = "SPY";
     private String interval = "1day";
+    private String visibleChartRange = "1d";
     private boolean isCandleStick = true;
     private final DecimalFormat df = new DecimalFormat("#.##");
     private String latestQuery = "";
 
-    private LLMService llmService;
     private final List<CandleEntry> currentEntries = new ArrayList<>();
     private final List<Float> fullCloses = new ArrayList<>();
     private final List<String> dateLabels = new ArrayList<>();
+    private final List<Long> currentTimestamps = new ArrayList<>();
+    private final List<Entry> movingAverageEntries = new ArrayList<>();
+    private boolean showMa150;
     private float lastPrice = 0f;
     private boolean isManualSelection = false;
+    private boolean magnetMode;
+    private int chartRequestGeneration;
+    private com.github.mikephil.charting.charts.BarLineChartBase<?> activeCrosshairChart;
     // מונע טעינה כפולה — onCreateView לא יטען, onViewCreated יטען
     private boolean initialLoadDone = false;
     private ArrayAdapter<StockSuggestion> suggestionAdapter;
@@ -233,7 +253,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         public final float dailyChangePercent;
 
         public StockSuggestion(String symbol, String name, String exchange) {
-            this(symbol, name, exchange, false, null, 0f);
+            this(symbol, name, exchange, false, null, Float.NaN);
         }
 
         public StockSuggestion(String symbol,
@@ -316,6 +336,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         isDarkTheme = prefs.getBoolean(KEY_THEME, true);
         isChartDark = isDarkTheme;
+        showMa150 = prefs.getBoolean("chart_show_ma150", false);
+        currentTFIndex = getTimeframeIndex(
+                prefs.getString(KEY_DEFAULT_TIMEFRAME, "1Y"));
+        visibleChartRange = TIMEFRAMES[currentTFIndex][3];
 
         String mode = prefs.getString(KEY_SYMBOL_MODE, "last");
         if ("fixed".equals(mode)) {
@@ -336,24 +360,18 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         tickerInput        = null;
         btnLoad            = null;
         btnTimeFrame       = null;
-        btnToggleChart     = v.findViewById(R.id.btnToggleChart);
-        btnChartRefresh    = v.findViewById(R.id.btnChartRefresh);
-        btnAIAnalysis      = v.findViewById(R.id.btnAIAnalysis);
         btnSettings        = v.findViewById(R.id.btnSettings);
         btnChartThemeToggle= v.findViewById(R.id.btnChartThemeToggle);
         btnTickerSelect    = v.findViewById(R.id.btnTickerSelect);
         btnTimeframePicker = v.findViewById(R.id.btnTimeframePicker);
+        btnChartRefresh   = v.findViewById(R.id.btnChartRefresh);
+        btnChartMenu       = v.findViewById(R.id.btnChartMenu);
         tickerLabelTop     = v.findViewById(R.id.tickerLabelTop);
-
-        btnTF1D = v.findViewById(R.id.btnTF1D);
-        btnTF1W = v.findViewById(R.id.btnTF1W);
-        btnTF1M = v.findViewById(R.id.btnTF1M);
-        btnTF3M = v.findViewById(R.id.btnTF3M);
-        btnTF1Y = v.findViewById(R.id.btnTF1Y);
 
         crosshairInfoBar   = v.findViewById(R.id.crosshairInfoBar);
         crosshairPrice     = v.findViewById(R.id.crosshairPrice);
         crosshairDate      = v.findViewById(R.id.crosshairDate);
+        freeCrosshairOverlay = v.findViewById(R.id.freeCrosshairOverlay);
 
         if (btnSettings != null) {
             btnSettings.setOnClickListener(vv -> {
@@ -364,7 +382,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
         btnExpandChart     = v.findViewById(R.id.btnExpandChart);
         btnExitFullscreen  = v.findViewById(R.id.btnExitFullscreen);
-        progressAI         = v.findViewById(R.id.progressAI);
         priceText          = v.findViewById(R.id.priceText);
         changeText         = v.findViewById(R.id.changeText);
         timeFrameText      = v.findViewById(R.id.timeFrameText);
@@ -372,12 +389,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         currentPriceDisplay= v.findViewById(R.id.currentPriceDisplay);
         headerSection      = v.findViewById(R.id.headerSection);
         searchSection      = v.findViewById(R.id.searchSection);
-        controlsSection    = v.findViewById(R.id.controlsSection);
         bottomBar          = v.findViewById(R.id.bottomBar);
         chartContainer     = v.findViewById(R.id.chartContainer);
 
-        llmService = new LLMService();
-        if (progressAI          != null) progressAI.setVisibility(View.GONE);
         if (currentPriceDisplay != null) currentPriceDisplay.setVisibility(View.GONE);
 
         updateTickerButtonLabel();
@@ -409,6 +423,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             String forexMapped = FOREX_MAP.get(cleanSymbol);
             if (forexMapped != null) {
                 cleanSymbol = forexMapped;
+            } else if ("SPX".equals(cleanSymbol) || "^SPX".equals(cleanSymbol)
+                    || "GSPC".equals(cleanSymbol)) {
+                cleanSymbol = "^GSPC";
             }
         }
 
@@ -498,6 +515,29 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         btnTimeframePicker.setText(TIMEFRAMES[currentTFIndex][0]);
     }
 
+    public static String[] getTimeframeLabels() {
+        String[] labels = new String[TIMEFRAMES.length];
+        for (int i = 0; i < TIMEFRAMES.length; i++) labels[i] = TIMEFRAMES[i][0];
+        return labels;
+    }
+
+    private static int getTimeframeIndex(String label) {
+        for (int i = 0; i < TIMEFRAMES.length; i++) {
+            if (TIMEFRAMES[i][0].equalsIgnoreCase(label)) return i;
+        }
+        return 5;
+    }
+
+    private void selectTimeframe(int timeframeIndex) {
+        if (timeframeIndex < 0 || timeframeIndex >= TIMEFRAMES.length) return;
+        currentTFIndex = timeframeIndex;
+        interval = TIMEFRAMES[timeframeIndex][1];
+        visibleChartRange = TIMEFRAMES[timeframeIndex][3];
+        updateTimeframePickerLabel();
+        hideCrosshairInfo();
+        fetchStockData(symbol, interval);
+    }
+
     private void showTimeframeDialog() {
         if (getContext() == null) return;
 
@@ -505,14 +545,14 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
         LinearLayout root = new LinearLayout(getContext());
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(isDarkTheme ? 0xFF151C2E : 0xFFFFFFFF);
+        root.setBackgroundResource(R.drawable.bg_dialog_glass);
         int ph = dpToPx(20);
         root.setPadding(ph, dpToPx(20), ph, dpToPx(16));
 
         TextView title = new TextView(getContext());
         title.setText("Select Timeframe");
         title.setTextSize(16f);
-        title.setTextColor(isDarkTheme ? 0xFFE6EDF3 : 0xFF1A1D23);
+        title.setTextColor(requireContext().getColor(R.color.text_primary));
         title.setTypeface(null, android.graphics.Typeface.BOLD);
         title.setPadding(dpToPx(4), 0, 0, dpToPx(16));
         root.addView(title);
@@ -553,19 +593,21 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 btnBg.setCornerRadius(dpToPx(10));
 
                 if (isSelected) {
-                    btnBg.setColor(0xFF4DA3FF);
+                    btnBg.setColor(requireContext().getColor(R.color.primary));
                     btnBg.setStroke(0, android.graphics.Color.TRANSPARENT);
                 } else {
-                    btnBg.setColor(isDarkTheme ? 0xFF0B0F14 : 0xFFF0F4F8);
-                    btnBg.setStroke(dpToPx(1), isDarkTheme ? 0xFF1E2A3A : 0xFFE5E7EB);
+                    btnBg.setColor(requireContext().getColor(R.color.bg_secondary));
+                    btnBg.setStroke(dpToPx(1),
+                            requireContext().getColor(R.color.colorBorder));
                 }
                 btnWrapper.setBackground(btnBg);
 
                 TextView btnText = new TextView(getContext());
                 btnText.setText(label);
                 btnText.setTextSize(14f);
-                btnText.setTextColor(isSelected ? 0xFFFFFFFF :
-                        (isDarkTheme ? 0xFF8B98A5 : 0xFF6B7280));
+                btnText.setTextColor(isSelected
+                        ? requireContext().getColor(R.color.white)
+                        : requireContext().getColor(R.color.text_secondary));
                 btnText.setTypeface(null, isSelected ?
                         android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
                 btnText.setGravity(android.view.Gravity.CENTER);
@@ -581,10 +623,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 rowLayout.addView(btnWrapper, lp);
 
                 btnWrapper.setOnClickListener(v -> {
-                    currentTFIndex = idx;
-                    interval = TIMEFRAMES[currentTFIndex][1];
-                    updateTimeframePickerLabel();
-                    hideCrosshairInfo();
+                    selectTimeframe(idx);
                     if (dialogHolder[0] != null) dialogHolder[0].dismiss();
                 });
             }
@@ -592,7 +631,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
 
         View divider = new View(getContext());
-        divider.setBackgroundColor(isDarkTheme ? 0xFF1E2A3A : 0xFFE5E7EB);
+        divider.setBackgroundColor(requireContext().getColor(R.color.colorBorder));
         LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(1));
         divLp.setMargins(0, dpToPx(8), 0, dpToPx(12));
@@ -661,6 +700,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         if (crosshairInfoBar == null) return;
         isCrosshairActive = false;
         crosshairInfoBar.setVisibility(View.GONE);
+        if (freeCrosshairOverlay != null) freeCrosshairOverlay.hide();
         if (candleStickChart != null) candleStickChart.highlightValue(null);
         if (lineChart        != null) lineChart.highlightValue(null);
     }
@@ -671,13 +711,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             @Override public void onChartGestureEnd(MotionEvent me, ChartTouchListener.ChartGesture lastPerformedGesture) {}
             @Override public void onChartLongPressed(MotionEvent me) {
                 if (candleStickChart != null && candleStickChart.getVisibility() == View.VISIBLE) {
-                    com.github.mikephil.charting.highlight.Highlight h =
-                            candleStickChart.getHighlightByTouchPoint(me.getX(), me.getY());
-                    if (h != null) { isCrosshairActive = true; candleStickChart.highlightValue(h); }
+                    startCrosshair(candleStickChart, me.getX(), me.getY());
                 } else if (lineChart != null && lineChart.getVisibility() == View.VISIBLE) {
-                    com.github.mikephil.charting.highlight.Highlight h =
-                            lineChart.getHighlightByTouchPoint(me.getX(), me.getY());
-                    if (h != null) { isCrosshairActive = true; lineChart.highlightValue(h); }
+                    startCrosshair(lineChart, me.getX(), me.getY());
                 }
             }
             @Override public void onChartDoubleTapped(MotionEvent me) {
@@ -690,8 +726,109 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             @Override public void onChartScale(MotionEvent me, float scaleX, float scaleY) {}
             @Override public void onChartTranslate(MotionEvent me, float dX, float dY) {}
         };
-        if (candleStickChart != null) candleStickChart.setOnChartGestureListener(gestureListener);
-        if (lineChart        != null) lineChart.setOnChartGestureListener(gestureListener);
+        if (candleStickChart != null) {
+            candleStickChart.setOnChartGestureListener(gestureListener);
+            attachCrosshairTouchListener(candleStickChart);
+        }
+        if (lineChart != null) {
+            lineChart.setOnChartGestureListener(gestureListener);
+            attachCrosshairTouchListener(lineChart);
+        }
+    }
+
+    private void startCrosshair(com.github.mikephil.charting.charts.BarLineChartBase<?> chart,
+                                float touchX, float touchY) {
+        if (magnetMode) {
+            if (freeCrosshairOverlay != null) freeCrosshairOverlay.hide();
+            com.github.mikephil.charting.highlight.Highlight highlight =
+                    chart.getHighlightByTouchPoint(touchX, touchY);
+            if (highlight != null) {
+                isCrosshairActive = true;
+                chart.highlightValue(highlight);
+            }
+            return;
+        }
+
+        activeCrosshairChart = chart;
+        crosshairDragStartTouchX = touchX;
+        crosshairDragStartTouchY = touchY;
+        crosshairDragStartX = touchX;
+        crosshairDragStartY = touchY;
+        crosshairGestureMoved = false;
+        crosshairDismissGesture = false;
+        chart.setDragEnabled(false);
+        chart.setHighlightPerDragEnabled(false);
+        updateFreeCrosshair(chart, touchX, touchY);
+    }
+
+    private void attachCrosshairTouchListener(
+            com.github.mikephil.charting.charts.BarLineChartBase<?> chart) {
+        chart.setOnTouchListener((view, event) -> {
+            int action = event.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN) {
+                crosshairDismissGesture = isCrosshairActive && !magnetMode;
+            }
+            if (action == MotionEvent.ACTION_DOWN && isCrosshairActive && !magnetMode) {
+                activeCrosshairChart = chart;
+                crosshairDragStartTouchX = event.getX();
+                crosshairDragStartTouchY = event.getY();
+                crosshairDragStartX = freeCrosshairX;
+                crosshairDragStartY = freeCrosshairY;
+                crosshairGestureMoved = false;
+                chart.setDragEnabled(false);
+                chart.setHighlightPerDragEnabled(false);
+                return true;
+            }
+
+            if (activeCrosshairChart != chart) return false;
+
+            if (action == MotionEvent.ACTION_MOVE) {
+                float dx = event.getX() - crosshairDragStartTouchX;
+                float dy = event.getY() - crosshairDragStartTouchY;
+                if (Math.hypot(dx, dy) > dpToPx(8)) crosshairGestureMoved = true;
+                updateFreeCrosshair(
+                        chart,
+                        crosshairDragStartX + dx,
+                        crosshairDragStartY + dy);
+            } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                boolean dismissCrosshair = crosshairDismissGesture
+                        && action == MotionEvent.ACTION_UP && !crosshairGestureMoved;
+                chart.setDragEnabled(true);
+                chart.setHighlightPerDragEnabled(magnetMode);
+                activeCrosshairChart = null;
+                crosshairDismissGesture = false;
+                if (dismissCrosshair) hideCrosshairInfo();
+            }
+            // Consume the active free-crosshair gesture so the chart cannot snap it to a data point.
+            return true;
+        });
+    }
+
+    private void updateFreeCrosshair(
+            com.github.mikephil.charting.charts.BarLineChartBase<?> chart,
+            float touchX, float touchY) {
+        if (chart.getData() == null || chart.getData().getDataSetCount() == 0 || dateLabels.isEmpty()) return;
+
+        android.graphics.RectF content = chart.getViewPortHandler().getContentRect();
+        float x = Math.max(content.left, Math.min(touchX, content.right));
+        float y = Math.max(content.top, Math.min(touchY, content.bottom));
+        freeCrosshairX = x;
+        freeCrosshairY = y;
+        com.github.mikephil.charting.utils.MPPointD values =
+                chart.getTransformer(com.github.mikephil.charting.components.YAxis.AxisDependency.LEFT)
+                        .getValuesByTouchPoint(x, y);
+
+        float dataX = Math.max(0f, Math.min((float) values.x, dateLabels.size() - 1f));
+        float price = (float) values.y;
+        com.github.mikephil.charting.utils.MPPointD.recycleInstance(values);
+
+        chart.highlightValue(null, false);
+        if (freeCrosshairOverlay != null) {
+            freeCrosshairOverlay.showAt(x, y, content);
+        }
+        isCrosshairActive = true;
+        int dateIndex = Math.max(0, Math.min(Math.round(dataX), dateLabels.size() - 1));
+        showCrosshairInfo(price, dateLabels.get(dateIndex));
     }
 
     private void updateTickerButtonLabel() {
@@ -711,7 +848,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         chartOriginalParams = chartContainer.getLayoutParams();
         if (headerSection   != null) headerSection.setVisibility(View.GONE);
         if (searchSection   != null) searchSection.setVisibility(View.GONE);
-        if (controlsSection != null) controlsSection.setVisibility(View.GONE);
         if (bottomBar       != null) bottomBar.setVisibility(View.GONE);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
@@ -733,7 +869,6 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
             chartContainer.setLayoutParams(lp);
         }
         if (headerSection   != null) headerSection.setVisibility(View.VISIBLE);
-        if (controlsSection != null) controlsSection.setVisibility(View.VISIBLE);
         if (btnExitFullscreen != null) btnExitFullscreen.setVisibility(View.GONE);
     }
 
@@ -748,21 +883,25 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         int textSec   = isDarkTheme ? DARK_TEXT_SEC : LIGHT_TEXT_SEC;
 
         if (chartRootLayout != null) chartRootLayout.setBackgroundColor(bgColor);
-        if (headerSection   != null) headerSection.setBackgroundColor(cardColor);
-        if (controlsSection != null) controlsSection.setBackgroundColor(cardColor);
+        if (headerSection instanceof com.google.android.material.card.MaterialCardView) {
+            ((com.google.android.material.card.MaterialCardView) headerSection)
+                    .setCardBackgroundColor(cardColor);
+        }
         if (bottomBar       != null) bottomBar.setBackgroundColor(cardColor);
 
         if (tickerLabelTop  != null) tickerLabelTop.setTextColor(textPri);
         if (tickerText      != null) tickerText.setTextColor(textPri);
         if (timeFrameText   != null) timeFrameText.setTextColor(textSec);
-
         applyChartColors();
     }
 
     private void applyChartColors() {
         int chartCard = isChartDark ? DARK_CARD     : LIGHT_CARD;
         int chartSec  = isChartDark ? DARK_TEXT_SEC : LIGHT_TEXT_SEC;
-        if (chartContainer   != null) chartContainer.setBackgroundColor(chartCard);
+        if (chartContainer instanceof com.google.android.material.card.MaterialCardView) {
+            ((com.google.android.material.card.MaterialCardView) chartContainer)
+                    .setCardBackgroundColor(chartCard);
+        }
         if (candleStickChart != null) {
             candleStickChart.setBackgroundColor(chartCard);
             candleStickChart.getXAxis().setTextColor(chartSec);
@@ -800,7 +939,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         candleStickChart.setDragDecelerationEnabled(true);
         candleStickChart.setDragDecelerationFrictionCoef(0.92f);
         candleStickChart.setHighlightPerTapEnabled(false);
-        candleStickChart.setHighlightPerDragEnabled(true);
+        candleStickChart.setHighlightPerDragEnabled(magnetMode);
         candleStickChart.setExtraTopOffset(4f);
         XAxis xAxis = candleStickChart.getXAxis();
         xAxis.setDrawGridLines(false);
@@ -808,6 +947,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         xAxis.setTextColor(textSec);
         xAxis.setTextSize(10f);
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setSpaceMin(0.5f);
+        xAxis.setSpaceMax(0.5f);
         xAxis.setLabelCount(5, true);
         xAxis.setValueFormatter(new ValueFormatter() {
             @Override public String getFormattedValue(float value) {
@@ -842,7 +983,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         lineChart.setDragDecelerationEnabled(true);
         lineChart.setDragDecelerationFrictionCoef(0.92f);
         lineChart.setHighlightPerTapEnabled(false);
-        lineChart.setHighlightPerDragEnabled(true);
+        lineChart.setHighlightPerDragEnabled(magnetMode);
         lineChart.setExtraTopOffset(4f);
         XAxis xAxis = lineChart.getXAxis();
         xAxis.setDrawGridLines(false);
@@ -850,6 +991,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         xAxis.setTextColor(textSec);
         xAxis.setTextSize(10f);
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setSpaceMin(0.5f);
+        xAxis.setSpaceMax(0.5f);
         xAxis.setLabelCount(5, true);
         xAxis.setValueFormatter(new ValueFormatter() {
             @Override public String getFormattedValue(float value) {
@@ -877,28 +1020,25 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
         if (btnChartRefresh != null) {
             btnChartRefresh.setOnClickListener(v -> {
-                fetchStockData(symbol, interval);
-                Toast.makeText(requireContext(), "Chart refreshed", Toast.LENGTH_SHORT).show();
-            });
-        }
-
-        if (btnToggleChart != null) {
-            btnToggleChart.setOnClickListener(v -> {
-                isCandleStick = !isCandleStick;
-                if (isCandleStick) {
-                    btnToggleChart.setText("Line chart");
-                    candleStickChart.setVisibility(View.VISIBLE);
-                    lineChart.setVisibility(View.GONE);
-                } else {
-                    btnToggleChart.setText("Candle chart");
-                    candleStickChart.setVisibility(View.GONE);
-                    lineChart.setVisibility(View.VISIBLE);
-                }
+                btnChartRefresh.animate().rotationBy(360f).setDuration(450L).start();
                 fetchStockData(symbol, interval);
             });
         }
 
-        if (btnAIAnalysis != null) btnAIAnalysis.setOnClickListener(v -> analyzeWithAI());
+        if (btnChartMenu != null) {
+            btnChartMenu.setOnClickListener(this::showChartMenu);
+        }
+
+        if (btnMagnetMode != null) {
+            updateMagnetModeLabel();
+            btnMagnetMode.setOnClickListener(v -> {
+                magnetMode = !magnetMode;
+                if (candleStickChart != null) candleStickChart.setHighlightPerDragEnabled(magnetMode);
+                if (lineChart != null) lineChart.setHighlightPerDragEnabled(magnetMode);
+                if (!magnetMode) hideCrosshairInfo();
+                updateMagnetModeLabel();
+            });
+        }
 
         if (btnChartThemeToggle != null) {
             btnChartThemeToggle.setOnClickListener(v -> {
@@ -921,6 +1061,277 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
 
         if (btnExitFullscreen != null) btnExitFullscreen.setOnClickListener(v -> exitFullscreen());
+    }
+
+    private void showChartMenu(View anchor) {
+        Context context = requireContext();
+        int surface = isChartDark ? DARK_CARD : LIGHT_CARD;
+        int primaryText = isChartDark ? DARK_TEXT_PRI : LIGHT_TEXT_PRI;
+        int secondaryText = isChartDark ? DARK_TEXT_SEC : LIGHT_TEXT_SEC;
+
+        LinearLayout content = new LinearLayout(context);
+        content.setOrientation(LinearLayout.VERTICAL);
+        int padding = dpToPx(18);
+        content.setPadding(padding, padding, padding, padding);
+        android.graphics.drawable.GradientDrawable background =
+                new android.graphics.drawable.GradientDrawable();
+        background.setColor(surface);
+        background.setCornerRadius(dpToPx(20));
+        background.setStroke(dpToPx(1), context.getColor(R.color.colorBorder));
+        content.setBackground(background);
+
+        TextView title = new TextView(context);
+        title.setText("Chart options");
+        title.setTextColor(primaryText);
+        title.setTextSize(18f);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        content.addView(title);
+
+        TextView subtitle = new TextView(context);
+        subtitle.setText("Choose an action");
+        subtitle.setTextColor(secondaryText);
+        subtitle.setTextSize(13f);
+        LinearLayout.LayoutParams subtitleParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        subtitleParams.bottomMargin = dpToPx(14);
+        content.addView(subtitle, subtitleParams);
+
+        TextView timeframeTitle = new TextView(context);
+        timeframeTitle.setText("Timeframe");
+        timeframeTitle.setTextColor(primaryText);
+        timeframeTitle.setTextSize(13f);
+        timeframeTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+        LinearLayout.LayoutParams timeframeTitleParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        timeframeTitleParams.bottomMargin = dpToPx(8);
+        content.addView(timeframeTitle, timeframeTitleParams);
+
+        LinearLayout timeframeRow = new LinearLayout(context);
+        timeframeRow.setOrientation(LinearLayout.VERTICAL);
+        timeframeRow.setGravity(android.view.Gravity.CENTER);
+        LinearLayout.LayoutParams timeframeRowParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        timeframeRowParams.bottomMargin = dpToPx(14);
+        content.addView(timeframeRow, timeframeRowParams);
+
+        String[] timeframeLabels = getTimeframeLabels();
+        int[] timeframeIndices = new int[timeframeLabels.length];
+        for (int i = 0; i < timeframeIndices.length; i++) timeframeIndices[i] = i;
+        AlertDialog[] dialogHolder = new AlertDialog[1];
+        com.google.android.material.button.MaterialButton[] timeframeButtons =
+                new com.google.android.material.button.MaterialButton[timeframeLabels.length];
+        LinearLayout timeframeGridRow = null;
+        for (int i = 0; i < timeframeLabels.length; i++) {
+            if (i % 3 == 0) {
+                timeframeGridRow = new LinearLayout(context);
+                timeframeGridRow.setOrientation(LinearLayout.HORIZONTAL);
+                LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                if (i > 0) rowParams.topMargin = dpToPx(6);
+                timeframeRow.addView(timeframeGridRow, rowParams);
+            }
+            final int timeframeIndex = timeframeIndices[i];
+            com.google.android.material.button.MaterialButton timeframeButton =
+                    new com.google.android.material.button.MaterialButton(context);
+            timeframeButton.setText(timeframeLabels[i]);
+            timeframeButton.setTextSize(12f);
+            timeframeButton.setMinWidth(0);
+            timeframeButton.setMinHeight(0);
+            timeframeButton.setInsetTop(0);
+            timeframeButton.setInsetBottom(0);
+            timeframeButton.setPadding(dpToPx(8), 0, dpToPx(8), 0);
+            timeframeButton.setCornerRadius(dpToPx(16));
+            timeframeButton.setStrokeWidth(dpToPx(1));
+            timeframeButton.setStrokeColor(android.content.res.ColorStateList.valueOf(
+                    context.getColor(R.color.chart_gold)));
+            timeframeButtons[i] = timeframeButton;
+            LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
+                    0, dpToPx(38), 1f);
+            if (i % 3 > 0) buttonParams.leftMargin = dpToPx(5);
+            timeframeGridRow.addView(timeframeButton, buttonParams);
+            timeframeButton.setOnClickListener(view -> {
+                selectTimeframe(timeframeIndex);
+                updateChartMenuTimeframeButtons(timeframeButtons, timeframeIndices);
+                if (dialogHolder[0] != null) dialogHolder[0].dismiss();
+            });
+        }
+        updateChartMenuTimeframeButtons(timeframeButtons, timeframeIndices);
+
+        addChartMenuOption(content, isCandleStick ? "▤" : "⌁",
+                isCandleStick ? "Line chart" : "Candlestick chart",
+                "Change how price data is displayed", primaryText, secondaryText, surface,
+                () -> toggleChartType(), dialogHolder);
+        addChartMenuOption(content, "◷", "Visible range",
+                "Currently " + visibleChartRange.toUpperCase(Locale.US),
+                primaryText, secondaryText, surface,
+                this::showVisibleRangeDialog, dialogHolder);
+        addChartMenuOption(content, "150", "150-day moving average",
+                showMa150 ? "Currently on" : "Currently off",
+                primaryText, secondaryText, surface,
+                this::toggleMa150, dialogHolder);
+        addChartMenuOption(content, "✦", "AI analysis",
+                "Ask Gemini about " + symbol, primaryText, secondaryText, surface,
+                () -> AiChatDialog.show(requireContext(),
+                        "נתח את הגרף והסבר את המגמה והסיכונים.",
+                        buildChartAiContext()),
+                dialogHolder);
+
+        dialogHolder[0] = new AlertDialog.Builder(context)
+                .setView(content)
+                .setNegativeButton("Close", null)
+                .create();
+        dialogHolder[0].setOnShowListener(ignored -> {
+            if (dialogHolder[0].getWindow() != null) {
+                dialogHolder[0].getWindow().setBackgroundDrawable(
+                        new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+            }
+        });
+        dialogHolder[0].show();
+    }
+
+    private void updateChartMenuTimeframeButtons(
+            com.google.android.material.button.MaterialButton[] buttons, int[] timeframeIndices) {
+        if (getContext() == null) return;
+        for (int i = 0; i < buttons.length; i++) {
+            boolean selected = currentTFIndex == timeframeIndices[i];
+            buttons[i].setBackgroundTintList(android.content.res.ColorStateList.valueOf(
+                    requireContext().getColor(selected
+                            ? R.color.chart_tf_selected : R.color.chart_tf_unselected)));
+            buttons[i].setTextColor(requireContext().getColor(selected
+                    ? R.color.primary : R.color.chart_tf_text));
+        }
+    }
+
+    private void toggleMa150() {
+        showMa150 = !showMa150;
+        requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().putBoolean("chart_show_ma150", showMa150).apply();
+        movingAverageEntries.clear();
+        if (!currentEntries.isEmpty()) {
+            if (showMa150) {
+                fetchMovingAverage(symbol, currentEntries, currentTimestamps,
+                        chartRequestGeneration);
+            } else if (isCandleStick) {
+                updateCandleChart(currentEntries);
+            } else {
+                updateLineChart(currentEntries);
+            }
+        }
+    }
+
+    private String buildChartAiContext() {
+        StringBuilder context = new StringBuilder()
+                .append("סימול: ").append(symbol)
+                .append("\nטווח גרף: ").append(visibleChartRange)
+                .append("\nמחיר אחרון: ").append(lastPrice)
+                .append("\nמחירי סגירה אחרונים (מהישן לחדש): ");
+        int start = Math.max(0, fullCloses.size() - 10);
+        for (int i = start; i < fullCloses.size(); i++) {
+            if (i > start) context.append(", ");
+            context.append(fullCloses.get(i));
+        }
+        return context.toString();
+    }
+
+    private void showVisibleRangeDialog() {
+        String[] ranges = {"1 day", "5 days", "1 month", "3 months", "6 months",
+                "1 year", "5 years", "Maximum"};
+        String[] rangeValues = {"1d", "5d", "1mo", "3mo", "6mo", "1y", "5y", "max"};
+        int selected = 5;
+        for (int i = 0; i < rangeValues.length; i++) {
+            if (rangeValues[i].equals(visibleChartRange)) {
+                selected = i;
+                break;
+            }
+        }
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Visible chart range")
+                .setSingleChoiceItems(ranges, selected, (dialog, which) -> {
+                    visibleChartRange = rangeValues[which];
+                    hideCrosshairInfo();
+                    dialog.dismiss();
+                    fetchStockData(symbol, interval);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void addChartMenuOption(LinearLayout parent, String icon, String label, String description,
+                                    int primaryText, int secondaryText, int surface,
+                                    Runnable action, AlertDialog[] dialogHolder) {
+        Context context = parent.getContext();
+        LinearLayout row = new LinearLayout(context);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        row.setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10));
+        row.setClickable(true);
+        row.setFocusable(true);
+
+        android.graphics.drawable.GradientDrawable rowBackground =
+                new android.graphics.drawable.GradientDrawable();
+        rowBackground.setColor(isChartDark ? 0xFF0B0F14 : 0xFFF0F4F8);
+        rowBackground.setCornerRadius(dpToPx(14));
+        row.setBackground(rowBackground);
+
+        TextView iconView = new TextView(context);
+        iconView.setText(icon);
+        iconView.setTextSize(20f);
+        iconView.setTextColor(COLOR_PRIMARY);
+        iconView.setGravity(android.view.Gravity.CENTER);
+        android.graphics.drawable.GradientDrawable iconBackground =
+                new android.graphics.drawable.GradientDrawable();
+        iconBackground.setColor(isChartDark ? 0xFF1E2A3A : 0xFFE1EEFC);
+        iconBackground.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        iconView.setBackground(iconBackground);
+        row.addView(iconView, new LinearLayout.LayoutParams(dpToPx(42), dpToPx(42)));
+
+        LinearLayout labels = new LinearLayout(context);
+        labels.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams labelsParams = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        labelsParams.setMargins(dpToPx(12), 0, 0, 0);
+        labels.setLayoutParams(labelsParams);
+
+        TextView labelView = new TextView(context);
+        labelView.setText(label);
+        labelView.setTextColor(primaryText);
+        labelView.setTextSize(14f);
+        labelView.setTypeface(null, android.graphics.Typeface.BOLD);
+        labels.addView(labelView);
+
+        TextView descriptionView = new TextView(context);
+        descriptionView.setText(description);
+        descriptionView.setTextColor(secondaryText);
+        descriptionView.setTextSize(12f);
+        labels.addView(descriptionView);
+        row.addView(labels);
+
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        rowParams.bottomMargin = dpToPx(8);
+        parent.addView(row, rowParams);
+        row.setOnClickListener(view -> {
+            if (dialogHolder[0] != null) dialogHolder[0].dismiss();
+            action.run();
+        });
+    }
+
+    private void toggleChartType() {
+        isCandleStick = !isCandleStick;
+        if (isCandleStick) {
+            candleStickChart.setVisibility(View.VISIBLE);
+            lineChart.setVisibility(View.GONE);
+        } else {
+            candleStickChart.setVisibility(View.GONE);
+            lineChart.setVisibility(View.VISIBLE);
+        }
+        fetchStockData(symbol, interval);
+    }
+
+    private void updateMagnetModeLabel() {
+        if (btnMagnetMode != null) {
+            btnMagnetMode.setText(magnetMode ? "Magnet: On" : "Magnet: Off");
+        }
     }
 
     private void attachMarker(com.github.mikephil.charting.charts.BarLineChartBase<?> chart) {
@@ -947,7 +1358,17 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         dataSet.setHighlightEnabled(true);
         dataSet.setHighLightColor(COLOR_PRIMARY);
         dataSet.enableDashedHighlightLine(10f, 5f, 0f);
-        candleStickChart.setData(new CandleData(dataSet));
+        CandleData candleData = new CandleData(dataSet);
+        CombinedData combinedData = new CombinedData();
+        combinedData.setData(candleData);
+        if (!movingAverageEntries.isEmpty()) {
+            LineDataSet averageSet = createMovingAverageDataSet();
+            combinedData.setData(new LineData(averageSet));
+            candleStickChart.setDrawOrder(new CombinedChart.DrawOrder[]{
+                    CombinedChart.DrawOrder.CANDLE, CombinedChart.DrawOrder.LINE});
+        }
+        candleStickChart.setData(combinedData);
+        candleStickChart.getLegend().setEnabled(showMa150 && !movingAverageEntries.isEmpty());
         attachMarker(candleStickChart);
         candleStickChart.animateX(400);
         candleStickChart.invalidate();
@@ -956,7 +1377,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private void updateLineChart(List<CandleEntry> candleEntries) {
         List<Entry> lineEntries = new ArrayList<>();
         for (CandleEntry c : candleEntries) lineEntries.add(new Entry(c.getX(), c.getClose()));
-        LineDataSet ds = new LineDataSet(lineEntries, "");
+        LineDataSet ds = new LineDataSet(lineEntries, showMa150 ? "Price" : "");
         ds.setColor(COLOR_PRIMARY);
         ds.setLineWidth(2.5f);
         ds.setDrawCircles(false);
@@ -968,24 +1389,38 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         ds.setDrawFilled(true);
         ds.setFillColor(COLOR_FILL);
         ds.setFillAlpha(isChartDark ? 90 : 50);
-        lineChart.setData(new LineData(ds));
+        LineData lineData = new LineData(ds);
+        if (!movingAverageEntries.isEmpty()) {
+            lineData.addDataSet(createMovingAverageDataSet());
+        }
+        lineChart.setData(lineData);
+        lineChart.getLegend().setEnabled(showMa150 && !movingAverageEntries.isEmpty());
         attachMarker(lineChart);
         lineChart.animateX(400);
         lineChart.invalidate();
     }
 
+    private LineDataSet createMovingAverageDataSet() {
+        LineDataSet averageSet = new LineDataSet(movingAverageEntries, "150-day MA");
+        averageSet.setColor(0xFFFFB74D);
+        averageSet.setLineWidth(2f);
+        averageSet.setDrawCircles(false);
+        averageSet.setDrawValues(false);
+        averageSet.setHighlightEnabled(false);
+        return averageSet;
+    }
+
     private void fetchStockData(String symbol, String interval) {
+        int requestGeneration = ++chartRequestGeneration;
         if (isCryptoSymbol(symbol)) {
-            fetchCryptoData(symbol, interval);
+            fetchCryptoData(symbol, interval, requestGeneration);
         } else {
-            fetchYahooData(symbol, interval);
+            fetchYahooData(symbol, interval, requestGeneration);
         }
     }
 
     private String[] getYahooParams() {
-        String yahooInterval = TIMEFRAMES[currentTFIndex][2];
-        String yahooRange    = TIMEFRAMES[currentTFIndex][3];
-        return new String[]{yahooInterval, yahooRange};
+        return new String[]{"1d", visibleChartRange};
     }
 
     private SimpleDateFormat dateFormatFor(String yahooInterval) {
@@ -999,9 +1434,11 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         }
     }
 
-    private void fetchYahooData(String sym, String ignoredInterval) {
+    private void fetchYahooData(String sym, String ignoredInterval, int requestGeneration) {
         String[] p = getYahooParams();
-        String url = "https://query1.finance.yahoo.com/v8/finance/chart/" + sym
+        String encodedSymbol = URLEncoder.encode(sym, StandardCharsets.UTF_8)
+                .replace("+", "%20");
+        String url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodedSymbol
                 + "?interval=" + p[0] + "&range=" + p[1] + "&includePrePost=false";
 
         Request req = new Request.Builder().url(url).header("User-Agent", "Mozilla/5.0").build();
@@ -1011,6 +1448,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                         Toast.makeText(requireContext(), "Network error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
             @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                if (requestGeneration != chartRequestGeneration) return;
                 if (!response.isSuccessful() || response.body() == null) return;
                 try {
                     JSONObject root   = new JSONObject(response.body().string());
@@ -1029,36 +1467,43 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     JSONArray  cls   = quote.getJSONArray("close");
                     int size = ts.length();
                     if (size == 0) return;
-                    fullCloses.clear(); dateLabels.clear();
+                    List<Float> closes = new ArrayList<>();
+                    List<String> labels = new ArrayList<>();
+                    List<Long> timestamps = new ArrayList<>();
                     List<CandleEntry> entries = new ArrayList<>();
                     SimpleDateFormat sdf = dateFormatFor(p[0]);
-                    float lc = 0f, pc = 0f; int vc = 0;
-                    int startIdx = Math.max(0, size - 252);
+                    float lc = 0f; int vc = 0;
+                    int startIdx = 0;
                     for (int i = startIdx; i < size; i++) {
                         if (cls.isNull(i)||opens.isNull(i)||highs.isNull(i)||lows.isNull(i)) continue;
                         float o=(float)opens.getDouble(i), h=(float)highs.getDouble(i),
                               l=(float)lows.getDouble(i),  c=(float)cls.getDouble(i);
-                        dateLabels.add(sdf.format(new Date(ts.getLong(i)*1000L)));
-                        fullCloses.add(c);
+                        labels.add(sdf.format(new Date(ts.getLong(i)*1000L)));
+                        timestamps.add(ts.getLong(i) * 1000L);
+                        closes.add(c);
                         entries.add(new CandleEntry(vc, h, l, o, c));
-                        pc = lc; lc = c; vc++;
+                        lc = c; vc++;
                     }
                     if (vc == 0) return;
-                    if (pc == 0f) pc = lc;
-                    postChartUpdate(sym, entries, lc, pc);
+                    YahooQuoteMath.Quote marketQuote = YahooQuoteMath.fromChartItem(item);
+                    float quotePrice = (float) marketQuote.currentPrice;
+                    if (!Float.isFinite(quotePrice) || quotePrice <= 0f) quotePrice = lc;
+                    float periodStartPrice = entries.get(0).getOpen();
+                    postChartUpdate(sym, entries, labels, timestamps, closes, quotePrice,
+                            periodStartPrice, requestGeneration);
                 } catch (Exception e) { Log.e("ChartFragment", "Yahoo parse error", e); }
             }
         });
     }
 
     private String getBinanceInterval() {
-        return TIMEFRAMES[currentTFIndex][4];
+        return "1d";
     }
 
-    private void fetchCryptoData(String sym, String ignoredInterval) {
+    private void fetchCryptoData(String sym, String ignoredInterval, int requestGeneration) {
         String pair = sym.contains(":") ? sym.substring(sym.indexOf(':') + 1) : sym;
         String binanceInterval = getBinanceInterval();
-        int limit = 252;
+        int limit = getCryptoCandleLimit(binanceInterval, visibleChartRange);
         String url = "https://api.binance.com/api/v3/klines?symbol=" + pair
                 + "&interval=" + binanceInterval + "&limit=" + limit;
 
@@ -1071,15 +1516,18 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                         Toast.makeText(requireContext(), "Crypto error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
             @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                if (requestGeneration != chartRequestGeneration) return;
                 if (!response.isSuccessful() || response.body() == null) return;
                 try {
                     JSONArray arr = new JSONArray(response.body().string());
                     if (arr.length() == 0) return;
-                    fullCloses.clear(); dateLabels.clear();
+                    List<Float> closes = new ArrayList<>();
+                    List<String> labels = new ArrayList<>();
+                    List<Long> timestamps = new ArrayList<>();
                     List<CandleEntry> entries = new ArrayList<>();
                     String[] yahooP = getYahooParams();
                     SimpleDateFormat sdf = dateFormatFor(yahooP[0]);
-                    float lc = 0f, pc = 0f; int vc = 0;
+                    float lc = 0f; int vc = 0;
                     for (int i = 0; i < arr.length(); i++) {
                         JSONArray bar = arr.getJSONArray(i);
                         float o = (float) Double.parseDouble(bar.getString(1));
@@ -1087,41 +1535,83 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                         float l = (float) Double.parseDouble(bar.getString(3));
                         float c = (float) Double.parseDouble(bar.getString(4));
                         long  t = bar.getLong(0);
-                        dateLabels.add(sdf.format(new Date(t)));
-                        fullCloses.add(c);
+                        labels.add(sdf.format(new Date(t)));
+                        timestamps.add(t);
+                        closes.add(c);
                         entries.add(new CandleEntry(vc, h, l, o, c));
-                        pc = lc; lc = c; vc++;
+                        lc = c; vc++;
                     }
                     if (vc == 0) return;
-                    if (pc == 0f) pc = lc;
-                    postChartUpdate(sym, entries, lc, pc);
+                    float periodStartPrice = entries.get(0).getOpen();
+                    postChartUpdate(sym, entries, labels, timestamps, closes, lc, periodStartPrice,
+                            requestGeneration);
                 } catch (Exception e) { Log.e("ChartFragment", "Crypto parse error", e); }
             }
         });
     }
 
-    private void postChartUpdate(String sym, List<CandleEntry> entries, float lastClose, float prevClose) {
-        currentEntries.clear();
-        currentEntries.addAll(entries);
-        lastPrice = lastClose;
+    private int getCryptoCandleLimit(String binanceInterval, String range) {
+        long rangeSeconds;
+        switch (range) {
+            case "1d": rangeSeconds = 24L * 60 * 60; break;
+            case "5d": rangeSeconds = 7L * 24 * 60 * 60; break;
+            case "1mo": rangeSeconds = 30L * 24 * 60 * 60; break;
+            case "3mo": rangeSeconds = 90L * 24 * 60 * 60; break;
+            case "6mo": rangeSeconds = 180L * 24 * 60 * 60; break;
+            case "2y": rangeSeconds = 730L * 24 * 60 * 60; break;
+            case "5y": rangeSeconds = 1825L * 24 * 60 * 60; break;
+            case "max": return 1000;
+            case "1y":
+            default: rangeSeconds = 365L * 24 * 60 * 60; break;
+        }
 
-        float change = lastClose - prevClose;
-        float changePct = prevClose != 0 ? (change / prevClose) * 100f : 0f;
-        boolean gain = change >= 0;
+        long candleSeconds;
+        switch (binanceInterval) {
+            case "1m": candleSeconds = 60; break;
+            case "5m": candleSeconds = 5L * 60; break;
+            case "15m": candleSeconds = 15L * 60; break;
+            case "30m": candleSeconds = 30L * 60; break;
+            case "1h": candleSeconds = 60L * 60; break;
+            case "4h": candleSeconds = 4L * 60 * 60; break;
+            case "1w": candleSeconds = 7L * 24 * 60 * 60; break;
+            case "1M": candleSeconds = 30L * 24 * 60 * 60; break;
+            case "1d":
+            default: candleSeconds = 24L * 60 * 60; break;
+        }
+        return (int) Math.max(1, Math.min(1000, (rangeSeconds + candleSeconds - 1) / candleSeconds));
+    }
+
+    private void postChartUpdate(String sym, List<CandleEntry> entries, List<String> labels,
+                                 List<Long> timestamps, List<Float> closes,
+                                 float lastClose, float periodStartPrice,
+                                 int requestGeneration) {
+        if (!Float.isFinite(periodStartPrice) || periodStartPrice <= 0f) {
+            periodStartPrice = lastClose;
+        }
+        float changePct = (float) DailyQuoteMath.percentChange(lastClose, periodStartPrice);
+        if (!Float.isFinite(changePct)) changePct = 0f;
+        boolean gain = changePct >= 0;
 
         String priceFormatted = formatPrice(lastClose, sym);
+        float change = lastClose - periodStartPrice;
         String changeFormatted = formatPrice(Math.abs(change), sym);
-
-        String changeStr = String.format(
-                Locale.US,
-                "%s$%s (%.2f%%)",
-                gain ? "+" : "-",
-                changeFormatted,
-                Math.abs(changePct)
-        );
+        String changeStr = String.format(Locale.US, "%+.2f%% (%s$%s)",
+                changePct, gain ? "+" : "-", changeFormatted);
 
         if (getActivity() != null) {
             getActivity().runOnUiThread(() -> {
+                if (requestGeneration != chartRequestGeneration) return;
+                currentEntries.clear();
+                currentEntries.addAll(entries);
+                dateLabels.clear();
+                dateLabels.addAll(labels);
+                currentTimestamps.clear();
+                currentTimestamps.addAll(timestamps);
+                fullCloses.clear();
+                fullCloses.addAll(closes);
+                lastPrice = lastClose;
+                if (showMa150) movingAverageEntries.clear();
+
                 if (priceText != null) {
                     priceText.setText("$" + priceFormatted);
                     priceText.setTextColor(gain ? COLOR_GAIN : COLOR_LOSS);
@@ -1130,6 +1620,12 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 if (changeText != null) {
                     changeText.setText(changeStr);
                     changeText.setTextColor(gain ? COLOR_GAIN : COLOR_LOSS);
+                    android.graphics.drawable.Drawable background =
+                            changeText.getBackground().mutate();
+                    if (background instanceof android.graphics.drawable.GradientDrawable) {
+                        ((android.graphics.drawable.GradientDrawable) background).setStroke(
+                                dpToPx(1), gain ? COLOR_GAIN : COLOR_LOSS);
+                    }
                 }
 
                 if (tickerText != null) {
@@ -1151,8 +1647,89 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 } else {
                     updateLineChart(entries);
                 }
+                if (showMa150) {
+                    fetchMovingAverage(sym, entries, timestamps, requestGeneration);
+                } else {
+                    movingAverageEntries.clear();
+                }
             });
         }
+    }
+
+    private void fetchMovingAverage(String sym, List<CandleEntry> chartEntries,
+                                    List<Long> timestamps, int requestGeneration) {
+        if (sym == null || sym.contains(":") || timestamps.isEmpty()) {
+            movingAverageEntries.clear();
+            if (isCandleStick) updateCandleChart(chartEntries);
+            else updateLineChart(chartEntries);
+            return;
+        }
+        String encoded = URLEncoder.encode(sym, StandardCharsets.UTF_8)
+                .replace("+", "%20");
+        String url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encoded
+                + "?interval=1d&range=5y&includePrePost=false";
+        Request request = new Request.Builder().url(url)
+                .header("User-Agent", "Mozilla/5.0").build();
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException error) {
+                Log.w("ChartFragment", "Could not load 150-day moving average for " + sym, error);
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response)
+                    throws IOException {
+                if (!response.isSuccessful() || response.body() == null) {
+                    Log.w("ChartFragment", "Moving-average request failed: HTTP "
+                            + response.code());
+                    response.close();
+                    return;
+                }
+                try {
+                    JSONObject result = new JSONObject(response.body().string())
+                            .getJSONObject("chart").getJSONArray("result").getJSONObject(0);
+                    JSONArray dailyTimes = result.getJSONArray("timestamp");
+                    JSONArray dailyCloses = result.getJSONObject("indicators")
+                            .getJSONArray("quote").getJSONObject(0).getJSONArray("close");
+                    TreeMap<Long, Float> averagesByTime = new TreeMap<>();
+                    ArrayList<Float> window = new ArrayList<>();
+                    double sum = 0;
+                    for (int i = 0; i < dailyTimes.length(); i++) {
+                        if (dailyCloses.isNull(i)) continue;
+                        float close = (float) dailyCloses.optDouble(i, Double.NaN);
+                        if (!Float.isFinite(close) || close <= 0f) continue;
+                        window.add(close);
+                        sum += close;
+                        if (window.size() > 150) sum -= window.remove(0);
+                        if (window.size() == 150) {
+                            averagesByTime.put(dailyTimes.getLong(i) * 1000L,
+                                    (float) (sum / 150.0));
+                        }
+                    }
+                    ArrayList<Entry> mappedEntries = new ArrayList<>();
+                    for (int i = 0; i < timestamps.size(); i++) {
+                        Map.Entry<Long, Float> average =
+                                averagesByTime.floorEntry(timestamps.get(i));
+                        if (average != null) {
+                            mappedEntries.add(new Entry(i, average.getValue()));
+                        }
+                    }
+                    if (getActivity() == null) return;
+                    getActivity().runOnUiThread(() -> {
+                        if (requestGeneration != chartRequestGeneration || !showMa150) return;
+                        movingAverageEntries.clear();
+                        movingAverageEntries.addAll(mappedEntries);
+                        if (isCandleStick) updateCandleChart(chartEntries);
+                        else updateLineChart(chartEntries);
+                    });
+                } catch (Exception error) {
+                    Log.w("ChartFragment", "Could not parse 150-day moving average for " + sym,
+                            error);
+                } finally {
+                    response.close();
+                }
+            }
+        });
     }
 
     private void openChartFromInput(String raw) {
@@ -1182,46 +1759,4 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         fetchStockData(symbol, interval);
     }
 
-    private void analyzeWithAI() {
-        if (fullCloses.isEmpty()) {
-            Toast.makeText(requireContext(), "Load chart data first", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (progressAI != null) progressAI.setVisibility(View.VISIBLE);
-        if (btnAIAnalysis != null) btnAIAnalysis.setEnabled(false);
-
-        int sz = fullCloses.size();
-        int from = Math.max(0, sz - 60);
-        StringBuilder sb = new StringBuilder();
-        for (int i = from; i < sz; i++) {
-            sb.append(String.format(Locale.US, "%.2f", fullCloses.get(i)));
-            if (i < sz - 1) sb.append(",");
-        }
-        String prompt = "Analyze this stock price series for " + symbol +
-                ": [" + sb + "]. Give a concise technical analysis with trend, support/resistance levels, and outlook.";
-        latestQuery = prompt;
-
-        llmService.streamQuery(prompt, new LLMService.StreamCallback() {
-            final StringBuilder full = new StringBuilder();
-            @Override public void onToken(String token) {
-                full.append(token);
-                if (getActivity() != null) getActivity().runOnUiThread(() -> {
-                    if (changeText != null) changeText.setText(full.toString());
-                });
-            }
-            @Override public void onComplete(String fullResponse) {
-                if (getActivity() != null) getActivity().runOnUiThread(() -> {
-                    if (progressAI   != null) progressAI.setVisibility(View.GONE);
-                    if (btnAIAnalysis != null) btnAIAnalysis.setEnabled(true);
-                });
-            }
-            @Override public void onError(String error) {
-                if (getActivity() != null) getActivity().runOnUiThread(() -> {
-                    if (progressAI   != null) progressAI.setVisibility(View.GONE);
-                    if (btnAIAnalysis != null) btnAIAnalysis.setEnabled(true);
-                    Toast.makeText(requireContext(), "AI error: " + error, Toast.LENGTH_SHORT).show();
-                });
-            }
-        });
-    }
 }

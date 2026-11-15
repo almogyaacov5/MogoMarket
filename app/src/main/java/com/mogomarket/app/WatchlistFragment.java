@@ -10,6 +10,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -47,8 +48,12 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -67,12 +72,16 @@ public class WatchlistFragment extends Fragment {
     private static final long SEARCH_DEBOUNCE_MS = 300L;
 
     private WatchlistAdapter adapter;
+    private SharedPreferences watchlistPreferences;
+    private String watchlistPreferencePrefix;
     private DatabaseReference watchlistRef;
     private ValueEventListener watchlistListener;
 
     private final OkHttpClient httpClient = new OkHttpClient();
     private final Handler searchHandler = new Handler(Looper.getMainLooper());
     private Runnable pendingSearch;
+    private int suggestionSearchGeneration;
+    private String selectedSuggestionSymbol;
 
     private int lastCheckedChipId = View.NO_ID;
 
@@ -80,6 +89,8 @@ public class WatchlistFragment extends Fragment {
 
     private AutoCompleteTextView stockAutoInput;
     private MaterialButton addStockBtn;
+    private MaterialButton btnToggleAddStock;
+    private View addStockSection;
     private MaterialButton btnRefreshWatchlist;
     private RecyclerView watchlistRecyclerView;
 
@@ -107,6 +118,10 @@ public class WatchlistFragment extends Fragment {
                 .getReference("users")
                 .child(user.getUid())
                 .child("watchlist-stocks");
+
+        watchlistPreferences = requireActivity()
+                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        watchlistPreferencePrefix = "watchlist_" + user.getUid() + "_";
 
         adapter = new WatchlistAdapter(new WatchlistAdapter.OnWatchStockClickListener() {
             @Override
@@ -152,15 +167,20 @@ public class WatchlistFragment extends Fragment {
             @Override
             public void onAlertStateChanged(String sym, boolean triggered) {
                 if (watchlistRef != null) {
-                    watchlistRef.child(sym.replace(":", "_"))
-                            .child("alertTriggered")
-                            .setValue(triggered);
+                    DatabaseReference stockRef = watchlistRef.child(sym.replace(":", "_"));
+                    stockRef.child("alertTriggered").setValue(triggered);
+                    if (triggered) stockRef.child("alertEnabled").setValue(false);
                 }
             }
         });
+        adapter.setManualOrder(readSavedManualOrder());
+        adapter.setFilter(watchlistPreferences.getString(watchlistPreferencePrefix + "filter", "default"));
+        adapter.setPercentSortMode(watchlistPreferences.getInt(watchlistPreferencePrefix + "percent_sort", 0));
+        adapter.setManualOrderChangedListener(this::saveManualOrder);
 
         watchlistRecyclerView = v.findViewById(R.id.watchlistRecyclerView);
-        watchlistRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        watchlistRecyclerView.setLayoutManager(
+                new androidx.recyclerview.widget.GridLayoutManager(requireContext(), 2));
         watchlistRecyclerView.setAdapter(adapter);
 
         ItemTouchHelper.SimpleCallback dragCallback = new ItemTouchHelper.SimpleCallback(
@@ -185,7 +205,40 @@ public class WatchlistFragment extends Fragment {
 
         stockAutoInput = v.findViewById(R.id.stockAutoInput);
         addStockBtn = v.findViewById(R.id.addStockBtn);
+        btnToggleAddStock = v.findViewById(R.id.btnToggleAddStock);
+        addStockSection = v.findViewById(R.id.addStockSection);
         btnRefreshWatchlist = v.findViewById(R.id.btnRefreshWatchlist);
+
+        if (btnToggleAddStock != null && addStockSection != null) {
+            btnToggleAddStock.setOnClickListener(view -> {
+                boolean isExpanded = addStockSection.getVisibility() == View.VISIBLE;
+                addStockSection.setVisibility(isExpanded ? View.GONE : View.VISIBLE);
+                btnToggleAddStock.setIconResource(
+                        isExpanded ? R.drawable.ic_add_24 : R.drawable.baseline_close_24);
+                btnToggleAddStock.setContentDescription(
+                        isExpanded ? "Open add stock" : "Close add stock");
+                if (isExpanded) {
+                    if (stockAutoInput != null) stockAutoInput.dismissDropDown();
+                    hideKeyboard();
+                } else if (stockAutoInput != null) {
+                    stockAutoInput.post(() -> {
+                        if (!isAdded() || stockAutoInput == null
+                                || addStockSection == null
+                                || addStockSection.getVisibility() != View.VISIBLE) {
+                            return;
+                        }
+                        stockAutoInput.requestFocus();
+                        InputMethodManager inputMethodManager =
+                                (InputMethodManager) requireContext()
+                                        .getSystemService(Context.INPUT_METHOD_SERVICE);
+                        if (inputMethodManager != null) {
+                            inputMethodManager.showSoftInput(
+                                    stockAutoInput, InputMethodManager.SHOW_IMPLICIT);
+                        }
+                    });
+                }
+            });
+        }
 
         if (stockAutoInput != null) {
             setupAutoComplete(stockAutoInput);
@@ -216,26 +269,9 @@ public class WatchlistFragment extends Fragment {
         }
 
         if (btnRefreshWatchlist != null) {
-            btnRefreshWatchlist.setOnClickListener(view -> adapter.refresh());
-        }
-
-        com.google.android.material.textfield.TextInputEditText searchInput =
-                v.findViewById(R.id.searchInput);
-
-        if (searchInput != null) {
-            searchInput.addTextChangedListener(new TextWatcher() {
-                @Override
-                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-                }
-
-                @Override
-                public void onTextChanged(CharSequence s, int start, int before, int count) {
-                    adapter.setSearch(s.toString());
-                }
-
-                @Override
-                public void afterTextChanged(Editable s) {
-                }
+            btnRefreshWatchlist.setOnClickListener(view -> {
+                view.animate().rotationBy(360f).setDuration(450L).start();
+                adapter.refresh();
             });
         }
 
@@ -246,15 +282,22 @@ public class WatchlistFragment extends Fragment {
             updateOrderChipText(chipSortOrder);
             chipSortOrder.setOnClickListener(chipView -> {
                 adapter.cyclePercentSortOrder();
+                saveSortSettings(adapter.getCurrentFilter());
                 updateOrderChipText(chipSortOrder);
             });
         }
 
         if (sortChipGroup != null) {
+            int restoredChipId = getFilterChipId(adapter.getCurrentFilter());
+            if (restoredChipId != View.NO_ID) {
+                sortChipGroup.check(restoredChipId);
+                lastCheckedChipId = restoredChipId;
+            }
             sortChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
                 if (checkedIds.isEmpty()) {
                     adapter.setFilter("default");
                     lastCheckedChipId = View.NO_ID;
+                    saveSortSettings("default");
                     return;
                 }
 
@@ -264,6 +307,7 @@ public class WatchlistFragment extends Fragment {
                     group.clearCheck();
                     adapter.setFilter("default");
                     lastCheckedChipId = View.NO_ID;
+                    saveSortSettings("default");
                     return;
                 }
 
@@ -271,10 +315,13 @@ public class WatchlistFragment extends Fragment {
 
                 if (id == R.id.chipSortGain) {
                     adapter.setFilter("gain");
+                    saveSortSettings("gain");
                 } else if (id == R.id.chipSortLoss) {
                     adapter.setFilter("loss");
+                    saveSortSettings("loss");
                 } else if (id == R.id.chipSortAlpha) {
                     adapter.setFilter("alpha");
+                    saveSortSettings("alpha");
                 }
             });
         }
@@ -295,6 +342,47 @@ public class WatchlistFragment extends Fragment {
             chipSortOrder.setText("↓ Top Losers");
         } else {
             chipSortOrder.setText("↺ Default");
+        }
+    }
+
+    private List<String> readSavedManualOrder() {
+        List<String> symbols = new ArrayList<>();
+        String json = watchlistPreferences.getString(watchlistPreferencePrefix + "order", "[]");
+        try {
+            JSONArray saved = new JSONArray(json);
+            for (int i = 0; i < saved.length(); i++) {
+                String symbol = saved.optString(i, "").trim();
+                if (!symbol.isEmpty()) symbols.add(symbol);
+            }
+        } catch (org.json.JSONException e) {
+            Log.w("WatchlistFragment", "Ignoring invalid saved watchlist order", e);
+        }
+        return symbols;
+    }
+
+    private void saveManualOrder(List<String> symbols) {
+        if (watchlistPreferences == null || watchlistPreferencePrefix == null) return;
+        JSONArray json = new JSONArray();
+        for (String symbol : symbols) json.put(symbol);
+        watchlistPreferences.edit()
+                .putString(watchlistPreferencePrefix + "order", json.toString())
+                .apply();
+    }
+
+    private void saveSortSettings(String filter) {
+        if (watchlistPreferences == null || watchlistPreferencePrefix == null || adapter == null) return;
+        watchlistPreferences.edit()
+                .putString(watchlistPreferencePrefix + "filter", filter)
+                .putInt(watchlistPreferencePrefix + "percent_sort", adapter.getPercentSortMode())
+                .apply();
+    }
+
+    private int getFilterChipId(String filter) {
+        switch (filter) {
+            case "gain": return R.id.chipSortGain;
+            case "loss": return R.id.chipSortLoss;
+            case "alpha": return R.id.chipSortAlpha;
+            default: return View.NO_ID;
         }
     }
 
@@ -340,6 +428,11 @@ public class WatchlistFragment extends Fragment {
         watchlistRef.child(firebaseKey).setValue(stock)
                 .addOnSuccessListener(unused -> {
                     if (stockAutoInput != null) stockAutoInput.setText("");
+                    if (addStockSection != null) addStockSection.setVisibility(View.GONE);
+                    if (btnToggleAddStock != null) {
+                        btnToggleAddStock.setIconResource(R.drawable.ic_add_24);
+                        btnToggleAddStock.setContentDescription("Open add stock");
+                    }
 
                     SharedPreferences prefs = requireActivity()
                             .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -404,8 +497,13 @@ public class WatchlistFragment extends Fragment {
         input.setOnItemClickListener((parent, view, position, id) -> {
             ChartFragment.StockSuggestion sel = suggestionAdapter.getItem(position);
             if (sel != null) {
+                selectedSuggestionSymbol = sel.symbol;
+                suggestionSearchGeneration++;
+                searchHandler.removeCallbacksAndMessages(null);
                 input.setText(sel.symbol);
                 input.setSelection(sel.symbol.length());
+                input.dismissDropDown();
+                clearSuggestions();
 
                 SharedPreferences prefs = requireActivity()
                         .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -430,6 +528,13 @@ public class WatchlistFragment extends Fragment {
 
                 searchHandler.removeCallbacksAndMessages(null);
 
+                if (selectedSuggestionSymbol != null
+                        && q.equalsIgnoreCase(selectedSuggestionSymbol)) {
+                    input.dismissDropDown();
+                    return;
+                }
+                selectedSuggestionSymbol = null;
+
                 if (q.isEmpty()) {
                     clearSuggestions();
                     return;
@@ -445,6 +550,8 @@ public class WatchlistFragment extends Fragment {
         String upper = query.trim().toUpperCase(Locale.US);
 
         ArrayList<ChartFragment.StockSuggestion> baseSuggestions = new ArrayList<>();
+        baseSuggestions.add(new ChartFragment.StockSuggestion(
+                upper, "Use symbol: " + upper, "Symbol"));
 
         for (java.util.Map.Entry<String, String> entry : ChartFragment.CRYPTO_MAP.entrySet()) {
             String key = entry.getKey();
@@ -472,73 +579,110 @@ public class WatchlistFragment extends Fragment {
             }
         }
 
+        final int generation = ++suggestionSearchGeneration;
+        final List<ChartFragment.StockSuggestion> all =
+                Collections.synchronizedList(new ArrayList<>(baseSuggestions));
+        final AtomicInteger completedSearches = new AtomicInteger();
+        final Runnable postResults = () -> {
+            if (completedSearches.incrementAndGet() == 2) {
+                updateSuggestions(query, generation, all);
+            }
+        };
+
         try {
             String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name());
-            String url = "https://finnhub.io/api/v1/search?q=" + encoded + "&token=" + FINNHUB_KEY;
-
-            Request req = new Request.Builder().url(url).build();
-            httpClient.newCall(req).enqueue(new Callback() {
+            Request finnhub = new Request.Builder()
+                    .url("https://finnhub.io/api/v1/search?q=" + encoded + "&token=" + FINNHUB_KEY)
+                    .build();
+            httpClient.newCall(finnhub).enqueue(new Callback() {
                 @Override
                 public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    if (!isAdded()) return;
-                    requireActivity().runOnUiThread(() -> {
-                        suggestionAdapter.clear();
-                        suggestionAdapter.addAll(baseSuggestions);
-                        suggestionAdapter.notifyDataSetChanged();
-                        if (!baseSuggestions.isEmpty()) stockAutoInput.showDropDown();
-                    });
+                    postResults.run();
                 }
 
                 @Override
                 public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                    ArrayList<ChartFragment.StockSuggestion> all = new ArrayList<>(baseSuggestions);
-
                     if (response.isSuccessful() && response.body() != null) {
                         try {
-                            JSONObject root = new JSONObject(response.body().string());
-                            JSONArray arr = root.optJSONArray("result");
-
-                            if (arr != null) {
-                                for (int i = 0; i < Math.min(arr.length(), 10); i++) {
-                                    JSONObject o = arr.getJSONObject(i);
-                                    String sym = o.optString("symbol", "");
-                                    String name = o.optString("description", "");
-                                    String type = o.optString("type", "");
-
-                                    if (!sym.isEmpty()) {
-                                        all.add(new ChartFragment.StockSuggestion(sym, name, type));
+                            JSONArray results = new JSONObject(response.body().string()).optJSONArray("result");
+                            if (results != null) {
+                                for (int i = 0; i < results.length(); i++) {
+                                    JSONObject item = results.optJSONObject(i);
+                                    if (item == null) continue;
+                                    String symbol = item.optString("symbol", "").trim();
+                                    if (!symbol.isEmpty()) {
+                                        all.add(new ChartFragment.StockSuggestion(
+                                                symbol,
+                                                item.optString("description", symbol),
+                                                item.optString("type", "Stock")));
                                     }
                                 }
                             }
-                        } catch (Exception ignored) {
+                        } catch (org.json.JSONException ignored) {
                         }
                     }
+                    postResults.run();
+                }
+            });
 
-                    if (!isAdded()) return;
+            Request yahoo = new Request.Builder()
+                    .url("https://query1.finance.yahoo.com/v1/finance/search?q=" + encoded
+                            + "&quotesCount=25&newsCount=0")
+                    .header("User-Agent", "Mozilla/5.0")
+                    .build();
+            httpClient.newCall(yahoo).enqueue(new Callback() {
+                @Override
+                public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                    postResults.run();
+                }
 
-                    requireActivity().runOnUiThread(() -> {
-                        suggestionAdapter.clear();
-                        suggestionAdapter.addAll(removeDuplicateSuggestions(all));
-                        suggestionAdapter.notifyDataSetChanged();
-
-                        if (!all.isEmpty() && stockAutoInput != null) {
-                            stockAutoInput.showDropDown();
+                @Override
+                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                    if (response.isSuccessful() && response.body() != null) {
+                        try {
+                            JSONArray quotes = new JSONObject(response.body().string()).optJSONArray("quotes");
+                            if (quotes != null) {
+                                for (int i = 0; i < quotes.length(); i++) {
+                                    JSONObject item = quotes.optJSONObject(i);
+                                    if (item == null) continue;
+                                    String symbol = item.optString("symbol", "").trim();
+                                    if (!symbol.isEmpty()) {
+                                        all.add(new ChartFragment.StockSuggestion(
+                                                symbol,
+                                                item.optString("longname",
+                                                        item.optString("shortname", symbol)),
+                                                item.optString("exchDisp",
+                                                        item.optString("quoteType", "Stock"))));
+                                    }
+                                }
+                            }
+                        } catch (org.json.JSONException ignored) {
                         }
-                    });
+                    }
+                    postResults.run();
                 }
             });
-
         } catch (Exception e) {
-            if (!isAdded()) return;
-            requireActivity().runOnUiThread(() -> {
-                suggestionAdapter.clear();
-                suggestionAdapter.addAll(baseSuggestions);
-                suggestionAdapter.notifyDataSetChanged();
-                if (!baseSuggestions.isEmpty() && stockAutoInput != null) {
-                    stockAutoInput.showDropDown();
-                }
-            });
+            updateSuggestions(query, generation, all);
         }
+    }
+
+    private void updateSuggestions(String query, int generation,
+                                   List<ChartFragment.StockSuggestion> suggestions) {
+        if (!isAdded() || generation != suggestionSearchGeneration
+                || stockAutoInput == null
+                || !query.equalsIgnoreCase(stockAutoInput.getText().toString().trim())) return;
+
+        requireActivity().runOnUiThread(() -> {
+            if (!isAdded() || generation != suggestionSearchGeneration
+                    || stockAutoInput == null
+                    || !query.equalsIgnoreCase(stockAutoInput.getText().toString().trim())) return;
+            List<ChartFragment.StockSuggestion> unique = removeDuplicateSuggestions(suggestions);
+            suggestionAdapter.clear();
+            suggestionAdapter.addAll(unique);
+            suggestionAdapter.notifyDataSetChanged();
+            if (!unique.isEmpty()) stockAutoInput.showDropDown();
+        });
     }
 
     private List<ChartFragment.StockSuggestion> removeDuplicateSuggestions(List<ChartFragment.StockSuggestion> input) {
@@ -585,13 +729,38 @@ public class WatchlistFragment extends Fragment {
 
                     try {
                         float target = Float.parseFloat(txt);
-                        if (watchlistRef == null) return;
+                        if (!Float.isFinite(target) || target <= 0f || watchlistRef == null) {
+                            Toast.makeText(getContext(), "Enter a price greater than 0",
+                                    Toast.LENGTH_SHORT).show();
+                            return;
+                        }
 
                         String key = stock.symbol.replace(":", "_");
-                        watchlistRef.child(key).child("alertTargetPrice").setValue(target);
-                        watchlistRef.child(key).child("alertEnabled").setValue(true);
-                        watchlistRef.child(key).child("alertTriggered").setValue(false);
-                    } catch (Exception e) {
+                        Map<String, Object> alertUpdate = new HashMap<>();
+                        alertUpdate.put("alertTargetPrice", target);
+                        alertUpdate.put("alertEnabled", true);
+                        alertUpdate.put("alertTriggered", false);
+                        watchlistRef.child(key).updateChildren(alertUpdate)
+                                .addOnSuccessListener(unused -> {
+                                    if (!isAdded()) return;
+                                    SharedPreferences preferences = requireContext()
+                                            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+                                    if (!preferences.getBoolean(
+                                            PriceAlertScheduler.KEY_ENABLED, false)) {
+                                        preferences.edit().putBoolean(
+                                                PriceAlertScheduler.KEY_ENABLED, true).apply();
+                                        PriceAlertScheduler.schedule(requireContext());
+                                        Toast.makeText(getContext(),
+                                                "Price alerts enabled for your watchlist",
+                                                Toast.LENGTH_SHORT).show();
+                                    }
+                                })
+                                .addOnFailureListener(error -> {
+                                    if (isAdded()) Toast.makeText(getContext(),
+                                            "Could not save price alert: " + error.getMessage(),
+                                            Toast.LENGTH_LONG).show();
+                                });
+                    } catch (NumberFormatException e) {
                         Toast.makeText(getContext(), "Invalid number", Toast.LENGTH_SHORT).show();
                     }
                 })
@@ -599,9 +768,16 @@ public class WatchlistFragment extends Fragment {
                     if (watchlistRef == null) return;
 
                     String key = stock.symbol.replace(":", "_");
-                    watchlistRef.child(key).child("alertEnabled").setValue(false);
-                    watchlistRef.child(key).child("alertTargetPrice").setValue(0);
-                    watchlistRef.child(key).child("alertTriggered").setValue(false);
+                    Map<String, Object> alertUpdate = new HashMap<>();
+                    alertUpdate.put("alertEnabled", false);
+                    alertUpdate.put("alertTargetPrice", 0);
+                    alertUpdate.put("alertTriggered", false);
+                    watchlistRef.child(key).updateChildren(alertUpdate)
+                            .addOnFailureListener(error -> {
+                                if (isAdded()) Toast.makeText(getContext(),
+                                        "Could not disable price alert: " + error.getMessage(),
+                                        Toast.LENGTH_LONG).show();
+                            });
                 })
                 .setNegativeButton("Cancel", null)
                 .show();

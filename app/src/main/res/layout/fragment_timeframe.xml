@@ -44,7 +44,7 @@
             android:text="&#1489;&#1495;&#1512; &#1496;&#1493;&#1493;&#1495; &#1494;&#1502;&#1503;"
             android:textSize="17sp"
             android:textStyle="bold"
-            android:textColor="#0D1117"
+            android:textColor="@color/text_primary"
             android:layout_marginStart="10dp" />
     </LinearLayout>
 
@@ -64,11 +64,11 @@
             android:layout_marginEnd="5dp"
             android:text="1m"
             android:textSize="13sp"
-            android:textColor="#0D1117"
+            android:textColor="@color/text_primary"
             app:cornerRadius="14dp"
-            app:strokeColor="#CBD5E0"
+            app:strokeColor="@color/colorBorder"
             app:strokeWidth="1dp"
-            app:backgroundTint="#FFFFFF" />
+            app:backgroundTint="@color/bg_secondary" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn5min"
@@ -80,11 +80,11 @@
             android:layout_marginEnd="5dp"
             android:text="5m"
             android:textSize="13sp"
-            android:textColor="#0D1117"
+            android:textColor="@color/text_primary"
             app:cornerRadius="14dp"
-            app:strokeColor="#CBD5E0"
+            app:strokeColor="@color/colorBorder"
             app:strokeWidth="1dp"
-            app:backgroundTint="#FFFFFF" />
+            app:backgroundTint="@color/bg_secondary" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn15min"
@@ -95,11 +95,11 @@
             android:layout_marginStart="5dp"
             android:text="15m"
             android:textSize="13sp"
-            android:textColor="#0D1117"
+            android:textColor="@color/text_primary"
             app:cornerRadius="14dp"
-            app:strokeColor="#CBD5E0"
+            app:strokeColor="@color/colorBorder"
             app:strokeWidth="1dp"
-            app:backgroundTint="#FFFFFF" />
+            app:backgroundTint="@color/bg_secondary" />
 
     </LinearLayout>
 
@@ -119,11 +119,11 @@
             android:layout_marginEnd="5dp"
             android:text="30m"
             android:textSize="13sp"
-            android:textColor="#0D1117"
+            android:textColor="@color/text_primary"
             app:cornerRadius="14dp"
-            app:strokeColor="#CBD5E0"
+            app:strokeColor="@color/colorBorder"
             app:strokeWidth="1dp"
-            app:backgroundTint="#FFFFFF" />
+            app:backgroundTint="@color/bg_secondary" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn1hour"
@@ -135,11 +135,11 @@
             android:layout_marginEnd="5dp"
             android:text="1H"
             android:textSize="13sp"
-            android:textColor="#0D1117"
+            android:textColor="@color/text_primary"
             app:cornerRadius="14dp"
-            app:strokeColor="#CBD5E0"
+            app:strokeColor="@color/colorBorder"
             app:strokeWidth="1dp"
-            app:backgroundTint="#FFFFFF" />
+            app:backgroundTint="@color/bg_secondary" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn4hour"
@@ -150,11 +150,11 @@
             android:layout_marginStart="5dp"
             android:text="4H"
             android:textSize="13sp"
-            android:textColor="#0D1117"
+            android:textColor="@color/text_primary"
             app:cornerRadius="14dp"
-            app:strokeColor="#CBD5E0"
+            app:strokeColor="@color/colorBorder"
             app:strokeWidth="1dp"
-            app:backgroundTint="#FFFFFF" />
+            app:backgroundTint="@color/bg_secondary" />
 
     </LinearLayout>
 
@@ -173,11 +173,11 @@
             android:layout_marginEnd="5dp"
             android:text="1D"
             android:textSize="13sp"
-            android:textColor="#0D1117"
+            android:textColor="@color/text_primary"
             app:cornerRadius="14dp"
-            app:strokeColor="#CBD5E0"
+            app:strokeColor="@color/colorBorder"
             app:strokeWidth="1dp"
-            app:backgroundTint="#FFFFFF" />
+            app:backgroundTint="@color/bg_secondary" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn1week"
@@ -189,11 +189,11 @@
             android:layout_marginEnd="5dp"
             android:text="1W"
             android:textSize="13sp"
-            android:textColor="#0D1117"
+            android:textColor="@color/text_primary"
             app:cornerRadius="14dp"
-            app:strokeColor="#CBD5E0"
+            app:strokeColor="@color/colorBorder"
             app:strokeWidth="1dp"
-            app:backgroundTint="#FFFFFF" />
+            app:backgroundTint="@color/bg_secondary" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn1month"
@@ -204,11 +204,11 @@
             android:layout_marginStart="5dp"
             android:text="1M"
             android:textSize="13sp"
-            android:textColor="#0D1117"
+            android:textColor="@color/text_primary"
             app:cornerRadius="14dp"
-            app:strokeColor="#CBD5E0"
+            app:strokeColor="@color/colorBorder"
             app:strokeWidth="1dp"
-            app:backgroundTint="#FFFFFF" />
+            app:backgroundTint="@color/bg_secondary" />
 
     </LinearLayout>
 

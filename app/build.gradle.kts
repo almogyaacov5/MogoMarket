@@ -17,7 +17,7 @@ val smtpEmail        = localProperties.getProperty("SMTP_EMAIL")      ?: ""
 val smtpPassword     = localProperties.getProperty("SMTP_PASSWORD")   ?: ""
 val storeFileValue   = localProperties.getProperty("STORE_FILE")      ?: "C:/Trade APP/myapp-release.jks"
 val storePasswordValue = localProperties.getProperty("STORE_PASSWORD") ?: ""
-val keyAliasValue    = localProperties.getProperty("KEY_ALIAS")       ?: "release"
+val keyAliasValue    = localProperties.getProperty("KEY_                            ALIAS")       ?: "release"
 val keyPasswordValue = localProperties.getProperty("KEY_PASSWORD")    ?: ""
 
 android {
@@ -28,8 +28,8 @@ android {
         applicationId = "com.mogomarket.app"
         minSdk = 29
         targetSdk = 36
-        versionCode = 23
-        versionName = "1.7.1"
+        versionCode = 30
+        versionName = "1.7.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "GEMINI_API_KEY",  "\"$geminiKey\"")
@@ -55,8 +55,8 @@ android {
         }
         release {
             isDebuggable = false
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             signingConfig = signingConfigs.getByName("release")
 
             ndk {
@@ -103,6 +103,8 @@ dependencies {
     implementation(libs.recyclerview)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.database)
+    implementation(libs.firebase.storage)
+    implementation(libs.firebase.functions)
     implementation(libs.credentials)
     implementation(libs.credentials.play.services.auth)
     implementation(libs.googleid)
@@ -121,4 +123,6 @@ dependencies {
     implementation("androidx.navigation:navigation-ui:2.7.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel:2.7.0")
     implementation("androidx.lifecycle:lifecycle-livedata:2.7.0")
+    implementation("androidx.work:work-runtime:2.10.1")
+    implementation("com.google.mlkit:text-recognition:16.0.1")
 }

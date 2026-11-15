@@ -68,14 +68,17 @@ public class TimeFrameFragment extends DialogFragment {
                 // Reset all buttons
                 for (MaterialButton b : buttons) {
                     if (b == null) continue;
-                    b.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#FFFFFF")));
-                    b.setTextColor(Color.parseColor("#0D1117"));
-                    b.setStrokeColor(ColorStateList.valueOf(Color.parseColor("#CBD5E0")));
+                    b.setBackgroundTintList(ColorStateList.valueOf(
+                            requireContext().getColor(R.color.bg_secondary)));
+                    b.setTextColor(requireContext().getColor(R.color.text_primary));
+                    b.setStrokeColor(ColorStateList.valueOf(
+                            requireContext().getColor(R.color.colorBorder)));
                     b.setStrokeWidth(dpToPx(1));
                 }
 
                 // Highlight selected
-                btn.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#4DA3FF")));
+                btn.setBackgroundTintList(ColorStateList.valueOf(
+                        requireContext().getColor(R.color.primary)));
                 btn.setTextColor(Color.WHITE);
                 btn.setStrokeWidth(0);
                 selectedButton = btn;

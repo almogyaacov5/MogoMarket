@@ -81,12 +81,16 @@ public class EmailSummaryService extends BroadcastReceiver {
     // jdk.internal.net.http.common.SubscriberWrapper.SchedulingAction
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * מתזמן סיכום יומי כל יום ב-20:00 וסיכום שבועי כל ראשון ב-20:05.
-     * קרא לפונקציה זו ב-MainActivity.onCreate().
-     */
+    /** Keeps the legacy weekly report scheduled; daily reports use DailySummaryEmailService. */
     public static void scheduleDailySummary(Context context) {
-        scheduleAlarm(context, ACTION_DAILY,  RC_DAILY,  Calendar.SUNDAY, 20, 0);
+        AlarmManager alarmManager =
+                (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager != null) {
+            PendingIntent dailyIntent = PendingIntent.getBroadcast(context, RC_DAILY,
+                    new Intent(context, EmailSummaryService.class).setAction(ACTION_DAILY),
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            alarmManager.cancel(dailyIntent);
+        }
         scheduleAlarm(context, ACTION_WEEKLY, RC_WEEKLY, Calendar.SUNDAY, 20, 5);
     }
 
@@ -156,10 +160,13 @@ public class EmailSummaryService extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         if (intent == null || intent.getAction() == null) return;
 
-        // Reschedule for the next occurrence
         if (ACTION_DAILY.equals(intent.getAction())) {
-            scheduleAlarm(context, ACTION_DAILY, RC_DAILY, Calendar.SUNDAY, 20, 0);
-        } else if (ACTION_WEEKLY.equals(intent.getAction())) {
+            scheduleDailySummary(context);
+            return;
+        }
+
+        // Reschedule for the next occurrence
+        if (ACTION_WEEKLY.equals(intent.getAction())) {
             scheduleAlarm(context, ACTION_WEEKLY, RC_WEEKLY, Calendar.SUNDAY, 20, 5);
         }
 
@@ -171,9 +178,7 @@ public class EmailSummaryService extends BroadcastReceiver {
 
         String uid = user.getUid();
 
-        if (ACTION_DAILY.equals(intent.getAction())) {
-            buildAndSendDailySummary(context, uid, email);
-        } else if (ACTION_WEEKLY.equals(intent.getAction())) {
+        if (ACTION_WEEKLY.equals(intent.getAction())) {
             buildAndSendWeeklySummary(context, uid, email);
         }
     }
@@ -223,8 +228,8 @@ public class EmailSummaryService extends BroadcastReceiver {
         double bestPct = Double.MIN_VALUE, worstPct = Double.MAX_VALUE;
 
         for (StockData t : closedTrades) {
-            double pnl = t.sellPrice - t.buyPrice;
-            double pct = (t.buyPrice != 0) ? ((t.sellPrice - t.buyPrice) / t.buyPrice) * 100 : 0;
+            double pnl = StockData.calculateProfitLoss(t);
+            double pct = StockData.calculateProfitLossPercent(t);
             totalClosedPnl += pnl;
             if (pnl > 0) wins++; else if (pnl < 0) losses++;
             if (pct > bestPct)  { bestPct  = pct;  bestTrade  = t; }
@@ -243,7 +248,7 @@ public class EmailSummaryService extends BroadcastReceiver {
 
         StringBuilder tradesTable = new StringBuilder();
         for (StockData t : closedTrades) {
-            double pct = (t.buyPrice != 0) ? ((t.sellPrice - t.buyPrice) / t.buyPrice) * 100 : 0;
+            double pct = StockData.calculateProfitLossPercent(t);
             tradesTable.append(String.format(Locale.US,
                     "| %s | $%.2f | $%.2f | %s%.2f%% |\n",
                     t.symbol, t.buyPrice, t.sellPrice, pct >= 0 ? "+" : "", pct));
@@ -348,10 +353,10 @@ public class EmailSummaryService extends BroadcastReceiver {
         double bestPct = Double.MIN_VALUE, worstPct = Double.MAX_VALUE;
 
         for (StockData t : closedTrades) {
-            double pnl = t.sellPrice - t.buyPrice;
-            double pct = (t.buyPrice != 0) ? ((t.sellPrice - t.buyPrice) / t.buyPrice) * 100 : 0;
+            double pnl = StockData.calculateProfitLoss(t);
+            double pct = StockData.calculateProfitLossPercent(t);
             totalPnl += pnl;
-            totalInvested += t.buyPrice;
+            totalInvested += t.tradeAmount > 0 ? t.tradeAmount : t.buyPrice;
             if (pnl > 0) wins++; else if (pnl < 0) losses++;
             if (pct > bestPct)  { bestPct  = pct;  bestTrade  = t; }
             if (pct < worstPct) { worstPct = pct;  worstTrade = t; }

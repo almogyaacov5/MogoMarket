@@ -25,13 +25,16 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
 
     public interface OnTradeEditListener { void onEditTrade(StockData trade); }
     public interface OnTradeDeleteListener { void onDeleteTrade(StockData trade); }
+    public interface OnTradeScreenshotsListener { void onManageScreenshots(StockData trade); }
     public interface OnSummaryUpdateListener {
-        void onSummaryUpdated(double totalPnl, int wins, int total, double totalInvested);
+        void onSummaryUpdated(double totalPnl, int wins, int total, double totalInvested,
+                              ClosedTradeAnalytics analytics);
     }
 
     private final List<StockData> closedTrades;
     private final OnTradeEditListener editListener;
     private OnTradeDeleteListener deleteListener;
+    private OnTradeScreenshotsListener screenshotsListener;
     private OnSummaryUpdateListener summaryListener;
 
     // ⭐ חדש — שווי תיק כולל
@@ -52,6 +55,10 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
         this.deleteListener = listener;
     }
 
+    public void setScreenshotsListener(OnTradeScreenshotsListener listener) {
+        this.screenshotsListener = listener;
+    }
+
     public void setSummaryListener(OnSummaryUpdateListener listener) {
         this.summaryListener = listener;
         notifySummary();
@@ -65,12 +72,13 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
         double totalInvested = 0;
         int wins = 0;
         for (StockData t : closedTrades) {
-            double pnl = t.sellPrice - t.buyPrice;
+            double pnl = StockData.calculateProfitLoss(t);
             totalPnl += pnl;
             if (pnl > 0) wins++;
             totalInvested += t.tradeAmount;
         }
-        summaryListener.onSummaryUpdated(totalPnl, wins, closedTrades.size(), totalInvested);
+        summaryListener.onSummaryUpdated(totalPnl, wins, closedTrades.size(), totalInvested,
+                ClosedTradeAnalytics.calculate(closedTrades));
     }
 
     @NonNull
@@ -93,11 +101,29 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
         int colorLoss     = ctx.getColor(R.color.loss);
         int colorNeutral  = textSecondary;
 
-        holder.itemView.setBackgroundColor(bgCard);
+        if (holder.itemView instanceof com.google.android.material.card.MaterialCardView) {
+            ((com.google.android.material.card.MaterialCardView) holder.itemView)
+                    .setCardBackgroundColor(bgCard);
+        }
 
         String symbol = trade.symbol != null ? trade.symbol.toUpperCase(Locale.US) : "?";
-        holder.symbolText.setText(symbol);
+        String tradeNumber = trade.tradeNumber != null && !trade.tradeNumber.trim().isEmpty()
+                ? " " + trade.tradeNumber : "";
+        holder.symbolText.setText(symbol + tradeNumber);
         holder.symbolText.setTextColor(textPrimary);
+        java.text.DateFormat dateFormat = android.text.format.DateFormat.getDateFormat(ctx);
+        StringBuilder tradeDates = new StringBuilder();
+        if (trade.openedAt > 0) {
+            tradeDates.append("Opened ")
+                    .append(dateFormat.format(new java.util.Date(trade.openedAt)));
+        }
+        if (trade.closedAt > 0) {
+            if (tradeDates.length() > 0) tradeDates.append("  ·  ");
+            tradeDates.append("Closed ")
+                    .append(dateFormat.format(new java.util.Date(trade.closedAt)));
+        }
+        holder.tradeDateText.setText(tradeDates.toString());
+        holder.tradeDateText.setVisibility(tradeDates.length() > 0 ? View.VISIBLE : View.GONE);
 
         if (holder.symbolInitial != null) {
             String initial = symbol.length() > 0 ? String.valueOf(symbol.charAt(0)) : "?";
@@ -129,8 +155,41 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
         holder.currPriceView.setText(String.format(Locale.US, "$%.2f", currPrice));
         holder.currPriceView.setTextColor(textPrimary);
 
-        double pnlAbs     = sellPrice - buyPrice;
-        double pnlPercent = (buyPrice != 0) ? ((sellPrice - buyPrice) / buyPrice) * 100 : 0;
+        String exitReason = formatExitReason(trade.exitReason);
+        holder.exitReasonText.setText("Exit: " + exitReason);
+        holder.exitReasonText.setTextColor(textSecondary);
+        if (trade.strategyTag != null && !trade.strategyTag.trim().isEmpty()) {
+            holder.strategyTagText.setText("Setup: " + trade.strategyTag.trim());
+            holder.strategyTagText.setVisibility(View.VISIBLE);
+        } else {
+            holder.strategyTagText.setVisibility(View.GONE);
+        }
+        holder.sectorText.setText("Sector: "
+                + (trade.sector == null || trade.sector.trim().isEmpty()
+                ? "Other" : trade.sector.trim()));
+        if ("AVAILABLE".equals(trade.missedPnlStatus) && trade.missedProfitLoss != null) {
+            holder.missedPnlText.setText(String.format(Locale.US, "Missed P&L: $%.2f",
+                    trade.missedProfitLoss));
+            holder.missedPnlText.setVisibility(View.VISIBLE);
+        } else if ("UNAVAILABLE".equals(trade.missedPnlStatus)) {
+            holder.missedPnlText.setText("Missed P&L: unavailable");
+            holder.missedPnlText.setVisibility(View.VISIBLE);
+        } else if (trade.closedAt > 0) {
+            holder.missedPnlText.setText("Missed P&L: calculating");
+            holder.missedPnlText.setVisibility(View.VISIBLE);
+        } else {
+            holder.missedPnlText.setVisibility(View.GONE);
+        }
+        if (trade.openedAt > 0 && trade.closedAt >= trade.openedAt) {
+            long holdingDays = (trade.closedAt - trade.openedAt) / 86_400_000L;
+            holder.holdingDurationText.setText("Held: " + holdingDays + " days");
+            holder.holdingDurationText.setVisibility(View.VISIBLE);
+        } else {
+            holder.holdingDurationText.setVisibility(View.GONE);
+        }
+
+        double pnlAbs = StockData.calculateProfitLoss(trade);
+        double pnlPercent = StockData.calculateProfitLossPercent(trade);
 
         int    pnlColor;
         String pnlSign;
@@ -142,6 +201,24 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
         holder.pnlView.setTextColor(pnlColor);
         holder.percentText.setText(String.format(Locale.US, "%s%.2f%%", pnlSign, pnlPercent));
         holder.percentText.setTextColor(pnlColor);
+        int pillColor = pnlAbs > 0 ? 0x3310B981 : pnlAbs < 0 ? 0x33FB5A75 : 0x332A303A;
+        GradientDrawable percentPill = new GradientDrawable();
+        percentPill.setShape(GradientDrawable.RECTANGLE);
+        percentPill.setCornerRadius(100f);
+        percentPill.setColor(pillColor);
+        percentPill.setStroke(1, pnlColor);
+        holder.percentText.setBackground(percentPill);
+        float density = ctx.getResources().getDisplayMetrics().density;
+        int horizontalPadding = Math.round(10 * density);
+        int verticalPadding = Math.round(4 * density);
+        holder.percentText.setPadding(horizontalPadding, verticalPadding,
+                horizontalPadding, verticalPadding);
+
+        if (holder.itemView instanceof com.google.android.material.card.MaterialCardView) {
+            int strokeColor = pnlAbs > 0 ? 0xFF087F8C : ctx.getColor(R.color.colorBorder);
+            ((com.google.android.material.card.MaterialCardView) holder.itemView)
+                    .setStrokeColor(strokeColor);
+        }
 
         // הצגת סכום הושקע בטרייד הסגור
         if (trade.tradeAmount > 0) {
@@ -171,6 +248,17 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
                 if (deleteListener != null) deleteListener.onDeleteTrade(trade);
             });
         }
+        holder.screenshotsButton.setOnClickListener(v -> {
+            if (screenshotsListener != null) screenshotsListener.onManageScreenshots(trade);
+        });
+    }
+
+    private String formatExitReason(String reason) {
+        if ("HIT_TP".equals(reason)) return "Hit TP";
+        if ("HIT_SL".equals(reason)) return "Hit SL";
+        if ("TRAILING_STOP".equals(reason)) return "Trailing Stop";
+        if ("MANUAL_EXIT".equals(reason)) return "Manual Exit";
+        return "Not recorded";
     }
 
     @Override
@@ -180,12 +268,17 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         TextView symbolInitial, symbolText, tradeDateText;
+        TextView exitReasonText, holdingDurationText;
+        TextView strategyTagText;
+        TextView sectorText;
+        TextView missedPnlText;
         TextView pnlView, percentText;
         TextView buyPriceView, sellPriceView, currPriceView;
         TextView investedAmountText;
         LinearLayout layoutClosedInvested;
         ImageButton editButton;
         ImageButton deleteButton;
+        ImageButton screenshotsButton;
 
         // ⭐ חדש
         TextView percentOfPortfolioText;
@@ -194,21 +287,27 @@ public class ClosedTradesAdapter extends RecyclerView.Adapter<ClosedTradesAdapte
             super(itemView);
 
             symbolInitial = itemView.findViewById(R.id.symbolInitial);
-            symbolText = itemView.findViewById(R.id.symbolText);
+            symbolText = itemView.findViewById(R.id.tradeSymbolText);
             tradeDateText = itemView.findViewById(R.id.tradeDateText);
+            exitReasonText = itemView.findViewById(R.id.tradeExitReason);
+            holdingDurationText = itemView.findViewById(R.id.tradeHoldingDuration);
+            strategyTagText = itemView.findViewById(R.id.tradeStrategyTag);
+            sectorText = itemView.findViewById(R.id.tradeSector);
+            missedPnlText = itemView.findViewById(R.id.tradeMissedPnl);
 
             pnlView = itemView.findViewById(R.id.pnlView);
-            percentText = itemView.findViewById(R.id.percentText);
+            percentText = itemView.findViewById(R.id.tradeChangePercent);
 
-            buyPriceView = itemView.findViewById(R.id.buyPriceView);
-            sellPriceView = itemView.findViewById(R.id.sellPriceView);
-            currPriceView = itemView.findViewById(R.id.currPriceView);
+            buyPriceView = itemView.findViewById(R.id.tradeBuyPrice);
+            sellPriceView = itemView.findViewById(R.id.tradeSellingPrice);
+            currPriceView = itemView.findViewById(R.id.tradeCurrentPrice);
 
-            investedAmountText = itemView.findViewById(R.id.investedAmountText);
+            investedAmountText = itemView.findViewById(R.id.tvClosedInvestedAmount);
             layoutClosedInvested = itemView.findViewById(R.id.layoutClosedInvested);
 
-            editButton = itemView.findViewById(R.id.editButton);
-            deleteButton = itemView.findViewById(R.id.deleteButton);
+            editButton = itemView.findViewById(R.id.btnEditTrade);
+            deleteButton = itemView.findViewById(R.id.btnDeleteTrade);
+            screenshotsButton = itemView.findViewById(R.id.btnTradeScreenshots);
 
             // ⭐ חדש
             percentOfPortfolioText = itemView.findViewById(R.id.percentOfPortfolioText);

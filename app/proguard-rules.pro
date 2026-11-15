@@ -10,39 +10,25 @@
 -keepattributes InnerClasses
 -keepattributes EnclosingMethod
 
-# ── Firebase ──────────────────────────────────────────────────
-# כל מודלי Firebase — reflection דורש שמות מקוריים + getters/setters
--keep class com.mogomarket.app.StockData       { *; }
--keep class com.mogomarket.app.StockWatchData  { *; }
--keep class com.mogomarket.app.AnalysisData    { *; }
-
-# Firebase Auth + Database
--keep class com.google.firebase.** { *; }
--keep class com.google.android.gms.** { *; }
--dontwarn com.google.firebase.**
--dontwarn com.google.android.gms.**
-
-# Firebase Database ClassMapper — reflection על getters/setters
--keepclassmembers class com.mogomarket.app.** {
+# Firebase ClassMapper constructs models and accesses their public fields by name.
+-keepclassmembers class com.mogomarket.app.StockData {
     public <init>();
     public <fields>;
-    public <methods>;
+}
+-keepclassmembers class com.mogomarket.app.StockWatchData {
+    public <init>();
+    public <fields>;
+}
+-keepclassmembers class com.mogomarket.app.AnalysisData {
+    public <init>();
+    public <fields>;
+}
+-keepclassmembers class com.mogomarket.app.DailyTradeEvent {
+    public <init>();
+    public <fields>;
 }
 
-# ── Gson ──────────────────────────────────────────────────────
--keep class com.google.gson.** { *; }
--keep class com.google.gson.stream.** { *; }
--keep class sun.misc.Unsafe { *; }
--keepclassmembers class * {
-    @com.google.gson.annotations.SerializedName <fields>;
-}
-
-# ── OkHttp ────────────────────────────────────────────────────
--keep class okhttp3.** { *; }
--dontwarn okhttp3.**
--dontwarn okio.**
-
-# ── JavaMail ──────────────────────────────────────────────────
+# JavaMail loads provider implementations from provider metadata.
 -keep class javax.mail.** { *; }
 -keep class com.sun.mail.** { *; }
 -dontwarn javax.mail.**
@@ -50,28 +36,10 @@
 -dontwarn javax.activation.**
 -dontwarn com.sun.activation.**
 
-# ── MPAndroidChart ────────────────────────────────────────────
--keep class com.github.mikephil.charting.** { *; }
--dontwarn com.github.mikephil.charting.**
-
-# ── Navigation Component ──────────────────────────────────────
--keep class androidx.navigation.** { *; }
-
-# ── Biometric ─────────────────────────────────────────────────
--keep class androidx.biometric.** { *; }
-
-# ── ViewBinding ───────────────────────────────────────────────
--keep class * implements androidx.viewbinding.ViewBinding {
-    public static * inflate(android.view.LayoutInflater);
-    public static * inflate(android.view.LayoutInflater, android.view.ViewGroup, boolean);
-    public static * bind(android.view.View);
+# Navigation XML resolves fragment classes by name and instantiates them reflectively.
+-keep,allowoptimization class * extends androidx.fragment.app.Fragment {
+    public <init>();
 }
-
-# Keep all application Fragments used by Navigation XML
--keep class com.mogomarket.app.** extends androidx.fragment.app.Fragment { *; }
-
-# Keep fragment class names for XML / Navigation Component reflection
--keepnames class * extends androidx.fragment.app.Fragment
-
-# Keep NavHostFragment name used from XML
--keepnames class androidx.navigation.fragment.NavHostFragment
+-keep,allowoptimization class androidx.navigation.fragment.NavHostFragment {
+    public <init>();
+}
