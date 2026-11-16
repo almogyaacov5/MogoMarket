@@ -195,6 +195,7 @@ public class SettingsFragment extends Fragment {
 
         setupDefaultSymbolSection(v);
         setupDefaultChartTimeframe(v);
+        setupChartChangePercentage(v);
         setupStartPageSelector(v);
 
         // Account email
@@ -365,6 +366,30 @@ public class SettingsFragment extends Fragment {
                                         "Default chart timeframe saved",
                                         Toast.LENGTH_SHORT).show();
                             })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+        });
+    }
+
+    private void setupChartChangePercentage(View v) {
+        MaterialButton button = v.findViewById(R.id.btnChartChangePercentage);
+        if (button == null) return;
+        String[] options = {"Selected timeframe", "Today"};
+        boolean showDaily = prefs.getBoolean(ChartFragment.KEY_CHANGE_PERCENT_DAILY, false);
+        button.setText(options[showDaily ? 1 : 0]);
+        button.setOnClickListener(view -> {
+            boolean currentlyDaily = prefs.getBoolean(
+                    ChartFragment.KEY_CHANGE_PERCENT_DAILY, false);
+            new AlertDialog.Builder(requireContext())
+                    .setTitle("Chart change percentage")
+                    .setSingleChoiceItems(options, currentlyDaily ? 1 : 0, (dialog, which) -> {
+                        boolean daily = which == 1;
+                        prefs.edit()
+                                .putBoolean(ChartFragment.KEY_CHANGE_PERCENT_DAILY, daily)
+                                .apply();
+                        button.setText(options[which]);
+                        dialog.dismiss();
+                    })
                     .setNegativeButton("Cancel", null)
                     .show();
         });

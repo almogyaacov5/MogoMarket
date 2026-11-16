@@ -78,6 +78,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     public static final String KEY_SYMBOL_MODE  = "chart_symbol_mode";
     public static final String KEY_DEFAULT_TIMEFRAME = "chart_default_timeframe";
+    public static final String KEY_CHANGE_PERCENT_DAILY = "chart_change_percent_daily";
 
     private static final int DARK_BG        = 0xFF07090D;
     private static final int DARK_CARD      = 0xFF121720;
@@ -171,6 +172,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     private boolean isDarkTheme;
     private boolean isChartDark;
+    private boolean hasDisplayedChangeMode;
+    private boolean lastDisplayedDailyChange;
     private boolean isFullscreen = false;
     private boolean isCrosshairActive = false;
 
@@ -200,6 +203,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
     private View chartRootLayout;
     private TextView timeFrameText, tickerText, priceText, changeText, currentPriceDisplay;
     private TextView tickerLabelTop;
+    private TextView chartTickerTitle;
 
     private LinearLayout crosshairInfoBar;
     private TextView crosshairPrice;
@@ -367,6 +371,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         btnChartRefresh   = v.findViewById(R.id.btnChartRefresh);
         btnChartMenu       = v.findViewById(R.id.btnChartMenu);
         tickerLabelTop     = v.findViewById(R.id.tickerLabelTop);
+        chartTickerTitle   = v.findViewById(R.id.chartTickerTitle);
 
         crosshairInfoBar   = v.findViewById(R.id.crosshairInfoBar);
         crosshairPrice     = v.findViewById(R.id.crosshairPrice);
@@ -506,8 +511,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         updateChartThemeToggleLabel();
     }
     private void updateTickerLabelTop() {
-        if (tickerLabelTop == null) return;
-        tickerLabelTop.setText(cleanDisplaySymbol(symbol));
+        String displaySymbol = cleanDisplaySymbol(symbol);
+        if (tickerLabelTop != null) tickerLabelTop.setText(displaySymbol);
+        if (chartTickerTitle != null) chartTickerTitle.setText(displaySymbol);
     }
 
     private void updateTimeframePickerLabel() {
@@ -678,6 +684,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 else               updateLineChart(currentEntries);
             }
             updateChartThemeToggleLabel();
+        }
+        boolean showDailyChange = prefs.getBoolean(KEY_CHANGE_PERCENT_DAILY, false);
+        if (hasDisplayedChangeMode && showDailyChange != lastDisplayedDailyChange) {
+            fetchStockData(symbol, interval);
         }
     }
 
@@ -890,6 +900,7 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
         if (bottomBar       != null) bottomBar.setBackgroundColor(cardColor);
 
         if (tickerLabelTop  != null) tickerLabelTop.setTextColor(textPri);
+        if (chartTickerTitle != null) chartTickerTitle.setTextColor(textPri);
         if (tickerText      != null) tickerText.setTextColor(textPri);
         if (timeFrameText   != null) timeFrameText.setTextColor(textSec);
         applyChartColors();
@@ -1489,8 +1500,13 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     float quotePrice = (float) marketQuote.currentPrice;
                     if (!Float.isFinite(quotePrice) || quotePrice <= 0f) quotePrice = lc;
                     float periodStartPrice = entries.get(0).getOpen();
+                    float dailyPreviousClose = (float) marketQuote.previousClose;
+                    if (!Float.isFinite(dailyPreviousClose) || dailyPreviousClose <= 0f) {
+                        dailyPreviousClose = closes.size() > 1
+                                ? closes.get(closes.size() - 2) : periodStartPrice;
+                    }
                     postChartUpdate(sym, entries, labels, timestamps, closes, quotePrice,
-                            periodStartPrice, requestGeneration);
+                            periodStartPrice, dailyPreviousClose, requestGeneration);
                 } catch (Exception e) { Log.e("ChartFragment", "Yahoo parse error", e); }
             }
         });
@@ -1543,8 +1559,10 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                     }
                     if (vc == 0) return;
                     float periodStartPrice = entries.get(0).getOpen();
+                    float dailyPreviousClose = entries.size() > 1
+                            ? entries.get(entries.size() - 2).getClose() : periodStartPrice;
                     postChartUpdate(sym, entries, labels, timestamps, closes, lc, periodStartPrice,
-                            requestGeneration);
+                            dailyPreviousClose, requestGeneration);
                 } catch (Exception e) { Log.e("ChartFragment", "Crypto parse error", e); }
             }
         });
@@ -1583,17 +1601,24 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
     private void postChartUpdate(String sym, List<CandleEntry> entries, List<String> labels,
                                  List<Long> timestamps, List<Float> closes,
-                                 float lastClose, float periodStartPrice,
+                                 float lastClose, float periodStartPrice, float dailyPreviousClose,
                                  int requestGeneration) {
         if (!Float.isFinite(periodStartPrice) || periodStartPrice <= 0f) {
             periodStartPrice = lastClose;
         }
-        float changePct = (float) DailyQuoteMath.percentChange(lastClose, periodStartPrice);
+        if (!Float.isFinite(dailyPreviousClose) || dailyPreviousClose <= 0f) {
+            dailyPreviousClose = periodStartPrice;
+        }
+        boolean showDailyChange = getActivity() != null
+                && getActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getBoolean(KEY_CHANGE_PERCENT_DAILY, false);
+        float changeBasePrice = showDailyChange ? dailyPreviousClose : periodStartPrice;
+        float changePct = (float) DailyQuoteMath.percentChange(lastClose, changeBasePrice);
         if (!Float.isFinite(changePct)) changePct = 0f;
         boolean gain = changePct >= 0;
 
         String priceFormatted = formatPrice(lastClose, sym);
-        float change = lastClose - periodStartPrice;
+        float change = lastClose - changeBasePrice;
         String changeFormatted = formatPrice(Math.abs(change), sym);
         String changeStr = String.format(Locale.US, "%+.2f%% (%s$%s)",
                 changePct, gain ? "+" : "-", changeFormatted);
@@ -1610,6 +1635,8 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
                 fullCloses.clear();
                 fullCloses.addAll(closes);
                 lastPrice = lastClose;
+                lastDisplayedDailyChange = showDailyChange;
+                hasDisplayedChangeMode = true;
                 if (showMa150) movingAverageEntries.clear();
 
                 if (priceText != null) {
@@ -1634,6 +1661,9 @@ public class ChartFragment extends Fragment implements TimeFrameFragment.TimeFra
 
                 if (tickerLabelTop != null) {
                     tickerLabelTop.setText(cleanDisplaySymbol(sym));
+                }
+                if (chartTickerTitle != null) {
+                    chartTickerTitle.setText(cleanDisplaySymbol(sym));
                 }
 
                 if (getActivity() != null) {
